@@ -8,20 +8,13 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{
-  --bg:#f7f7f5;--surface:#ffffff;--surface2:#f0f0ec;--border:#e5e5e0;--border2:#d0d0c8;
-  --text:#1a1a18;--text2:#6b6b65;--text3:#9b9b94;
-  --accent:#2d6a4f;--accent-bg:#e8f5ee;--accent-text:#1b4332;
-  --danger:#c1121f;--danger-bg:#fee2e2;--warn:#d97706;--warn-bg:#fef3c7;
-  --orange:#c05621;--orange-bg:#fff0e6;--success:#166534;--success-bg:#dcfce7;
-  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--r:8px;--r-lg:12px;
-}
+:root{--bg:#f7f7f5;--surface:#fff;--surface2:#f0f0ec;--border:#e5e5e0;--border2:#d0d0c8;--text:#1a1a18;--text2:#6b6b65;--text3:#9b9b94;--accent:#2d6a4f;--accent-bg:#e8f5ee;--accent-text:#1b4332;--danger:#c1121f;--danger-bg:#fee2e2;--warn:#d97706;--warn-bg:#fef3c7;--orange:#c05621;--orange-bg:#fff0e6;--success:#166534;--success-bg:#dcfce7;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--r:8px;--r-lg:12px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;height:100vh;overflow:hidden}
 .app{display:flex;height:100vh}
 .sidebar{width:220px;min-width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column}
 .sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
-.sb-logo-title{font-size:13px;font-weight:600;color:var(--text)}
+.sb-logo-title{font-size:13px;font-weight:600}
 .sb-logo-sub{font-size:11px;color:var(--text3);margin-top:1px}
 .sb-section{padding:10px 8px 4px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
 .sb-list{flex:1;overflow-y:auto;padding:4px 8px}
@@ -39,22 +32,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .topbar-left{display:flex;align-items:center;gap:10px;flex:1}
 .topbar-title{font-size:15px;font-weight:600}
 .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
-.badge-green{background:var(--accent-bg);color:var(--accent-text)}
 .badge-gray{background:var(--surface2);color:var(--text3)}
 .tabs{display:flex;gap:1px;background:var(--surface2);padding:3px;border-radius:var(--r);border:1px solid var(--border)}
 .tab-btn{padding:5px 11px;font-size:12px;border-radius:6px;cursor:pointer;color:var(--text2);border:none;background:transparent;font-family:var(--font);transition:all .15s;white-space:nowrap}
 .tab-btn.active{background:var(--surface);color:var(--text);font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .content{flex:1;overflow-y:auto;padding:20px}
-/* search */
 .search-wrap{position:relative;margin-bottom:12px}
 .search-input{width:100%;padding:9px 36px 9px 36px;border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);font-size:13px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s}
 .search-input:focus{border-color:var(--accent)}
-.search-icon-left{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
-.search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);padding:4px}
+.search-icon-left{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none;font-size:15px}
+.search-clear{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;font-size:14px}
 .scope-row{display:flex;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
 .scope-btn{padding:4px 10px;font-size:11px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-family:var(--font);transition:all .15s}
 .scope-btn.active{background:var(--text);color:#fff;border-color:var(--text)}
-/* product cards */
 .prod-card{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;margin-bottom:8px;background:var(--surface)}
 .prod-card-head{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:12px}
 .prod-card-head:hover{background:var(--surface2)}
@@ -62,28 +52,24 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .prod-card-meta{font-size:11px;color:var(--text3);margin-top:3px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .prod-card-body{border-top:1px solid var(--border);padding:14px 16px;background:var(--surface2);display:none}
 .prod-card-body.open{display:block}
-/* tables */
 .data-table{width:100%;border-collapse:collapse;font-size:12px}
 .data-table th{text-align:left;padding:7px 10px;color:var(--text3);font-weight:500;font-size:10px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--surface);white-space:nowrap}
 .data-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
 .data-table tr:last-child td{border-bottom:none}
 .data-table tr:hover td{background:var(--surface2)}
 .data-table td.mono{font-family:var(--mono);font-size:11px}
-/* chips */
 .chip{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:500;margin:1px;white-space:nowrap}
 .chip-shopee{background:#fee2d5;color:#9d2a0a}
 .chip-shein{background:#d1fae5;color:#065f46}
 .chip-ml{background:#fef9c3;color:#713f12}
 .chip-tiktok{background:#f1f5f9;color:#334155}
 .chip-kit{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
-/* lucro */
 .lv{display:inline-flex;align-items:center;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;white-space:nowrap;font-family:var(--mono)}
 .lv-g{background:var(--success-bg);color:var(--success)}
 .lv-a{background:var(--warn-bg);color:var(--warn)}
 .lv-l{background:var(--orange-bg);color:var(--orange)}
 .lv-r{background:var(--danger-bg);color:var(--danger)}
 mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
-/* kpi */
 .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px}
 .kpi-label{font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:500}
@@ -92,7 +78,6 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 .kpi.danger .kpi-val{color:var(--danger)}
 .kpi.success .kpi-val{color:var(--success)}
 .kpi.warn .kpi-val{color:var(--warn)}
-/* bars */
 .bar-wrap{display:flex;flex-direction:column;gap:7px}
 .bar-row{display:flex;align-items:center;gap:10px;font-size:11px}
 .bar-label{width:150px;flex-shrink:0;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -103,39 +88,36 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 .sec-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .sec-title{font-size:13px;font-weight:600}
 .sec-line{flex:1;height:1px;background:var(--border)}
-/* alert */
 .alert-list{display:flex;flex-direction:column;gap:6px}
 .alert-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:var(--r-lg);border:1px solid}
 .alert-item.red{border-color:#fca5a5;background:#fff5f5}
 .alert-item.orange{border-color:#fdba74;background:#fff7ed}
 .alert-item.yellow{border-color:#fcd34d;background:#fffbeb}
-/* taxas */
 .taxas-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .taxa-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px}
 .taxa-row{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
 .taxa-row:last-child{border-bottom:none}
 .taxa-input{width:65px;padding:3px 7px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text);text-align:right;font-family:var(--mono);outline:none}
+.taxa-input:focus{border-color:var(--accent)}
 .taxa-name-input{flex:1;padding:3px 7px;font-size:12px;border-radius:6px;border:1px solid transparent;background:transparent;color:var(--text);font-family:var(--font);outline:none}
 .taxa-name-input:hover{border-color:var(--border);background:var(--surface2)}
 .taxa-name-input:focus{border-color:var(--accent);background:var(--surface)}
-/* calculadora */
-.calc-wrap{display:grid;grid-template-columns:320px 1fr;gap:16px;max-width:900px}
+.taxa-add-row{display:flex;align-items:center;gap:6px;margin-top:8px}
+.taxa-add-input{flex:1;padding:5px 8px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-family:var(--font);outline:none}
+.calc-wrap{display:grid;grid-template-columns:320px 1fr;gap:16px;max-width:920px}
 .calc-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px}
 .calc-title{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
 .calc-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)}
 .calc-row:last-child{border-bottom:none}
 .calc-row.total{font-weight:700;font-size:13px}
-.calc-row.lucro-row{padding:8px 0;background:var(--accent-bg);border-radius:var(--r);margin-top:4px;padding:8px 10px}
-.calc-row.danger-row{background:var(--danger-bg);border-radius:var(--r);margin-top:4px;padding:8px 10px}
 .calc-val{font-family:var(--mono);font-weight:600}
 .calc-input{padding:6px 10px;font-size:13px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font);outline:none;text-align:right;width:130px}
 .calc-input:focus{border-color:var(--accent);background:var(--surface)}
 .calc-select{padding:6px 10px;font-size:13px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font);outline:none;width:130px}
-.taxa-detail-row{display:flex;justify-content:space-between;padding:3px 0;font-size:11px;border-bottom:1px dashed var(--border)}
+.taxa-detail-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:11px;border-bottom:1px dashed var(--border)}
 .taxa-detail-row:last-child{border-bottom:none}
 .sugestao-box{background:var(--accent-bg);border-radius:var(--r);padding:12px;margin-top:10px}
 .sugestao-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0}
-/* modal */
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000;backdrop-filter:blur(2px)}
 .modal{background:var(--surface);border-radius:var(--r-lg);border:1px solid var(--border);width:620px;max-width:96vw;max-height:90vh;overflow-y:auto;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.15)}
 .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
@@ -185,11 +167,7 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 .toast.error{background:var(--danger)}
 .toast.success{background:var(--success)}
 @keyframes slideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
-.legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
-.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
-.taxa-add-row{display:flex;align-items:center;gap:6px;margin-top:8px}
-.taxa-add-input{flex:1;padding:5px 8px;font-size:12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);font-family:var(--font);outline:none}
-.shopee-badge{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:20px;font-size:9px;font-weight:600;background:#fef9c3;color:#713f12;margin-left:4px}
+.shopee-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:20px;font-size:9px;font-weight:600;background:#fef9c3;color:#713f12;margin-left:4px}
 </style>
 </head>
 <body>
@@ -199,103 +177,32 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 const SUPABASE_URL='https://yvgoseljxxdczpziituq.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2Z29zZWxqeHhkY3pwemlpdHVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MTQ0MzksImV4cCI6MjA5NTI5MDQzOX0.1gEdI1aaw97oYMQV0pmWJR2JXQgtp514ZuUsKHI9dZE';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-
-const PLATS=[
-  {id:'shopee',label:'Shopee',cls:'chip-shopee'},
-  {id:'shein',label:'Shein',cls:'chip-shein'},
-  {id:'ml_classico',label:'ML Clássico',cls:'chip-ml'},
-  {id:'ml_premium',label:'ML Premium',cls:'chip-ml'},
-  {id:'tiktok',label:'TikTok',cls:'chip-tiktok'},
-];
-
-// ── TAXAS PADRÃO ──────────────────────────────────────────
-const TAXA_D={
-  shopee:[{n:'Comissão',v:20,obs:'20% (≤R$79) ou 14% (≥R$80) — automático'},{n:'Nota Fiscal',v:6.76},{n:'Afiliados',v:2.8},{n:'Ads',v:3.5},{n:'Cupom',v:1.5},{n:'Of. Relâmpago',v:0.3},{n:'Campanha',v:3.5},{n:'Leve+Por',v:0.2},{n:'Live/Vídeo',v:0.15},{n:'Mão de Obra',v:1.5}],
-  shein:[{n:'Comissão',v:16},{n:'Nota Fiscal',v:7.3},{n:'Campanha',v:20},{n:'Of. Relâmpago',v:0.3},{n:'Cupom',v:1.67},{n:'Leve+Por',v:0.1},{n:'Mão de Obra',v:1.5}],
-  ml_classico:[{n:'Comissão',v:14},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Mão de Obra',v:1.5}],
-  ml_premium:[{n:'Comissão',v:19},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Mão de Obra',v:1.5}],
-  tiktok:[{n:'Comissão',v:6},{n:'Taxa Frete%',v:6},{n:'Ads',v:5},{n:'Campanha',v:5},{n:'Afiliados',v:7},{n:'Cupom',v:0.9},{n:'Leve+Por',v:0.2},{n:'Nota Fiscal',v:7.3},{n:'Mão de Obra',v:1.5}],
-};
-const TF_D={
-  shopee:[{n:'Taxa Fixa',v:4,obs:'R$4(≤R$79) / R$16(R$80-99) / R$20(R$100-199) / R$26(R$200-499) — automático'},{n:'Embalagem K3',v:0.1},{n:'Embalagem K5',v:0.1},{n:'Embalagem K10',v:0.13}],
-  shein:[{n:'Frete K3/5',v:4},{n:'Frete K10',v:5},{n:'Embalagem K3',v:0.1},{n:'Embalagem K5',v:0.1},{n:'Embalagem K10',v:0.13}],
-  ml_classico:[{n:'Embalagem K3',v:0.1},{n:'Embalagem K5',v:0.1},{n:'Embalagem K10',v:0.13}],
-  ml_premium:[{n:'Embalagem K3',v:0.1},{n:'Embalagem K5',v:0.1},{n:'Embalagem K10',v:0.13}],
-  tiktok:[{n:'Taxa Fixa',v:4},{n:'Live/Vídeo',v:0.5},{n:'Embalagem K3',v:0.1},{n:'Embalagem K5',v:0.1},{n:'Embalagem K10',v:0.13}],
-};
+const PLATS=[{id:'shopee',label:'Shopee',cls:'chip-shopee'},{id:'shein',label:'Shein',cls:'chip-shein'},{id:'ml_classico',label:'ML Clássico',cls:'chip-ml'},{id:'ml_premium',label:'ML Premium',cls:'chip-ml'},{id:'tiktok',label:'TikTok',cls:'chip-tiktok'}];
+const TAXA_D={shopee:[{n:'Comissão',v:20,obs:'20%(<=R$79) ou 14%(>=R$80) automático'},{n:'Nota Fiscal',v:6.76},{n:'Afiliados',v:2.8},{n:'Ads',v:3.5},{n:'Cupom',v:1.5},{n:'Of. Relâmpago',v:0.3},{n:'Campanha',v:3.5},{n:'Leve+Por',v:0.2},{n:'Live/Vídeo',v:0.15},{n:'Mão de Obra',v:1.5}],shein:[{n:'Comissão',v:16},{n:'Nota Fiscal',v:7.3},{n:'Campanha',v:20},{n:'Of. Relâmpago',v:0.3},{n:'Cupom',v:1.67},{n:'Leve+Por',v:0.1},{n:'Mão de Obra',v:1.5}],ml_classico:[{n:'Comissão',v:14},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Mão de Obra',v:1.5}],ml_premium:[{n:'Comissão',v:19},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Mão de Obra',v:1.5}],tiktok:[{n:'Comissão',v:6},{n:'Taxa Frete%',v:6},{n:'Ads',v:5},{n:'Campanha',v:5},{n:'Afiliados',v:7},{n:'Cupom',v:0.9},{n:'Leve+Por',v:0.2},{n:'Nota Fiscal',v:7.3},{n:'Mão de Obra',v:1.5}]};
+const TF_D={shopee:[{n:'Taxa Fixa',v:4,obs:'R$4(<=R$79)/R$16(R$80-99)/R$20(R$100-199)/R$26(R$200-499) automático'},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],shein:[{n:'Frete K3/5',v:4},{n:'Frete K10',v:5},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],ml_classico:[{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],ml_premium:[{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],tiktok:[{n:'Taxa Fixa',v:4},{n:'Live/Vídeo',v:0.5},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}]};
 const COLORS=['#2d6a4f','#6d28d9','#c2410c','#0369a1','#be185d'];
-
-// ── TABELA FRETE ML 2026 ──────────────────────────────────
-const ML_FRETE=[
-  [0.3, [5.65,6.55,7.75,12.35,14.35,16.45,18.45,20.95]],
-  [0.5, [5.95,6.65,7.85,13.25,15.45,17.65,19.85,22.55]],
-  [1.0, [6.05,6.75,7.95,13.85,16.15,18.45,20.75,23.65]],
-  [1.5, [6.15,6.85,8.05,14.15,16.45,18.85,21.15,24.65]],
-  [2.0, [6.25,6.95,8.15,14.45,16.85,19.25,21.65,24.65]],
-  [3.0, [6.35,7.95,8.55,15.75,18.35,21.05,23.65,26.25]],
-  [4.0, [6.45,8.15,8.95,17.05,19.85,22.65,25.55,28.35]],
-  [5.0, [6.55,8.35,9.75,18.45,21.55,24.65,27.75,30.75]],
-  [6.0, [6.65,8.55,9.95,25.45,28.55,32.65,35.75,39.75]],
-  [7.0, [6.75,8.75,10.15,27.05,31.05,36.05,40.05,44.05]],
-  [8.0, [6.85,8.95,10.35,28.85,33.65,38.45,43.25,48.05]],
-  [9.0, [6.95,9.15,10.55,29.65,34.55,39.55,44.45,49.35]],
-  [11.0,[7.05,9.55,10.95,41.25,48.05,54.95,61.75,68.65]],
-  [13.0,[7.15,9.95,11.35,42.15,49.25,56.25,63.25,70.25]],
-  [15.0,[7.25,10.15,11.55,45.05,52.45,59.95,67.45,74.95]],
-  [17.0,[7.35,10.35,11.75,48.55,56.05,63.55,70.75,78.65]],
-  [20.0,[7.55,10.75,12.15,53.05,63.85,72.95,82.05,91.15]],
-  [25.0,[7.75,11.25,12.65,58.35,75.05,84.75,95.35,105.95]],
-  [30.0,[7.95,11.75,13.15,63.75,75.45,85.55,96.25,106.95]],
-];
+const ML_FRETE=[[0.3,[5.65,6.55,7.75,12.35,14.35,16.45,18.45,20.95]],[0.5,[5.95,6.65,7.85,13.25,15.45,17.65,19.85,22.55]],[1.0,[6.05,6.75,7.95,13.85,16.15,18.45,20.75,23.65]],[1.5,[6.15,6.85,8.05,14.15,16.45,18.85,21.15,24.65]],[2.0,[6.25,6.95,8.15,14.45,16.85,19.25,21.65,24.65]],[3.0,[6.35,7.95,8.55,15.75,18.35,21.05,23.65,26.25]],[4.0,[6.45,8.15,8.95,17.05,19.85,22.65,25.55,28.35]],[5.0,[6.55,8.35,9.75,18.45,21.55,24.65,27.75,30.75]],[6.0,[6.65,8.55,9.95,25.45,28.55,32.65,35.75,39.75]],[7.0,[6.75,8.75,10.15,27.05,31.05,36.05,40.05,44.05]],[8.0,[6.85,8.95,10.35,28.85,33.65,38.45,43.25,48.05]],[9.0,[6.95,9.15,10.55,29.65,34.55,39.55,44.45,49.35]],[11.0,[7.05,9.55,10.95,41.25,48.05,54.95,61.75,68.65]],[13.0,[7.15,9.95,11.35,42.15,49.25,56.25,63.25,70.25]],[15.0,[7.25,10.15,11.55,45.05,52.45,59.95,67.45,74.95]],[17.0,[7.35,10.35,11.75,48.55,56.05,63.55,70.75,78.65]],[20.0,[7.55,10.75,12.15,53.05,63.85,72.95,82.05,91.15]],[25.0,[7.75,11.25,12.65,58.35,75.05,84.75,95.35,105.95]],[30.0,[7.95,11.75,13.15,63.75,75.45,85.55,96.25,106.95]]];
 const ML_FAIXAS=[18.99,48.99,78.99,99.99,119.99,149.99,199.99,Infinity];
+function calcFreteML(kg,p){if(!kg||kg<=0||!p||p<=0)return 0;const fi=ML_FAIXAS.findIndex(f=>p<=f);const l=ML_FRETE.find(([pm])=>kg<=pm)||ML_FRETE[ML_FRETE.length-1];return l[1][fi>=0?fi:7]||0;}
+function shopeeComissao(p){return p<=79.99?0.20:0.14;}
+function shopeeTaxaFixa(p){if(p<=79.99)return 4;if(p<=99.99)return 16;if(p<=199.99)return 20;return 26;}
+function mkTaxas(){const t={};for(const k of Object.keys(TAXA_D))t[k]={perc:TAXA_D[k].map(r=>({...r})),fixas:TF_D[k].map(r=>({...r}))};return t;}
 
-function calcFreteML(pesoKg,preco){
-  if(!pesoKg||pesoKg<=0||!preco||preco<=0) return 0;
-  const fi=ML_FAIXAS.findIndex(f=>preco<=f);
-  const linha=ML_FRETE.find(([pm])=>pesoKg<=pm)||ML_FRETE[ML_FRETE.length-1];
-  return linha[1][fi>=0?fi:7]||0;
-}
-
-// ── SHOPEE TAXAS AUTOMÁTICAS ──────────────────────────────
-function shopeeComissao(preco){return preco<=79.99?0.20:0.14;}
-function shopeeTaxaFixa(preco){
-  if(preco<=79.99) return 4;
-  if(preco<=99.99) return 16;
-  if(preco<=199.99) return 20;
-  if(preco<=499.99) return 26;
-  return 26;
-}
-
-function mkTaxas(){
-  const t={};
-  for(const k of Object.keys(TAXA_D)) t[k]={perc:TAXA_D[k].map(r=>({...r})),fixas:TF_D[k].map(r=>({...r}))};
-  return t;
-}
-
-// ── STATE ──────────────────────────────────────────────────
-let ST={clients:[],activeId:null,tab:'busca',open:{},search:{q:'',scope:'todos'},modal:null,loading:true,
-  calc:{plat:'shopee',kit:null,preco:'',custo:'',margem:'',peso:''}};
-
+let ST={clients:[],activeId:null,tab:'busca',open:{},search:{q:'',scope:'todos'},modal:null,loading:true,calc:{plat:'shopee',prodId:null,kit:null,preco:'',custo:'',margem:'',peso:''}};
 function gc(){return ST.clients.find(c=>c.id===ST.activeId)||ST.clients[0]||null;}
 
-// ── SUPABASE ───────────────────────────────────────────────
 async function loadAll(){
   const{data:clients,error}=await sb.from('prec_clients').select('*').order('created_at');
   if(error){toast('Erro ao carregar','error');ST.loading=false;render();return;}
   for(const c of(clients||[])){
     const{data:prods}=await sb.from('prec_products').select('*').eq('client_id',c.id).order('created_at');
     c.produtos=prods||[];
-    if(!c.taxas) c.taxas=mkTaxas();
-    else if(typeof c.taxas==='string') c.taxas=JSON.parse(c.taxas);
+    if(!c.taxas)c.taxas=mkTaxas();
+    else if(typeof c.taxas==='string')c.taxas=JSON.parse(c.taxas);
   }
   ST.clients=clients||[];
-  if(!ST.activeId&&ST.clients.length) ST.activeId=ST.clients[0].id;
+  if(!ST.activeId&&ST.clients.length)ST.activeId=ST.clients[0].id;
   ST.loading=false;render();
-}
-async function saveClient(c){
-  const pay={name:c.name,color:c.color,taxas:c.taxas,regra_tipo:c.regra_tipo||'peca',regra_t1:c.regra_t1||1.20,regra_t2:c.regra_t2||1.50,regra_t3:c.regra_t3||1.80};
-  if(c.id&&!String(c.id).startsWith('new')){await sb.from('prec_clients').update(pay).eq('id',c.id);}
-  else{const{data}=await sb.from('prec_clients').insert(pay).select().single();if(data)c.id=data.id;}
 }
 async function saveProduct(p,clientId){
   const pay={client_id:clientId,sku:p.sku,nome:p.nome,fabricacao:p.fabricacao||false,plataformas:p.plataformas,kits:p.kits,foto_url:p.foto_url||null,links:p.links||{}};
@@ -304,696 +211,382 @@ async function saveProduct(p,clientId){
 }
 async function deleteProduct(pid){await sb.from('prec_products').delete().eq('id',pid);}
 
-// ── CALC ────────────────────────────────────────────────────
 function calcR(preco,custo,platId,taxas,pesoKg){
-  if(!preco||preco<=0||!custo||custo<=0) return null;
-  const t=taxas[platId];if(!t) return null;
-  let totalPerc=0;
-  const percDetail=[];
-  for(const r of t.perc){
-    let v=r.v;
-    if(platId==='shopee'&&r.n==='Comissão') v=shopeeComissao(preco)*100;
-    totalPerc+=v/100;
-    percDetail.push({n:r.n,v,val:preco*v/100});
-  }
-  let totalFixa=0;
-  const fixaDetail=[];
-  for(const r of t.fixas){
-    let v=r.v;
-    if(platId==='shopee'&&r.n==='Taxa Fixa') v=shopeeTaxaFixa(preco);
-    totalFixa+=v;
-    fixaDetail.push({n:r.n,v,val:v});
-  }
-  // Frete ML automático
+  if(!preco||preco<=0||!custo||custo<=0)return null;
+  const t=taxas[platId];if(!t)return null;
+  let totalPerc=0;const percDetail=[];
+  for(const r of t.perc){let v=r.v;if(platId==='shopee'&&r.n==='Comissão')v=shopeeComissao(preco)*100;totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100});}
+  let totalFixa=0;const fixaDetail=[];
+  for(const r of t.fixas){let v=r.v;if(platId==='shopee'&&r.n==='Taxa Fixa')v=shopeeTaxaFixa(preco);totalFixa+=v;fixaDetail.push({n:r.n,v,val:v});}
   let freteML=0;
-  if((platId==='ml_classico'||platId==='ml_premium')&&pesoKg>0){
-    freteML=calcFreteML(pesoKg,preco);
-    totalFixa+=freteML;
-    fixaDetail.push({n:'Frete ML (auto)',v:freteML,val:freteML});
-  }
-  const tax=preco*totalPerc+totalFixa;
-  const lucro=preco-custo-tax;
+  if((platId==='ml_classico'||platId==='ml_premium')&&pesoKg>0){freteML=calcFreteML(pesoKg,preco);totalFixa+=freteML;fixaDetail.push({n:'Frete ML (auto)',v:freteML,val:freteML});}
+  const tax=preco*totalPerc+totalFixa;const lucro=preco-custo-tax;
   return{lucro,margem:preco>0?lucro/preco*100:0,tax,preco,custo,percDetail,fixaDetail,freteML};
 }
-
 function cor(r,qty,c){
-  if(!r) return null;
+  if(!r)return null;
   const val=(c.regra_tipo||'peca')==='peca'?(qty>0?r.lucro/qty:r.lucro):r.margem;
-  if(val<=(c.regra_t1||1.2)) return 'r';
-  if(val<=(c.regra_t2||1.5)) return 'l';
-  if(val<=(c.regra_t3||1.8)) return 'a';
-  return 'g';
+  if(val<=(c.regra_t1||1.2))return 'r';if(val<=(c.regra_t2||1.5))return 'l';if(val<=(c.regra_t3||1.8))return 'a';return 'g';
 }
-function allRes(c){
-  const out=[];
-  for(const p of c.produtos)
-    for(const pl of(p.plataformas||[]))
-      for(const k of(p.kits||[])){
-        const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);
-        if(r) out.push({p,pl,k,r,cor:cor(r,k.qty,c)});
-      }
-  return out;
-}
-function bestR(p,c){
-  let best=null,bc=null;const pri={g:4,a:3,l:2,r:1};
-  for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){
-    const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);
-    if(r){const co=cor(r,k.qty,c);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}
-  }
-  return{r:best,cor:bc};
-}
-function hlMark(str,q){
-  if(!q||!str) return String(str||'');
-  return String(str).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');
-}
-function toast(msg,type='success'){
-  const wrap=document.getElementById('toasts');const el=document.createElement('div');
-  el.className=`toast ${type}`;el.textContent=msg;wrap.appendChild(el);
-  setTimeout(()=>el.remove(),3000);
-}
+function allRes(c){const out=[];for(const p of c.produtos)for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c)});}return out;}
+function bestR(p,c){let best=null,bc=null;const pri={g:4,a:3,l:2,r:1};for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);if(r){const co=cor(r,k.qty,c);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
+function hlMark(str,q){if(!q||!str)return String(str||'');return String(str).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
+function toast(msg,type='success'){const w=document.getElementById('toasts');const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=msg;w.appendChild(e);setTimeout(()=>e.remove(),3000);}
 
-// ── RENDER ──────────────────────────────────────────────────
 function render(){
   const app=document.getElementById('app');
   if(ST.loading){app.innerHTML='<div class="loading"><div class="spinner"></div> Carregando...</div>';return;}
   const c=gc();
-  app.innerHTML=`
-    <div class="sidebar">
-      <div class="sb-logo"><div class="sb-logo-title">Precificação</div><div class="sb-logo-sub">Gestão de marketplace</div></div>
-      <div class="sb-section">Clientes</div>
-      <div class="sb-list">${ST.clients.map(cl=>`
-        <div class="sb-item ${cl.id===ST.activeId?'active':''}" onclick="selC(${cl.id})">
-          <div class="sb-dot" style="background:${cl.color}"></div>
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cl.name}</span>
-          <span class="sb-count">${(cl.produtos||[]).length}</span>
-        </div>`).join('')}
-      </div>
-      <div class="sb-footer"><button class="sb-add-btn" onclick="openNewClient()">+ Novo cliente</button></div>
+  app.innerHTML=`<div class="sidebar">
+    <div class="sb-logo"><div class="sb-logo-title">Precificação</div><div class="sb-logo-sub">Gestão de marketplace</div></div>
+    <div class="sb-section">Clientes</div>
+    <div class="sb-list">${ST.clients.map(cl=>`<div class="sb-item ${cl.id===ST.activeId?'active':''}" onclick="selC(${cl.id})"><div class="sb-dot" style="background:${cl.color}"></div><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cl.name}</span><span class="sb-count">${(cl.produtos||[]).length}</span></div>`).join('')}</div>
+    <div class="sb-footer"><button class="sb-add-btn" onclick="openNewClient()">+ Novo cliente</button></div>
+  </div>
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">${c?`<div class="sb-dot" style="background:${c.color};width:10px;height:10px;border-radius:50%"></div><div class="topbar-title">${c.name}</div><span class="badge badge-gray">${(c.produtos||[]).length} produtos</span>`:'<div class="topbar-title">Nenhum cliente</div>'}</div>
+      ${c?`<div class="tabs">${[['busca','Pesquisa'],['dashboard','Dashboard'],['produtos','Produtos'],['plataformas','Plataformas'],['alertas','Alertas'],['taxas','Taxas'],['config','Config'],['calculadora','Calculadora']].map(([id,lb])=>`<button class="tab-btn ${ST.tab===id?'active':''}" onclick="setTab('${id}')">${lb}</button>`).join('')}</div>`:''}
     </div>
-    <div class="main">
-      <div class="topbar">
-        <div class="topbar-left">
-          ${c?`<div class="sb-dot" style="background:${c.color};width:10px;height:10px;border-radius:50%"></div>
-          <div class="topbar-title">${c.name}</div>
-          <span class="badge badge-gray">${(c.produtos||[]).length} produtos</span>`:'<div class="topbar-title">Nenhum cliente</div>'}
-        </div>
-        ${c?`<div class="tabs">
-          ${[['busca','Pesquisa'],['dashboard','Dashboard'],['produtos','Produtos'],['plataformas','Plataformas'],['alertas','Alertas'],['taxas','Taxas'],['config','Config'],['calculadora','Calculadora']].map(([id,lb])=>`
-            <button class="tab-btn ${ST.tab===id?'active':''}" onclick="setTab('${id}')">${lb}</button>`).join('')}
-        </div>`:''}
-      </div>
-      <div class="content" id="content">
-        ${!c?`<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px">📊</div><div style="font-size:13px;font-weight:500;margin-bottom:5px">Nenhum cliente</div><div style="font-size:12px">Clique em + Novo cliente</div></div>`:''}
-      </div>
-    </div>
-    ${ST.modal?renderModal():''}
-  `;
-  if(c) renderTab();
+    <div class="content" id="content">${!c?'<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px">📊</div><div style="font-size:13px;font-weight:500;color:var(--text2)">Nenhum cliente</div></div>':''}</div>
+  </div>
+  ${ST.modal?renderModal():''}`;
+  if(c)renderTab();
 }
+
 function renderTab(){
-  const el=document.getElementById('content');if(!el) return;
-  const c=gc();if(!c) return;
+  const el=document.getElementById('content');if(!el)return;
+  const c=gc();if(!c)return;
   const t=ST.tab;
-  if(t==='busca') el.innerHTML=renderBusca(c);
-  else if(t==='dashboard') el.innerHTML=renderDash(c);
-  else if(t==='produtos') el.innerHTML=renderProdutos(c);
-  else if(t==='plataformas') el.innerHTML=renderPlataformas(c);
-  else if(t==='alertas') el.innerHTML=renderAlertas(c);
-  else if(t==='taxas') el.innerHTML=renderTaxas(c);
-  else if(t==='config') el.innerHTML=renderConfig(c);
-  else if(t==='calculadora') el.innerHTML=renderCalculadora(c);
+  if(t==='busca')el.innerHTML=renderBusca(c);
+  else if(t==='dashboard')el.innerHTML=renderDash(c);
+  else if(t==='produtos')el.innerHTML=renderProdutos(c);
+  else if(t==='plataformas')el.innerHTML=renderPlataformas(c);
+  else if(t==='alertas')el.innerHTML=renderAlertas(c);
+  else if(t==='taxas')el.innerHTML=renderTaxas(c);
+  else if(t==='config')el.innerHTML=renderConfig(c);
+  else if(t==='calculadora')el.innerHTML=renderCalculadora(c);
 }
 
-// ── BUSCA ────────────────────────────────────────────────────
 function renderBusca(c){
-  const q=ST.search.q.trim(),sc=ST.search.scope;
-  const clis=sc==='global'?ST.clients:[c];
-  let res=[];
-  for(const cli of clis){
-    for(const p of(cli.produtos||[])){
-      const lq=q.toLowerCase();
-      const ok=!q||(sc==='sku'&&String(p.sku||'').toLowerCase().includes(lq))||
-               (sc==='produto'&&(p.nome||'').toLowerCase().includes(lq))||
-               (sc!=='sku'&&sc!=='produto'&&(String(p.sku||'').toLowerCase().includes(lq)||(p.nome||'').toLowerCase().includes(lq)));
-      if(ok){
-        const{r,cor:co}=bestR(p,cli);
-        const allR=allRes(cli).filter(x=>x.p.id===p.id);
-        const avgM=allR.length?allR.reduce((s,x)=>s+x.r.margem,0)/allR.length:0;
-        res.push({p,cli,r,cor:co,avgM});
-      }
-    }
-  }
-  return`
-    <div class="search-wrap">
-      <span class="search-icon-left">🔍</span>
-      <input class="search-input" id="si" type="text" placeholder="Buscar por SKU ou nome..." value="${ST.search.q}"
-        oninput="ST.search.q=this.value;renderTab()" />
-      ${ST.search.q?`<button class="search-clear" onclick="ST.search.q='';render()">✕</button>`:''}
-    </div>
-    <div class="scope-row">
-      ${[['todos','SKU ou nome'],['sku','Só SKU'],['produto','Só nome'],['global','Todos os clientes']].map(([id,lb])=>`
-        <button class="scope-btn ${sc===id?'active':''}" onclick="ST.search.scope='${id}';renderTab()">${lb}</button>`).join('')}
-      <span style="margin-left:auto;font-size:11px;color:var(--text3)">${res.length} resultado${res.length!==1?'s':''}</span>
-    </div>
-    ${res.length===0&&q?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">🔎</div><div style="font-size:13px;font-weight:500">Nenhum resultado para "${q}"</div></div>`
-    :res.length===0?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📦</div><div style="font-size:13px;font-weight:500">Nenhum produto cadastrado</div><button class="btn btn-primary" style="margin:12px auto 0" onclick="openNewProd()">+ Novo produto</button></div>`
-    :res.map(({p,cli,r,cor:co,avgM})=>{
-      const platH=(p.plataformas||[]).map(pl=>{const po=PLATS.find(x=>x.id===pl);return po?`<span class="chip ${po.cls}">${po.label}</span>`:''}).join('');
-      const kitH=(p.kits||[]).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('');
-      return`<div class="prod-card">
-        <div class="prod-card-head" onclick="togOpen('${p.id}')">
-          <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0">
-            ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
-            <div style="flex:1;min-width:0">
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                <span class="prod-card-name">${hlMark(p.nome,sc!=='sku'?q:'')}</span>
-                ${r?`<span class="lv lv-${co}">R$ ${r.lucro.toFixed(2)}</span>`:''}
-                ${sc==='global'?`<span class="badge badge-gray" style="font-size:10px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${cli.color};margin-right:4px;vertical-align:middle"></span>${cli.name}</span>`:''}
-              </div>
-              <div class="prod-card-meta">
-                <span>SKU <b>${hlMark(p.sku||'—',sc!=='produto'?q:'')}</b></span>
-                <span>Margem média ${avgM.toFixed(1)}%</span>
-                <span>${p.fabricacao?'🔨':'🛒'} ${p.fabricacao?'Fabricação':'Revenda'}</span>
-                ${platH}${kitH}
-              </div>
-              ${p.links&&Object.keys(p.links).filter(k=>p.links[k]).length?`<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">${Object.entries(p.links).filter(([,v])=>v).map(([pl,url])=>{const po=PLATS.find(x=>x.id===pl);return`<a href="${url}" target="_blank" class="link-chip" onclick="event.stopPropagation()">🔗 ${po?.label||pl}</a>`;}).join('')}</div>`:''}
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
-            <button class="btn-icon" onclick="event.stopPropagation();openEditProd('${p.id}','${cli.id}')">✏️</button>
-            <span style="color:var(--text3);font-size:12px">${ST.open[p.id]?'▲':'▼'}</span>
-          </div>
-        </div>
-        <div class="prod-card-body ${ST.open[p.id]?'open':''}">
-          <table class="data-table">
-            <thead><tr><th>Plataforma</th><th>Kit</th><th>Peso</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Frete ML</th><th>Lucro</th><th>R$/peça</th><th>Margem</th></tr></thead>
-            <tbody>${(p.plataformas||[]).flatMap(pl=>{
-              const po=PLATS.find(x=>x.id===pl);
-              return(p.kits||[]).map(k=>{
-                const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0);
-                const co2=cor(r2,k.qty,cli);
-                const isML=pl==='ml_classico'||pl==='ml_premium';
-                if(!r2) return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;
-                return`<tr>
-                  <td><span class="chip ${po?.cls}">${po?.label||pl}</span></td>
-                  <td class="mono">K${k.qty}</td>
-                  <td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td>
-                  <td class="mono">R$${r2.preco.toFixed(2)}</td>
-                  <td class="mono">R$${r2.custo.toFixed(2)}</td>
-                  <td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td>
-                  <td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td>
-                  <td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td>
-                  <td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td>
-                  <td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td>
-                </tr>`;
-              });
-            }).join('')}</tbody>
-          </table>
-        </div>
-      </div>`;
-    }).join('')}`;
+  const q=ST.search.q,sc=ST.search.scope;
+  return`<div class="search-wrap">
+    <span class="search-icon-left">🔍</span>
+    <input class="search-input" id="si" type="text" placeholder="Buscar por SKU ou nome..." value="${q}" oninput="ST.search.q=this.value;updateSearch()"/>
+    ${q?`<button class="search-clear" onclick="ST.search.q='';this.previousElementSibling.value='';updateSearch()">✕</button>`:''}
+  </div>
+  <div class="scope-row" id="scope-row">
+    ${[['todos','SKU ou nome'],['sku','Só SKU'],['produto','Só nome'],['global','Todos os clientes']].map(([id,lb])=>`<button class="scope-btn ${sc===id?'active':''}" data-scope="${id}" onclick="ST.search.scope='${id}';updateSearch()">${lb}</button>`).join('')}
+    <span id="search-info" style="margin-left:auto;font-size:11px;color:var(--text3)"></span>
+  </div>
+  <div id="search-results"></div>`;
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────
+function updateSearch(){
+  const q=ST.search.q.trim(),sc=ST.search.scope;
+  document.querySelectorAll('.scope-btn').forEach(b=>b.classList.toggle('active',b.dataset.scope===sc));
+  const c=gc();const clis=sc==='global'?ST.clients:[c];
+  let res=[];
+  for(const cli of clis)for(const p of(cli.produtos||[])){
+    const lq=q.toLowerCase();
+    const ok=!q||(sc==='sku'&&String(p.sku||'').toLowerCase().includes(lq))||(sc==='produto'&&(p.nome||'').toLowerCase().includes(lq))||(sc!=='sku'&&sc!=='produto'&&(String(p.sku||'').toLowerCase().includes(lq)||(p.nome||'').toLowerCase().includes(lq)));
+    if(ok){const{r,cor:co}=bestR(p,cli);const ar=allRes(cli).filter(x=>x.p.id===p.id);const avgM=ar.length?ar.reduce((s,x)=>s+x.r.margem,0)/ar.length:0;res.push({p,cli,r,cor:co,avgM});}
+  }
+  const infoEl=document.getElementById('search-info');if(infoEl)infoEl.textContent=`${res.length} resultado${res.length!==1?'s':''}`;
+  const el=document.getElementById('search-results');if(!el)return;
+  if(!res.length&&q){el.innerHTML=`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">🔎</div><div style="font-size:13px;font-weight:500">Nenhum resultado para "${q}"</div></div>`;return;}
+  if(!res.length){el.innerHTML=`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📦</div><div style="font-size:13px;font-weight:500">Nenhum produto</div><button class="btn btn-primary" style="margin:12px auto 0" onclick="openNewProd()">+ Novo produto</button></div>`;return;}
+  el.innerHTML=res.map(({p,cli,r,cor:co,avgM})=>{
+    const pH=(p.plataformas||[]).map(pl=>{const po=PLATS.find(x=>x.id===pl);return po?`<span class="chip ${po.cls}">${po.label}</span>`:''}).join('');
+    const kH=(p.kits||[]).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('');
+    const lk=p.links&&Object.keys(p.links).filter(k=>p.links[k]).length?'<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">'+Object.entries(p.links).filter(([,v])=>v).map(([pl,url])=>{const po=PLATS.find(x=>x.id===pl);return`<a href="${url}" target="_blank" class="link-chip" onclick="event.stopPropagation()">🔗 ${po?.label||pl}</a>`;}).join('')+'</div>':'';
+    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0);const co2=cor(r2,k.qty,cli);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
+    return`<div class="prod-card"><div class="prod-card-head" onclick="togOpen('s_${p.id}')">
+      <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0">
+        ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="prod-card-name">${hlMark(p.nome,sc!=='sku'?q:'')}</span>${r?`<span class="lv lv-${co}">R$ ${r.lucro.toFixed(2)}</span>`:''}${sc==='global'?`<span class="badge badge-gray" style="font-size:10px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${cli.color};margin-right:4px;vertical-align:middle"></span>${cli.name}</span>`:''}</div>
+          <div class="prod-card-meta"><span>SKU <b>${hlMark(p.sku||'—',sc!=='produto'?q:'')}</b></span><span>Margem ${avgM.toFixed(1)}%</span><span>${p.fabricacao?'🔨':'🛒'} ${p.fabricacao?'Fabricação':'Revenda'}</span>${pH}${kH}</div>
+          ${lk}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><button class="btn-icon" onclick="event.stopPropagation();openEditProd('${p.id}','${cli.id}')">✏️</button><span style="color:var(--text3);font-size:12px">${ST.open['s_'+p.id]?'▲':'▼'}</span></div>
+    </div>
+    <div class="prod-card-body ${ST.open['s_'+p.id]?'open':''}">
+      <table class="data-table"><thead><tr><th>Plataforma</th><th>Kit</th><th>Peso</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Frete ML</th><th>Lucro</th><th>R$/peça</th><th>Margem</th></tr></thead><tbody>${rows}</tbody></table>
+    </div></div>`;
+  }).join('');
+}
+
 function renderDash(c){
   const all=allRes(c);
-  if(!all.length) return`<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px">📊</div><div style="font-size:13px;font-weight:500;color:var(--text2)">Sem dados cadastrados</div></div>`;
+  if(!all.length)return`<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px">📊</div><div style="font-size:13px;font-weight:500;color:var(--text2)">Sem dados</div></div>`;
   const total=all.length,verm=all.filter(x=>x.cor==='r').length,grn=all.filter(x=>x.cor==='g').length;
   const avgM=all.reduce((s,x)=>s+x.r.margem,0)/all.length;
   const prej=all.filter(x=>x.r.lucro<0);
-  return`
-    <div class="kpi-grid">
-      <div class="kpi ${verm>0?'danger':'success'}"><div class="kpi-label">Em prejuízo</div><div class="kpi-val">${verm}</div><div class="kpi-sub">de ${total} combinações</div></div>
-      <div class="kpi ${avgM<5?'warn':avgM>=10?'success':''}"><div class="kpi-label">Margem média</div><div class="kpi-val">${avgM.toFixed(1)}%</div><div class="kpi-sub">sobre preço de venda</div></div>
-      <div class="kpi ${grn<total/2?'warn':'success'}"><div class="kpi-label">No verde</div><div class="kpi-val">${grn}</div><div class="kpi-sub">${Math.round(grn/total*100)}% do total</div></div>
-      <div class="kpi"><div class="kpi-label">Produtos</div><div class="kpi-val">${c.produtos.length}</div><div class="kpi-sub">${[...new Set(all.map(x=>x.pl))].length} plataformas</div></div>
-    </div>
-    <div class="sec"><div class="sec-head"><div class="sec-title">Todos os produtos — Preço · Custo · Lucro · Margem</div><div class="sec-line"></div></div>
-      <table class="data-table">
-        <thead><tr><th></th><th>SKU</th><th>Produto</th><th>Plataforma</th><th>Kit</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Lucro R$</th><th>R$/peça</th><th>Margem %</th></tr></thead>
-        <tbody>${all.map(x=>{
-          const po=PLATS.find(p=>p.id===x.pl);
-          return`<tr>
-            <td>${x.p.foto_url?`<img src="${x.p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}</td>
-            <td class="mono" style="color:var(--text3)">${x.p.sku||'—'}</td>
-            <td style="font-weight:600">${x.p.nome}</td>
-            <td><span class="chip ${po?.cls}">${po?.label||x.pl}</span></td>
-            <td class="mono">K${x.k.qty}</td>
-            <td class="mono">R$${x.r.preco.toFixed(2)}</td>
-            <td class="mono">R$${x.r.custo.toFixed(2)}</td>
-            <td class="mono" style="color:var(--text3)">R$${x.r.tax.toFixed(2)}</td>
-            <td><span class="lv lv-${x.cor}">R$${x.r.lucro.toFixed(2)}</span></td>
-            <td class="mono" style="color:var(--text3)">R$${(x.r.lucro/x.k.qty).toFixed(2)}</td>
-            <td><span class="lv lv-${x.cor}">${x.r.margem.toFixed(1)}%</span></td>
-          </tr>`;}).join('')}
-        </tbody>
-      </table>
-    </div>
-    ${prej.length?`<div class="sec"><div class="sec-head"><div class="sec-title" style="color:var(--danger)">⚠ Prejuízos (${prej.length})</div><div class="sec-line"></div></div>
-      <div class="alert-list">${prej.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<div class="alert-item red"><span style="font-size:18px;flex-shrink:0">⚠️</span><div style="flex:1"><div style="font-size:12px;font-weight:600">${x.p.nome} — K${x.k.qty} — ${po?.label||x.pl}</div><div style="font-size:11px;color:var(--text2)">Preço R$${x.r.preco.toFixed(2)} · Custo R$${x.r.custo.toFixed(2)} · Margem ${x.r.margem.toFixed(1)}%</div></div><span class="lv lv-r">−R$${Math.abs(x.r.lucro).toFixed(2)}</span></div>`;}).join('')}</div>
-    </div>`:''}`;
+  return`<div class="kpi-grid">
+    <div class="kpi ${verm>0?'danger':'success'}"><div class="kpi-label">Em prejuízo</div><div class="kpi-val">${verm}</div><div class="kpi-sub">de ${total} combinações</div></div>
+    <div class="kpi ${avgM<5?'warn':avgM>=10?'success':''}"><div class="kpi-label">Margem média</div><div class="kpi-val">${avgM.toFixed(1)}%</div><div class="kpi-sub">sobre preço de venda</div></div>
+    <div class="kpi ${grn<total/2?'warn':'success'}"><div class="kpi-label">No verde</div><div class="kpi-val">${grn}</div><div class="kpi-sub">${Math.round(grn/total*100)}% do total</div></div>
+    <div class="kpi"><div class="kpi-label">Produtos</div><div class="kpi-val">${c.produtos.length}</div><div class="kpi-sub">${[...new Set(all.map(x=>x.pl))].length} plataformas</div></div>
+  </div>
+  <div class="sec"><div class="sec-head"><div class="sec-title">Todos os produtos — Preço · Custo · Lucro · Margem</div><div class="sec-line"></div></div>
+    <table class="data-table">
+      <thead><tr><th></th><th>SKU</th><th>Produto</th><th>Plataforma</th><th>Kit</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Lucro R$</th><th>R$/peça</th><th>Margem %</th></tr></thead>
+      <tbody>${all.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<tr><td>${x.p.foto_url?`<img src="${x.p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}</td><td class="mono" style="color:var(--text3)">${x.p.sku||'—'}</td><td style="font-weight:600">${x.p.nome}</td><td><span class="chip ${po?.cls}">${po?.label||x.pl}</span></td><td class="mono">K${x.k.qty}</td><td class="mono">R$${x.r.preco.toFixed(2)}</td><td class="mono">R$${x.r.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${x.r.tax.toFixed(2)}</td><td><span class="lv lv-${x.cor}">R$${x.r.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(x.r.lucro/x.k.qty).toFixed(2)}</td><td><span class="lv lv-${x.cor}">${x.r.margem.toFixed(1)}%</span></td></tr>`;}).join('')}</tbody>
+    </table>
+  </div>
+  ${prej.length?`<div class="sec"><div class="sec-head"><div class="sec-title" style="color:var(--danger)">⚠ Prejuízos (${prej.length})</div><div class="sec-line"></div></div>
+    <div class="alert-list">${prej.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<div class="alert-item red"><span style="font-size:18px;flex-shrink:0">⚠️</span><div style="flex:1"><div style="font-size:12px;font-weight:600">${x.p.nome} — K${x.k.qty} — ${po?.label||x.pl}</div><div style="font-size:11px;color:var(--text2)">Preço R$${x.r.preco.toFixed(2)} · Custo R$${x.r.custo.toFixed(2)} · Margem ${x.r.margem.toFixed(1)}%</div></div><span class="lv lv-r">−R$${Math.abs(x.r.lucro).toFixed(2)}</span></div>`;}).join('')}</div>
+  </div>`:''}`;
 }
 
-// ── PRODUTOS ──────────────────────────────────────────────────
 function renderProdutos(c){
-  return`
-    <div class="sec" style="margin-bottom:0">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <div class="sec-title">Produtos cadastrados</div>
-        <button class="btn btn-primary" onclick="openNewProd()">+ Novo produto</button>
-      </div>
-      ${(c.produtos||[]).length===0?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📦</div><div style="font-size:13px;font-weight:500">Nenhum produto</div></div>`:`
-      ${c.produtos.map(p=>{
-        const{r,cor:co}=bestR(p,c);
-        const allR=allRes(c).filter(x=>x.p.id===p.id);
-        return`<div class="prod-card" style="margin-bottom:8px">
-          <div class="prod-card-head" onclick="togOpen('prod_${p.id}')">
-            <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
-              ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
-              <div style="flex:1;min-width:0">
-                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-                  <span class="prod-card-name">${p.nome}</span>
-                  <span style="font-size:11px;color:var(--text3)">SKU ${p.sku||'—'}</span>
-                  ${r?`<span class="lv lv-${co}">R$${r.lucro.toFixed(2)}</span>`:''}
-                </div>
-                <div class="prod-card-meta">
-                  ${(p.plataformas||[]).map(pl=>{const po=PLATS.find(x=>x.id===pl);return po?`<span class="chip ${po.cls}">${po.label}</span>`:''}).join('')}
-                  ${(p.kits||[]).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('')}
-                  ${p.fabricacao?'🔨 Fabricação':'🛒 Revenda'}
-                </div>
-              </div>
-            </div>
-            <div style="display:flex;gap:4px;flex-shrink:0">
-              <button class="btn-icon" onclick="event.stopPropagation();openEditProd('${p.id}','${c.id}')">✏️</button>
-              <button class="btn-icon danger" onclick="event.stopPropagation();confirmDelProd('${p.id}')">🗑️</button>
-              <span style="color:var(--text3);font-size:12px;margin-left:4px">${ST.open['prod_'+p.id]?'▲':'▼'}</span>
-            </div>
-          </div>
-          <div class="prod-card-body ${ST.open['prod_'+p.id]?'open':''}">
-            <table class="data-table">
-              <thead><tr><th>Plataforma</th><th>Kit</th><th>Peso</th><th>Preço</th><th>Custo</th>${allR.length&&allR[0].r.percDetail?allR[0].r.percDetail.map(d=>`<th>${d.n}</th>`).join(''):''}${allR.length&&allR[0].r.fixaDetail?allR[0].r.fixaDetail.map(d=>`<th>${d.n}</th>`).join(''):''}<th>Total Taxas</th><th>Lucro</th><th>R$/pç</th><th>Margem</th></tr></thead>
-              <tbody>${(p.plataformas||[]).flatMap(pl=>{
-                const po=PLATS.find(x=>x.id===pl);
-                return(p.kits||[]).map(k=>{
-                  const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);
-                  const co2=cor(r2,k.qty,c);
-                  if(!r2) return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="20" style="color:var(--text3)">Sem dados</td></tr>`;
-                  const percCells=r2.percDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}<br/><span style="font-size:9px;opacity:.7">${d.v.toFixed(1)}%</span></td>`).join('');
-                  const fixaCells=r2.fixaDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}</td>`).join('');
-                  return`<tr>
-                    <td><span class="chip ${po?.cls}">${po?.label||pl}</span></td>
-                    <td class="mono">K${k.qty}</td>
-                    <td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td>
-                    <td class="mono">R$${r2.preco.toFixed(2)}</td>
-                    <td class="mono">R$${r2.custo.toFixed(2)}</td>
-                    ${percCells}${fixaCells}
-                    <td class="mono" style="font-weight:600">R$${r2.tax.toFixed(2)}</td>
-                    <td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td>
-                    <td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td>
-                    <td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td>
-                  </tr>`;
-                });
-              }).join('')}</tbody>
-            </table>
-          </div>
-        </div>`;
-      }).join('')}`}
-    </div>`;
-}
-
-// ── PLATAFORMAS ────────────────────────────────────────────────
-function renderPlataformas(c){
-  const all=allRes(c);
-  if(!all.length) return`<div class="empty">Sem dados</div>`;
-  const platsAtivas=[...new Set(all.map(x=>x.pl))];
-  return`
-    <div class="sec"><div class="sec-head"><div class="sec-title">Comparativo de plataformas</div><div class="sec-line"></div></div>
-      <div class="plat-grid">${platsAtivas.map(pl=>{
-        const po=PLATS.find(x=>x.id===pl);const items=all.filter(x=>x.pl===pl);
-        const avgM=items.reduce((s,x)=>s+x.r.margem,0)/items.length;
-        const avgL=items.reduce((s,x)=>s+x.r.lucro,0)/items.length;
-        const vm=items.filter(x=>x.cor==='r').length,gn=items.filter(x=>x.cor==='g').length;
-        return`<div class="plat-card">
-          <div style="margin-bottom:10px"><span class="chip ${po?.cls}">${po?.label||pl}</span></div>
-          ${[['Produtos',[...new Set(items.map(x=>x.p.id))].length,null],['Margem média',avgM.toFixed(1)+'%',avgM>=10?'var(--success)':avgM>=5?'var(--warn)':'var(--danger)'],['Lucro médio','R$'+avgL.toFixed(2),null],['No verde',gn,'var(--success)'],['No vermelho',vm,vm>0?'var(--danger)':null]].map(([lb,val,col])=>`
-            <div class="plat-stat"><span style="color:var(--text3)">${lb}</span><span style="font-weight:600;font-family:var(--mono)${col?`;color:${col}`:''}">` +val+`</span></div>`).join('')}
-        </div>`;}).join('')}
-      </div>
+  return`<div class="sec" style="margin-bottom:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="sec-title">Produtos cadastrados</div>
+      <button class="btn btn-primary" onclick="openNewProd()">+ Novo produto</button>
     </div>
-    <div class="sec"><div class="sec-head"><div class="sec-title">Ranking de lucro</div><div class="sec-line"></div></div>
-      <div class="bar-wrap">${all.sort((a,b)=>b.r.lucro-a.r.lucro).map(x=>{
-        const po=PLATS.find(p=>p.id===x.pl);
-        const pct=Math.max(0,Math.min(100,(x.r.lucro/30)*100));
-        const col=x.r.lucro>=0?'#166534':'#b91c1c';const bg=x.r.lucro>=0?'#dcfce7':'#fee2e2';
-        return`<div class="bar-row"><div class="bar-label">${x.p.sku} · ${po?.label||x.pl} · K${x.k.qty}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div><div class="bar-val"><span style="background:${bg};color:${col};border-radius:3px;padding:2px 5px;font-size:11px;font-family:var(--mono)">R$${x.r.lucro.toFixed(2)}</span></div></div>`;
-      }).join('')}</div>
-    </div>`;
+    ${!(c.produtos||[]).length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📦</div><div style="font-size:13px;font-weight:500">Nenhum produto</div></div>`
+    :(c.produtos||[]).map(p=>{
+      const ar=allRes(c).filter(x=>x.p.id===p.id);
+      const {r,cor:co}=bestR(p,c);
+      return`<div class="prod-card" style="margin-bottom:8px">
+        <div class="prod-card-head" onclick="togOpen('p_${p.id}')">
+          <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+            ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
+            <div style="flex:1;min-width:0">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="prod-card-name">${p.nome}</span><span style="font-size:11px;color:var(--text3)">SKU ${p.sku||'—'}</span>${r?`<span class="lv lv-${co}">R$${r.lucro.toFixed(2)}</span>`:''}</div>
+              <div class="prod-card-meta">${(p.plataformas||[]).map(pl=>{const po=PLATS.find(x=>x.id===pl);return po?`<span class="chip ${po.cls}">${po.label}</span>`:''}).join('')}${(p.kits||[]).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('')}${p.fabricacao?'🔨 Fabricação':'🛒 Revenda'}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="btn-icon" onclick="event.stopPropagation();openEditProd('${p.id}','${c.id}')">✏️</button>
+            <button class="btn-icon danger" onclick="event.stopPropagation();confirmDelProd('${p.id}')">🗑️</button>
+            <span style="color:var(--text3);font-size:12px;margin-left:4px">${ST.open['p_'+p.id]?'▲':'▼'}</span>
+          </div>
+        </div>
+        <div class="prod-card-body ${ST.open['p_'+p.id]?'open':''}">
+          <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Plataforma</th><th>Kit</th><th>Peso</th><th>Preço</th><th>Custo</th>${ar.length&&ar[0].r.percDetail?ar[0].r.percDetail.map(d=>`<th>${d.n}</th>`).join(''):''}${ar.length&&ar[0].r.fixaDetail?ar[0].r.fixaDetail.map(d=>`<th>${d.n}</th>`).join(''):''}<th>Total Taxas</th><th>Lucro</th><th>R$/pç</th><th>Margem</th></tr></thead>
+            <tbody>${(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);const co2=cor(r2,k.qty,c);if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="20" style="color:var(--text3)">Sem dados</td></tr>`;const pCells=r2.percDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}<br><span style="font-size:9px;opacity:.7">${d.v.toFixed(1)}%</span></td>`).join('');const fCells=r2.fixaDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}</td>`).join('');return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td>${pCells}${fCells}<td class="mono" style="font-weight:700">R$${r2.tax.toFixed(2)}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('')}</tbody>
+          </table></div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
-// ── ALERTAS ─────────────────────────────────────────────────────
+function renderPlataformas(c){
+  const all=allRes(c);if(!all.length)return`<div class="empty">Sem dados</div>`;
+  const platsAtivas=[...new Set(all.map(x=>x.pl))];
+  return`<div class="sec"><div class="sec-head"><div class="sec-title">Comparativo de plataformas</div><div class="sec-line"></div></div>
+    <div class="plat-grid">${platsAtivas.map(pl=>{const po=PLATS.find(x=>x.id===pl);const its=all.filter(x=>x.pl===pl);const avgM=its.reduce((s,x)=>s+x.r.margem,0)/its.length;const avgL=its.reduce((s,x)=>s+x.r.lucro,0)/its.length;const vm=its.filter(x=>x.cor==='r').length,gn=its.filter(x=>x.cor==='g').length;return`<div class="plat-card"><div style="margin-bottom:10px"><span class="chip ${po?.cls}">${po?.label||pl}</span></div>${[['Produtos',[...new Set(its.map(x=>x.p.id))].length,null],['Margem média',avgM.toFixed(1)+'%',avgM>=10?'var(--success)':avgM>=5?'var(--warn)':'var(--danger)'],['Lucro médio','R$'+avgL.toFixed(2),null],['No verde',gn,'var(--success)'],['No vermelho',vm,vm>0?'var(--danger)':null]].map(([lb,val,col])=>`<div class="plat-stat"><span style="color:var(--text3)">${lb}</span><span style="font-weight:600;font-family:var(--mono)${col?`;color:${col}`:''}"> ${val}</span></div>`).join('')}</div>`;}).join('')}
+    </div>
+  </div>
+  <div class="sec"><div class="sec-head"><div class="sec-title">Ranking de lucro</div><div class="sec-line"></div></div>
+    <div class="bar-wrap">${all.sort((a,b)=>b.r.lucro-a.r.lucro).map(x=>{const po=PLATS.find(p=>p.id===x.pl);const pct=Math.max(0,Math.min(100,(x.r.lucro/30)*100));const col=x.r.lucro>=0?'#166534':'#b91c1c';const bg=x.r.lucro>=0?'#dcfce7':'#fee2e2';return`<div class="bar-row"><div class="bar-label">${x.p.sku} · ${po?.label||x.pl} · K${x.k.qty}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div><div class="bar-val"><span style="background:${bg};color:${col};border-radius:3px;padding:2px 5px;font-size:11px;font-family:var(--mono)">R$${x.r.lucro.toFixed(2)}</span></div></div>`;}).join('')}
+    </div>
+  </div>`;
+}
+
 function renderAlertas(c){
   const all=allRes(c);
-  const mk=(co,cls,title)=>{
-    const items=all.filter(x=>x.cor===co).sort((a,b)=>a.r.lucro-b.r.lucro);
-    if(!items.length) return'';
-    return`<div class="sec"><div class="sec-head"><div class="sec-title">${title} (${items.length})</div><div class="sec-line"></div></div>
-      <div class="alert-list">${items.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<div class="alert-item ${cls}"><div style="flex:1"><div style="font-size:12px;font-weight:600">${x.p.nome} — K${x.k.qty} — ${po?.label||x.pl}</div><div style="font-size:11px;color:var(--text2)">Lucro R$${x.r.lucro.toFixed(2)} (R$${(x.r.lucro/x.k.qty).toFixed(2)}/pç) · Margem ${x.r.margem.toFixed(1)}% · Preço R$${x.r.preco.toFixed(2)} · Custo R$${x.r.custo.toFixed(2)}</div></div><span class="lv lv-${co}">${x.r.lucro<0?'−':''}R$${Math.abs(x.r.lucro).toFixed(2)}</span></div>`;}).join('')}</div></div>`;
-  };
-  return mk('r','red','⛔ Vermelho — prejuízo')+mk('l','orange','🟠 Laranja — abaixo do ideal')+mk('a','yellow','🟡 Amarelo — atenção')||
-    `<div class="empty"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="font-size:13px;font-weight:500">Tudo no verde!</div></div>`;
+  const mk=(co,cls,title)=>{const its=all.filter(x=>x.cor===co).sort((a,b)=>a.r.lucro-b.r.lucro);if(!its.length)return'';return`<div class="sec"><div class="sec-head"><div class="sec-title">${title} (${its.length})</div><div class="sec-line"></div></div><div class="alert-list">${its.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<div class="alert-item ${cls}"><div style="flex:1"><div style="font-size:12px;font-weight:600">${x.p.nome} — K${x.k.qty} — ${po?.label||x.pl}</div><div style="font-size:11px;color:var(--text2)">Lucro R$${x.r.lucro.toFixed(2)} (R$${(x.r.lucro/x.k.qty).toFixed(2)}/pç) · Margem ${x.r.margem.toFixed(1)}% · Preço R$${x.r.preco.toFixed(2)} · Custo R$${x.r.custo.toFixed(2)}</div></div><span class="lv lv-${co}">${x.r.lucro<0?'−':''}R$${Math.abs(x.r.lucro).toFixed(2)}</span></div>`;}).join('')}</div></div>`;};
+  return mk('r','red','⛔ Vermelho — prejuízo')+mk('l','orange','🟠 Laranja — abaixo do ideal')+mk('a','yellow','🟡 Amarelo — atenção')||`<div class="empty"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="font-size:13px;font-weight:500">Tudo no verde!</div></div>`;
 }
 
-// ── TAXAS ────────────────────────────────────────────────────────
 function renderTaxas(c){
-  return`<div class="taxas-grid">${PLATS.map(pl=>{
-    const t=c.taxas[pl.id];
-    return`<div class="taxa-card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <span class="chip ${pl.cls}">${pl.label}</span>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="saveTaxas()">💾 Salvar</button>
-      </div>
-      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Percentuais (%)</div>
-      ${t.perc.map((r,i)=>`
-        <div class="taxa-row">
-          <input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','perc',${i},this.value)" placeholder="Nome da taxa"/>
-          ${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px" title="${r.obs}">ℹ️</span>`:''}
-          <input class="taxa-input" type="number" value="${r.v}" step="0.1" onchange="updTaxa('${pl.id}','perc',${i},this.value)"/>
-          <span style="font-size:10px;color:var(--text3)">%</span>
-          <button class="btn-icon danger" onclick="rmTaxa('${pl.id}','perc',${i})" style="margin-left:2px">✕</button>
-        </div>`).join('')}
-      <div class="taxa-add-row">
-        <input class="taxa-add-input" id="add-perc-name-${pl.id}" placeholder="Nova taxa %"/>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="addTaxa('${pl.id}','perc')">+ Add</button>
-      </div>
-      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px">Fixas (R$)</div>
-      ${t.fixas.map((r,i)=>`
-        <div class="taxa-row">
-          <input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','fixas',${i},this.value)" placeholder="Nome"/>
-          ${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px" title="${r.obs}">ℹ️</span>`:''}
-          <input class="taxa-input" type="number" value="${r.v}" step="0.01" onchange="updTaxa('${pl.id}','fixas',${i},this.value)"/>
-          <span style="font-size:10px;color:var(--text3)">R$</span>
-          <button class="btn-icon danger" onclick="rmTaxa('${pl.id}','fixas',${i})" style="margin-left:2px">✕</button>
-        </div>`).join('')}
-      <div class="taxa-add-row">
-        <input class="taxa-add-input" id="add-fixas-name-${pl.id}" placeholder="Nova taxa fixa R$"/>
-        <button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="addTaxa('${pl.id}','fixas')">+ Add</button>
-      </div>
-    </div>`;}).join('')}</div>`;
+  return`<div class="taxas-grid">${PLATS.map(pl=>{const t=c.taxas[pl.id];return`<div class="taxa-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span class="chip ${pl.cls}">${pl.label}</span><button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="saveTaxas()">💾 Salvar</button></div>
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Percentuais (%)</div>
+    ${t.perc.map((r,i)=>`<div class="taxa-row"><input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','perc',${i},this.value)" placeholder="Nome"/>${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px" title="${r.obs}">ℹ️</span>`:''}<input class="taxa-input" type="number" value="${r.v}" step="0.1" onchange="updTaxa('${pl.id}','perc',${i},this.value)"/><span style="font-size:10px;color:var(--text3)">%</span><button class="btn-icon danger" onclick="rmTaxa('${pl.id}','perc',${i})">✕</button></div>`).join('')}
+    <div class="taxa-add-row"><input class="taxa-add-input" id="an-${pl.id}" placeholder="Nova taxa %"/><button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="addTaxa('${pl.id}','perc')">+ Add</button></div>
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px">Fixas (R$)</div>
+    ${t.fixas.map((r,i)=>`<div class="taxa-row"><input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','fixas',${i},this.value)" placeholder="Nome"/>${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px" title="${r.obs}">ℹ️</span>`:''}<input class="taxa-input" type="number" value="${r.v}" step="0.01" onchange="updTaxa('${pl.id}','fixas',${i},this.value)"/><span style="font-size:10px;color:var(--text3)">R$</span><button class="btn-icon danger" onclick="rmTaxa('${pl.id}','fixas',${i})">✕</button></div>`).join('')}
+    <div class="taxa-add-row"><input class="taxa-add-input" id="af-${pl.id}" placeholder="Nova taxa fixa R$"/><button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="addTaxa('${pl.id}','fixas')">+ Add</button></div>
+  </div>`;}).join('')}</div>`;
 }
 
-// ── CONFIG ────────────────────────────────────────────────────────
 function renderConfig(c){
-  const t=c.regra_tipo||'peca';const v1=c.regra_t1||1.20,v2=c.regra_t2||1.50,v3=c.regra_t3||1.80;
-  const u=t==='peca'?'R$/pç':'%';
+  const t=c.regra_tipo||'peca';const v1=c.regra_t1||1.20,v2=c.regra_t2||1.50,v3=c.regra_t3||1.80;const u=t==='peca'?'R$/pç':'%';
   return`<div style="max-width:500px">
-    <div class="config-card">
-      <div class="config-title">Tipo de regra de margem</div>
-      <div class="tgl-group">
-        <button class="tgl-btn ${t==='peca'?'on':''}" onclick="setRegraTipo('peca')">R$ por peça</button>
-        <button class="tgl-btn ${t==='perc'?'on':''}" onclick="setRegraTipo('perc')">% de margem</button>
-      </div>
+    <div class="config-card"><div class="config-title">Tipo de regra de margem</div>
+      <div class="tgl-group"><button class="tgl-btn ${t==='peca'?'on':''}" onclick="setRegraTipo('peca')">R$ por peça</button><button class="tgl-btn ${t==='perc'?'on':''}" onclick="setRegraTipo('perc')">% de margem</button></div>
     </div>
-    <div class="config-card">
-      <div class="config-title">Faixas de alerta</div>
-      ${[['#fee2e2','#b91c1c','Vermelho — de 0 até','regra_t1',v1],['#ffedd5','#9a3412','Laranja — até','regra_t2',v2],['#fef9c3','#713f12','Amarelo — até','regra_t3',v3]].map(([bg,fg,lb,field,val])=>`
-        <div style="display:grid;grid-template-columns:20px 1fr 90px 30px;gap:8px;align-items:center;margin-bottom:8px;font-size:12px">
-          <div style="width:12px;height:12px;border-radius:50%;background:${bg};border:2px solid ${fg}"></div>
-          <span style="color:var(--text2)">${lb}</span>
-          <input class="taxa-input" style="width:80px" type="number" value="${val}" step="${t==='peca'?'0.01':'1'}" onchange="updRegra('${field}',this.value)"/>
-          <span style="font-size:11px;color:var(--text3)">${u}</span>
-        </div>`).join('')}
+    <div class="config-card"><div class="config-title">Faixas de alerta</div>
+      ${[['#fee2e2','#b91c1c','Vermelho — de 0 até','regra_t1',v1],['#ffedd5','#9a3412','Laranja — até','regra_t2',v2],['#fef9c3','#713f12','Amarelo — até','regra_t3',v3]].map(([bg,fg,lb,field,val])=>`<div style="display:grid;grid-template-columns:20px 1fr 90px 30px;gap:8px;align-items:center;margin-bottom:8px;font-size:12px"><div style="width:12px;height:12px;border-radius:50%;background:${bg};border:2px solid ${fg}"></div><span style="color:var(--text2)">${lb}</span><input class="taxa-input" style="width:80px" type="number" value="${val}" step="${t==='peca'?'0.01':'1'}" onchange="updRegra('${field}',this.value)"/><span style="font-size:11px;color:var(--text3)">${u}</span></div>`).join('')}
       <div style="font-size:11px;color:var(--text3)">Verde — acima de ${v3}${u}</div>
     </div>
-    <div style="background:var(--surface2);border-radius:var(--r);padding:12px;border:1px solid var(--border);max-width:500px">
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Prévia das faixas</div>
-      ${t==='peca'?`<div style="display:flex;gap:10px;flex-wrap:wrap">${[3,5,10].map(qty=>`
-        <div><div style="font-size:10px;color:var(--text3);margin-bottom:5px">Kit ${qty}</div>
-          <div style="display:flex;flex-direction:column;gap:3px">
-            <span class="lv lv-r">0 – R$${(v1*qty).toFixed(2)}</span>
-            <span class="lv lv-l">– R$${(v2*qty).toFixed(2)}</span>
-            <span class="lv lv-a">– R$${(v3*qty).toFixed(2)}</span>
-            <span class="lv lv-g">> R$${(v3*qty).toFixed(2)}</span>
-          </div></div>`).join('')}</div>`:`
-        <div style="display:flex;flex-direction:column;gap:4px">
-          <span class="lv lv-r">0 – ${v1}%</span><span class="lv lv-l">– ${v2}%</span>
-          <span class="lv lv-a">– ${v3}%</span><span class="lv lv-g">> ${v3}%</span>
-        </div>`}
+    <div style="background:var(--surface2);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Prévia</div>
+      ${t==='peca'?`<div style="display:flex;gap:10px;flex-wrap:wrap">${[3,5,10].map(qty=>`<div><div style="font-size:10px;color:var(--text3);margin-bottom:5px">Kit ${qty}</div><div style="display:flex;flex-direction:column;gap:3px"><span class="lv lv-r">0–R$${(v1*qty).toFixed(2)}</span><span class="lv lv-l">–R$${(v2*qty).toFixed(2)}</span><span class="lv lv-a">–R$${(v3*qty).toFixed(2)}</span><span class="lv lv-g">>R$${(v3*qty).toFixed(2)}</span></div></div>`).join('')}</div>`:
+      `<div style="display:flex;flex-direction:column;gap:4px"><span class="lv lv-r">0–${v1}%</span><span class="lv lv-l">–${v2}%</span><span class="lv lv-a">–${v3}%</span><span class="lv lv-g">>  ${v3}%</span></div>`}
     </div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="saveConfig()">Salvar configurações</button>
   </div>`;
 }
 
-// ── CALCULADORA ───────────────────────────────────────────────────
 function renderCalculadora(c){
-  const ca=ST.calc;
-  const prods=c.produtos||[];
-  const platSel=ca.plat||'shopee';
-  const prodSel=prods.find(p=>String(p.id)===String(ca.prodId));
+  const ca=ST.calc;const platSel=ca.plat||'shopee';
+  const prods=c.produtos||[];const prodSel=prods.find(p=>String(p.id)===String(ca.prodId));
   const kits=prodSel?prodSel.kits:[];
-  const kitSel=kits.find(k=>k.qty===ca.kit);
-  const preco=parseFloat(ca.preco)||0;
-  const custo=parseFloat(ca.custo)||0;
-  const margDesejada=parseFloat(ca.margem)||0;
-  const peso=parseFloat(ca.peso)||0;
+  return`<div class="calc-wrap">
+    <div>
+      <div class="calc-card" style="margin-bottom:12px">
+        <div class="calc-title">📥 Entradas</div>
+        <div class="calc-row"><span>Plataforma</span>
+          <select class="calc-select" onchange="ST.calc.plat=this.value;ST.calc.preco='';ST.calc.custo='';ST.calc.peso='';renderTab()">
+            ${PLATS.map(pl=>`<option value="${pl.id}" ${platSel===pl.id?'selected':''}>${pl.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="calc-row"><span>Produto (opcional)</span>
+          <select class="calc-select" onchange="onCalcProd(this.value)">
+            <option value="">— Avulso —</option>
+            ${prods.map(p=>`<option value="${p.id}" ${String(ca.prodId)===String(p.id)?'selected':''}>${p.nome}</option>`).join('')}
+          </select>
+        </div>
+        ${prodSel?`<div class="calc-row"><span>Kit</span>
+          <select class="calc-select" onchange="onCalcKit(this.value)">
+            <option value="">Selecione...</option>
+            ${kits.map(k=>`<option value="${k.qty}" ${ca.kit===k.qty?'selected':''}>${k.qty} peças</option>`).join('')}
+          </select>
+        </div>`:''}
+        <div class="calc-row"><span>Preço de Venda (R$)</span><input class="calc-input" type="number" id="calc-preco" placeholder="0,00" value="${ca.preco}" oninput="updateCalc()"/></div>
+        <div class="calc-row"><span>Custo de Compra (R$)</span><input class="calc-input" type="number" id="calc-custo" placeholder="0,00" value="${ca.custo}" oninput="updateCalc()"/></div>
+        ${(platSel==='ml_classico'||platSel==='ml_premium')?`<div class="calc-row"><span>Peso do Kit (kg)</span><input class="calc-input" type="number" id="calc-peso" placeholder="0,0" step="0.1" value="${ca.peso}" oninput="updateCalc()"/></div>`:''}
+        <div class="calc-row"><span>Margem Desejada (%)</span><input class="calc-input" type="number" id="calc-margem" placeholder="15" value="${ca.margem}" oninput="updateCalc()"/></div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
+          <button class="btn btn-outline" style="font-size:11px;width:100%" onclick="ST.calc={plat:ST.calc.plat,prodId:null,kit:null,preco:'',custo:'',margem:'',peso:''};renderTab()">🔄 Limpar / calcular avulso</button>
+        </div>
+      </div>
+      <div id="calc-sug"></div>
+    </div>
+    <div>
+      <div class="calc-card">
+        <div class="calc-title">📋 Detalhamento de Taxas</div>
+        <div id="calc-res"><div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Preencha preço e custo para ver o resultado</div></div>
+      </div>
+    </div>
+  </div>`;
+}
 
-  // Calc result
-  let result=null;
-  if(preco>0&&custo>0){
-    result=calcR(preco,custo,platSel,c.taxas,peso);
-  }
-
-  // Sugestão de preço
-  let precoMinimo=null,precoIdeal=null;
-  if(custo>0){
+function updateCalc(){
+  const c=gc();if(!c)return;
+  const platSel=ST.calc.plat||'shopee';
+  const preco=parseFloat(document.getElementById('calc-preco')?.value)||0;
+  const custo=parseFloat(document.getElementById('calc-custo')?.value)||0;
+  const peso=parseFloat(document.getElementById('calc-peso')?.value)||parseFloat(ST.calc.peso)||0;
+  const margem=parseFloat(document.getElementById('calc-margem')?.value)||0;
+  const resEl=document.getElementById('calc-res');
+  const sugEl=document.getElementById('calc-sug');
+  if(!resEl)return;
+  // Sugestão
+  if(sugEl&&custo>0){
     const t=c.taxas[platSel];
-    // Para shopee, iteramos pois comissão e taxa fixa dependem do preço
-    function calcPrecoAlvo(margemAlvo){
-      let p=custo*2;// chute inicial
-      for(let i=0;i<50;i++){
+    function alvo(ma){
+      let p=custo*2;
+      for(let i=0;i<80;i++){
         const tp=platSel==='shopee'?shopeeComissao(p):t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
-        const tf=platSel==='shopee'?shopeeTaxaFixa(p)+t.fixas.filter(r=>r.n!=='Taxa Fixa').reduce((s,r)=>s+(r.v||0),0):t.fixas.reduce((s,r)=>s+(r.v||0),0);
-        const frML=(platSel==='ml_classico'||platSel==='ml_premium')&&peso>0?calcFreteML(peso,p):0;
-        const p2=(custo+tf+frML+margemAlvo*p)/(1-tp+margemAlvo)||0;// margemAlvo é fração do preço
-        if(Math.abs(p2-p)<0.01) break;
-        p=p2;
+        const tfE=platSel==='shopee'?t.fixas.filter(r=>r.n!=='Taxa Fixa').reduce((s,r)=>s+(r.v||0),0):0;
+        const tf=platSel==='shopee'?shopeeTaxaFixa(p)+tfE:t.fixas.reduce((s,r)=>s+(r.v||0),0);
+        const fr=(platSel==='ml_classico'||platSel==='ml_premium')&&peso>0?calcFreteML(peso,p):0;
+        const d=1-tp-ma;if(d<=0)break;
+        const p2=(custo+tf+fr)/d;if(!isFinite(p2)||p2<=0)break;
+        if(Math.abs(p2-p)<0.01)break;p=p2;
       }
       return Math.max(0,p);
     }
-    precoMinimo=calcPrecoAlvo(0);
-    if(margDesejada>0) precoIdeal=calcPrecoAlvo(margDesejada/100);
-  }
-
-  const po=PLATS.find(x=>x.id===platSel);
-  return`
-    <div class="calc-wrap">
-      <div>
-        <div class="calc-card" style="margin-bottom:12px">
-          <div class="calc-title">📥 Entradas</div>
-          <div class="calc-row">
-            <span>Plataforma</span>
-            <select class="calc-select" onchange="ST.calc.plat=this.value;ST.calc.preco='';ST.calc.peso='';renderTab()">
-              ${PLATS.map(pl=>`<option value="${pl.id}" ${platSel===pl.id?'selected':''}>${pl.label}</option>`).join('')}
-            </select>
-          </div>
-          <div class="calc-row">
-            <span>Produto (opcional)</span>
-            <select class="calc-select" onchange="onCalcProd(this.value)">
-              <option value="">— Manual —</option>
-              ${prods.map(p=>`<option value="${p.id}" ${ca.prodId==p.id?'selected':''}>${p.nome}</option>`).join('')}
-            </select>
-          </div>
-          ${prodSel?`<div class="calc-row"><span>Kit</span>
-            <select class="calc-select" onchange="onCalcKit(this.value)">
-              <option value="">Selecione...</option>
-              ${kits.map(k=>`<option value="${k.qty}" ${ca.kit===k.qty?'selected':''}>${k.qty} peças</option>`).join('')}
-            </select>
-          </div>`:''}
-          <div class="calc-row">
-            <span>Preço de Venda (R$)</span>
-            <input class="calc-input" type="number" placeholder="0,00" value="${ca.preco}" oninput="ST.calc.preco=this.value;renderTab()"/>
-          </div>
-          <div class="calc-row">
-            <span>Custo de Compra (R$)</span>
-            <input class="calc-input" type="number" placeholder="0,00" value="${ca.custo}" oninput="ST.calc.custo=this.value;renderTab()"/>
-          </div>
-          ${(platSel==='ml_classico'||platSel==='ml_premium')?`<div class="calc-row">
-            <span>Peso do Kit (kg)</span>
-            <input class="calc-input" type="number" placeholder="0,0" step="0.1" value="${ca.peso}" oninput="ST.calc.peso=this.value;renderTab()"/>
-          </div>`:''}
-          <div class="calc-row">
-            <span>Margem Desejada (%)</span>
-            <input class="calc-input" type="number" placeholder="15" value="${ca.margem}" oninput="ST.calc.margem=this.value;renderTab()"/>
-          </div>
-        </div>
-
-        ${precoMinimo!==null?`<div class="sugestao-box">
-          <div style="font-size:12px;font-weight:700;color:var(--accent-text);margin-bottom:8px">💡 Sugestão de Preço</div>
-          <div class="sugestao-row">
-            <span style="color:var(--accent-text)">Preço Mínimo (sem prejuízo)</span>
-            <span style="font-family:var(--mono);font-weight:700;color:var(--accent-text)">R$ ${precoMinimo.toFixed(2)}</span>
-          </div>
-          ${precoIdeal?`<div class="sugestao-row">
-            <span style="color:var(--accent-text)">Preço com ${margDesejada}% de margem</span>
-            <span style="font-family:var(--mono);font-weight:700;color:var(--accent-text)">R$ ${precoIdeal.toFixed(2)}</span>
-          </div>`:''}
-        </div>`:''}
-      </div>
-
-      <div>
-        <div class="calc-card">
-          <div class="calc-title">📋 Detalhamento de Taxas</div>
-          ${result?`
-            ${result.percDetail.map(d=>`
-              <div class="taxa-detail-row">
-                <span style="color:var(--text2)">${d.n}${platSel==='shopee'&&d.n==='Comissão'?`<span class="shopee-badge">${preco<=79.99?'20% ≤R$79':'14% ≥R$80'}</span>`:''}</span>
-                <div style="display:flex;gap:8px;align-items:center">
-                  <span style="color:var(--text3);font-size:10px">${d.v.toFixed(2)}%</span>
-                  <span class="calc-val">R$ ${d.val.toFixed(2)}</span>
-                </div>
-              </div>`).join('')}
-            ${result.fixaDetail.map(d=>`
-              <div class="taxa-detail-row">
-                <span style="color:var(--text2)">${d.n}${platSel==='shopee'&&d.n==='Taxa Fixa'?`<span class="shopee-badge">R$${shopeeTaxaFixa(preco)} auto</span>`:''}</span>
-                <span class="calc-val">R$ ${d.val.toFixed(2)}</span>
-              </div>`).join('')}
-            <div style="height:1px;background:var(--border);margin:8px 0"></div>
-            <div class="calc-row total">
-              <span>Total de Taxas</span>
-              <span class="calc-val" style="color:var(--danger)">R$ ${result.tax.toFixed(2)}</span>
-            </div>
-            <div style="height:1px;background:var(--border);margin:8px 0"></div>
-            <div class="calc-row"><span>Preço de Venda</span><span class="calc-val">R$ ${result.preco.toFixed(2)}</span></div>
-            <div class="calc-row"><span>Custo de Compra</span><span class="calc-val" style="color:var(--danger)">R$ ${result.custo.toFixed(2)}</span></div>
-            <div class="calc-row total"><span>Total Geral (Taxas + Custo)</span><span class="calc-val" style="color:var(--danger)">R$ ${(result.tax+result.custo).toFixed(2)}</span></div>
-            <div style="height:1px;background:var(--border);margin:8px 0"></div>
-            <div style="background:${result.lucro>=0?'var(--accent-bg)':'var(--danger-bg)'};border-radius:var(--r);padding:12px;margin-top:4px">
-              <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-                <span style="font-size:14px;font-weight:700;color:${result.lucro>=0?'var(--accent-text)':'var(--danger)'}">LUCRO EM R$</span>
-                <span style="font-size:18px;font-weight:700;font-family:var(--mono);color:${result.lucro>=0?'var(--accent-text)':'var(--danger)'}">R$ ${result.lucro.toFixed(2)}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between">
-                <span style="font-size:14px;font-weight:700;color:${result.lucro>=0?'var(--accent-text)':'var(--danger)'}">LUCRO EM %</span>
-                <span style="font-size:18px;font-weight:700;font-family:var(--mono);color:${result.lucro>=0?'var(--accent-text)':'var(--danger)'}">${result.margem.toFixed(2)}%</span>
-              </div>
-            </div>
-          `:`<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Preencha preço e custo para ver o resultado</div>`}
-        </div>
-      </div>
+    const pMin=alvo(0);const pIdeal=margem>0?alvo(margem/100):null;
+    sugEl.innerHTML=`<div class="sugestao-box"><div style="font-size:12px;font-weight:700;color:var(--accent-text);margin-bottom:8px">💡 Sugestão de Preço</div>
+      <div class="sugestao-row"><span style="color:var(--accent-text)">Preço Mínimo (sem prejuízo)</span><span style="font-family:var(--mono);font-weight:700;color:var(--accent-text)">R$ ${pMin.toFixed(2)}</span></div>
+      ${pIdeal?`<div class="sugestao-row"><span style="color:var(--accent-text)">Preço com ${margem}% de margem</span><span style="font-family:var(--mono);font-weight:700;color:var(--accent-text)">R$ ${pIdeal.toFixed(2)}</span></div>`:''}
+    </div>`;
+  } else if(sugEl) sugEl.innerHTML='';
+  if(!preco||!custo){resEl.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Preencha preço e custo para ver o resultado</div>`;return;}
+  const r=calcR(preco,custo,platSel,c.taxas,peso);
+  if(!r){resEl.innerHTML='<div style="color:var(--text3);padding:20px;text-align:center">Dados insuficientes</div>';return;}
+  const cBg=r.lucro>=0?'var(--accent-bg)':'var(--danger-bg)';const cFg=r.lucro>=0?'var(--accent-text)':'var(--danger)';
+  resEl.innerHTML=
+    r.percDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&d.n==='Comissão'?`<span class="shopee-badge">${preco<=79.99?'20% ≤R$79':'14% ≥R$80'}</span>`:''}</span><div style="display:flex;gap:8px;align-items:center"><span style="color:var(--text3);font-size:10px">${d.v.toFixed(2)}%</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div></div>`).join('')+
+    r.fixaDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&d.n==='Taxa Fixa'?`<span class="shopee-badge">R$${shopeeTaxaFixa(preco)} auto</span>`:''}</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div>`).join('')+
+    `<div style="height:1px;background:var(--border);margin:8px 0"></div>
+    <div class="calc-row total"><span>Total de Taxas</span><span class="calc-val" style="color:var(--danger)">R$ ${r.tax.toFixed(2)}</span></div>
+    <div style="height:1px;background:var(--border);margin:8px 0"></div>
+    <div class="calc-row"><span>Preço de Venda</span><span class="calc-val">R$ ${r.preco.toFixed(2)}</span></div>
+    <div class="calc-row"><span>Custo de Compra</span><span class="calc-val" style="color:var(--danger)">R$ ${r.custo.toFixed(2)}</span></div>
+    <div class="calc-row total"><span>Total Geral (Taxas + Custo)</span><span class="calc-val" style="color:var(--danger)">R$ ${(r.tax+r.custo).toFixed(2)}</span></div>
+    <div style="height:1px;background:var(--border);margin:8px 0"></div>
+    <div style="background:${cBg};border-radius:var(--r);padding:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:14px;font-weight:700;color:${cFg}">LUCRO EM R$</span><span style="font-size:18px;font-weight:700;font-family:var(--mono);color:${cFg}">R$ ${r.lucro.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-size:14px;font-weight:700;color:${cFg}">LUCRO EM %</span><span style="font-size:18px;font-weight:700;font-family:var(--mono);color:${cFg}">${r.margem.toFixed(2)}%</span></div>
     </div>`;
 }
 
-// ── MODAL ────────────────────────────────────────────────────────
 function renderModal(){
   const m=ST.modal;
-  if(m.type==='nc') return`
-    <div class="modal-backdrop" onclick="closeModal(event)">
-      <div class="modal" onclick="event.stopPropagation()">
-        <div class="modal-header"><div class="modal-title">Novo cliente</div><button class="btn-icon" onclick="closeModal()">✕</button></div>
-        <div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="nc-n" placeholder="ex: Maria Moda"/></div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn btn-primary" onclick="saveNewClient()">Criar</button>
-        </div>
-      </div>
-    </div>`;
+  if(m.type==='nc')return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><div class="modal-title">Novo cliente</div><button class="btn-icon" onclick="closeModal()">✕</button></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="nc-n" placeholder="ex: Maria Moda"/></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveNewClient()">Criar</button></div></div></div>`;
   if(m.type==='prod'){
     const p=m.p;const kits=p.kits||[];
-    return`
-      <div class="modal-backdrop" onclick="closeModal(event)">
-        <div class="modal" onclick="event.stopPropagation()">
-          <div class="modal-header"><div class="modal-title">${m.edit?'Editar produto':'Novo produto'}</div><button class="btn-icon" onclick="closeModal()">✕</button></div>
-          <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">
-            <div>
-              <div class="form-label" style="margin-bottom:6px">Foto</div>
-              <div class="foto-upload" onclick="document.getElementById('foto-input').click()">
-                ${p.foto_url?`<img src="${p.foto_url}" style="width:100%;height:100%;object-fit:cover"/>`:`<div class="foto-txt">📷<br/>Adicionar foto</div>`}
-              </div>
-              <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="handleFoto(this)"/>
-              ${p.foto_url?`<button onclick="ST.modal.p.foto_url=null;render()" style="width:90px;margin-top:4px;font-size:10px;padding:3px;border:1px solid var(--border);border-radius:5px;background:transparent;cursor:pointer;color:var(--text3)">Remover</button>`:''}
-            </div>
-            <div style="flex:1">
-              <div class="form-row">
-                <div class="form-group"><div class="form-label">SKU</div><input class="form-input" id="p-sku" value="${p.sku||''}" placeholder="001"/></div>
-                <div class="form-group"><div class="form-label">Nome do produto</div><input class="form-input" id="p-nome" value="${p.nome||''}" placeholder="ex: Calçola Comfort"/></div>
-              </div>
-              <div class="form-group"><div class="form-label">Tipo</div>
-                <div class="tgl-group">
-                  <button class="tgl-btn ${!p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=false;render()">🛒 Revenda</button>
-                  <button class="tgl-btn ${p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=true;render()">🔨 Fabricação</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="form-group"><div class="form-label">Plataformas</div>
-            <div class="plat-checks">${PLATS.map(pl=>`<div class="plat-cb ${(p.plataformas||[]).includes(pl.id)?'on':''}" onclick="togPlat('${pl.id}')">✓ ${pl.label}</div>`).join('')}</div>
-          </div>
-          <div class="form-group"><div class="form-label">Links dos anúncios</div>
-            <div style="display:flex;flex-direction:column;gap:6px">
-              ${PLATS.map(pl=>`<div style="display:flex;align-items:center;gap:8px">
-                <span class="chip ${pl.cls}" style="width:90px;justify-content:center">${pl.label}</span>
-                <input class="form-input" id="link-${pl.id}" style="flex:1" placeholder="URL do anúncio na ${pl.label}" value="${(p.links&&p.links[pl.id])||''}"/>
-                ${(p.links&&p.links[pl.id])?`<a href="${p.links[pl.id]}" target="_blank" style="text-decoration:none">🔗</a>`:''}
-              </div>`).join('')}
-            </div>
-          </div>
-          <div class="divider"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <div style="font-size:13px;font-weight:600">Kits e preços</div>
-            <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="addKit()">+ Kit</button>
-          </div>
-          <div id="kits-c">${kits.length===0?`<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">Nenhum kit adicionado</div>`:kits.map((k,i)=>renderKitBlock(k,i,p.plataformas||[])).join('')}</div>
-          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-            <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-            <button class="btn btn-primary" id="save-btn" onclick="saveProduto()">${m.edit?'Salvar':'Cadastrar'}</button>
-          </div>
+    return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><div class="modal-title">${m.edit?'Editar produto':'Novo produto'}</div><button class="btn-icon" onclick="closeModal()">✕</button></div>
+      <div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:14px">
+        <div><div class="form-label" style="margin-bottom:6px">Foto</div>
+          <div class="foto-upload" onclick="document.getElementById('foto-input').click()">${p.foto_url?`<img src="${p.foto_url}" style="width:100%;height:100%;object-fit:cover"/>`:`<div class="foto-txt">📷<br/>Adicionar foto</div>`}</div>
+          <input type="file" id="foto-input" accept="image/*" style="display:none" onchange="handleFoto(this)"/>
+          ${p.foto_url?`<button onclick="ST.modal.p.foto_url=null;render()" style="width:90px;margin-top:4px;font-size:10px;padding:3px;border:1px solid var(--border);border-radius:5px;background:transparent;cursor:pointer;color:var(--text3)">Remover</button>`:''}
         </div>
-      </div>`;
-  }
-  if(m.type==='del') return`
-    <div class="modal-backdrop" onclick="closeModal(event)">
-      <div class="modal" style="max-width:400px" onclick="event.stopPropagation()">
-        <div class="modal-header"><div class="modal-title">Excluir produto</div><button class="btn-icon" onclick="closeModal()">✕</button></div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:18px">Tem certeza que deseja excluir <b>${m.nome}</b>?</p>
-        <div style="display:flex;gap:8px;justify-content:flex-end">
-          <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-          <button class="btn" style="background:var(--danger);color:#fff;border-color:var(--danger)" onclick="execDelProd()">Excluir</button>
+        <div style="flex:1">
+          <div class="form-row"><div class="form-group"><div class="form-label">SKU</div><input class="form-input" id="p-sku" value="${p.sku||''}" placeholder="001"/></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="p-nome" value="${p.nome||''}" placeholder="ex: Calçola Comfort"/></div></div>
+          <div class="form-group"><div class="form-label">Tipo</div><div class="tgl-group"><button class="tgl-btn ${!p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=false;render()">🛒 Revenda</button><button class="tgl-btn ${p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=true;render()">🔨 Fabricação</button></div></div>
         </div>
       </div>
-    </div>`;
+      <div class="form-group"><div class="form-label">Plataformas</div><div class="plat-checks">${PLATS.map(pl=>`<div class="plat-cb ${(p.plataformas||[]).includes(pl.id)?'on':''}" onclick="togPlat('${pl.id}')">✓ ${pl.label}</div>`).join('')}</div></div>
+      <div class="form-group"><div class="form-label">Links dos anúncios</div>
+        <div style="display:flex;flex-direction:column;gap:6px">${PLATS.map(pl=>`<div style="display:flex;align-items:center;gap:8px"><span class="chip ${pl.cls}" style="width:90px;justify-content:center">${pl.label}</span><input class="form-input" id="link-${pl.id}" style="flex:1" placeholder="URL na ${pl.label}" value="${(p.links&&p.links[pl.id])||''}"/></div>`).join('')}</div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;font-weight:600">Kits e preços</div><button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="addKit()">+ Kit</button></div>
+      <div id="kits-c">${kits.length===0?`<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">Nenhum kit adicionado</div>`:kits.map((k,i)=>renderKitBlock(k,i,p.plataformas||[])).join('')}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="save-btn" onclick="saveProduto()">${m.edit?'Salvar':'Cadastrar'}</button></div>
+    </div></div>`;
+  }
+  if(m.type==='del')return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" style="max-width:400px" onclick="event.stopPropagation()"><div class="modal-header"><div class="modal-title">Excluir produto</div><button class="btn-icon" onclick="closeModal()">✕</button></div><p style="font-size:13px;color:var(--text2);margin-bottom:18px">Tem certeza que deseja excluir <b>${m.nome}</b>?</p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn" style="background:var(--danger);color:#fff;border-color:var(--danger)" onclick="execDelProd()">Excluir</button></div></div></div>`;
   return'';
 }
 function renderKitBlock(k,i,plats){
   const hasML=plats.some(pl=>pl==='ml_classico'||pl==='ml_premium');
-  return`<div class="kit-block">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;flex-wrap:wrap">
-        Kit <input type="number" class="form-input" style="width:65px" value="${k.qty||''}" min="1" placeholder="qtd" onchange="ST.modal.p.kits[${i}].qty=parseInt(this.value)||null"/> peças
-        ${hasML?`<span style="font-size:11px;color:var(--text3)">Peso ML:</span>
-          <input type="number" class="form-input" style="width:70px" value="${k.peso_kg||''}" min="0" step="0.1" placeholder="0.0" onchange="ST.modal.p.kits[${i}].peso_kg=parseFloat(this.value)||0"/> kg`:''}
-      </div>
-      <button class="btn-icon danger" onclick="rmKit(${i})">🗑️</button>
+  return`<div class="kit-block"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;flex-wrap:wrap">
+      Kit <input type="number" class="form-input" style="width:65px" value="${k.qty||''}" min="1" placeholder="qtd" onchange="ST.modal.p.kits[${i}].qty=parseInt(this.value)||null"/> peças
+      ${hasML?`<span style="font-size:11px;color:var(--text3)">Peso ML:</span><input type="number" class="form-input" style="width:70px" value="${k.peso_kg||''}" min="0" step="0.1" placeholder="0.0" onchange="ST.modal.p.kits[${i}].peso_kg=parseFloat(this.value)||0"/> kg`:''}
     </div>
-    ${plats.length===0?`<div style="font-size:11px;color:var(--text3);text-align:center">Selecione plataformas primeiro</div>`:`
-      <div style="display:grid;grid-template-columns:70px repeat(${plats.length},1fr);gap:5px;align-items:center;font-size:11px">
-        <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`}).join('')}
-        <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.precos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].precos['${pl}']=parseFloat(this.value)||null"/>`).join('')}
-        <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.custos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].custos['${pl}']=parseFloat(this.value)||null"/>`).join('')}
-      </div>`}
+    <button class="btn-icon danger" onclick="rmKit(${i})">🗑️</button>
+  </div>
+  ${plats.length===0?`<div style="font-size:11px;color:var(--text3);text-align:center">Selecione plataformas primeiro</div>`:`
+    <div style="display:grid;grid-template-columns:70px repeat(${plats.length},1fr);gap:5px;align-items:center;font-size:11px">
+      <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`;}).join('')}
+      <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.precos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].precos['${pl}']=parseFloat(this.value)||null"/>`).join('')}
+      <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.custos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].custos['${pl}']=parseFloat(this.value)||null"/>`).join('')}
+    </div>`}
   </div>`;
 }
 
-// ── ACTIONS ──────────────────────────────────────────────────────
 function selC(id){ST.activeId=id;ST.tab='busca';ST.open={};ST.search={q:'',scope:'todos'};render();}
 function setTab(t){ST.tab=t;render();}
-function togOpen(id){ST.open[id]=!ST.open[id];renderTab();}
+function togOpen(id){ST.open[id]=!ST.open[id];
+  const el=document.getElementById('search-results');
+  if(el&&ST.tab==='busca'){updateSearch();return;}
+  renderTab();
+}
 function openNewClient(){ST.modal={type:'nc'};render();}
 async function saveNewClient(){
   const name=document.getElementById('nc-n')?.value?.trim();if(!name)return;
   const color=COLORS[ST.clients.length%COLORS.length];
   const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),regra_tipo:'peca',regra_t1:1.20,regra_t2:1.50,regra_t3:1.80}).select().single();
   if(error){toast('Erro ao criar cliente','error');return;}
-  const nc={...data,produtos:[],taxas:data.taxas};
-  ST.clients.push(nc);ST.activeId=nc.id;ST.modal=null;toast('Cliente criado!');render();
+  const nc={...data,produtos:[],taxas:data.taxas};ST.clients.push(nc);ST.activeId=nc.id;ST.modal=null;toast('Cliente criado!');render();
 }
 function openNewProd(){ST.modal={type:'prod',edit:false,clientId:ST.activeId,p:{sku:'',nome:'',fabricacao:false,plataformas:[],kits:[],foto_url:null,links:{}}};render();}
 function openEditProd(pid,cid){
@@ -1007,10 +600,7 @@ async function execDelProd(){
   const c=gc();if(c)c.produtos=c.produtos.filter(x=>String(x.id)!==String(pid));
   ST.modal=null;toast('Produto excluído');render();
 }
-function togPlat(pl){
-  const p=ST.modal.p;const idx=(p.plataformas||[]).indexOf(pl);
-  if(idx>=0)p.plataformas.splice(idx,1);else p.plataformas.push(pl);render();
-}
+function togPlat(pl){const p=ST.modal.p;const idx=(p.plataformas||[]).indexOf(pl);if(idx>=0)p.plataformas.splice(idx,1);else p.plataformas.push(pl);render();}
 function addKit(){ST.modal.p.kits.push({qty:null,precos:{},custos:{},peso_kg:0});render();}
 function rmKit(i){ST.modal.p.kits.splice(i,1);render();}
 async function saveProduto(){
@@ -1018,7 +608,7 @@ async function saveProduto(){
   p.sku=document.getElementById('p-sku')?.value?.trim();
   p.nome=document.getElementById('p-nome')?.value?.trim();
   if(!p.nome){toast('Informe o nome do produto','error');return;}
-  if(!p.links) p.links={};
+  if(!p.links)p.links={};
   PLATS.forEach(pl=>{const el=document.getElementById('link-'+pl.id);if(el)p.links[pl.id]=el.value.trim()||null;});
   const btn=document.getElementById('save-btn');if(btn){btn.disabled=true;btn.textContent='Salvando...';}
   const cli=ST.clients.find(c=>String(c.id)===String(m.clientId));
@@ -1030,46 +620,31 @@ async function saveProduto(){
 function updTaxa(pl,tipo,i,v){gc().taxas[pl][tipo][i].v=parseFloat(v)||0;}
 function updTaxaNome(pl,tipo,i,v){gc().taxas[pl][tipo][i].n=v;}
 function rmTaxa(pl,tipo,i){gc().taxas[pl][tipo].splice(i,1);renderTab();}
-function addTaxa(pl,tipo){
-  const el=document.getElementById(`add-${tipo}-name-${pl}`);
-  const name=el?.value?.trim();if(!name)return;
-  gc().taxas[pl][tipo].push({n:name,v:0});el.value='';renderTab();
-}
-async function saveTaxas(){
-  const c=gc();await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);toast('Taxas salvas!');}
+function addTaxa(pl,tipo){const id=tipo==='perc'?`an-${pl}`:`af-${pl}`;const el=document.getElementById(id);const name=el?.value?.trim();if(!name)return;gc().taxas[pl][tipo].push({n:name,v:0});el.value='';renderTab();}
+async function saveTaxas(){const c=gc();await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);toast('Taxas salvas!');}
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
-async function saveConfig(){
-  const c=gc();await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_t1:c.regra_t1,regra_t2:c.regra_t2,regra_t3:c.regra_t3}).eq('id',c.id);
-  toast('Configurações salvas!');
-}
+async function saveConfig(){const c=gc();await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_t1:c.regra_t1,regra_t2:c.regra_t2,regra_t3:c.regra_t3}).eq('id',c.id);toast('Configurações salvas!');}
 function closeModal(e){if(e&&e.target!==e.currentTarget)return;ST.modal=null;render();}
 async function handleFoto(input){
   const file=input.files[0];if(!file)return;
-  const ext=file.name.split('.').pop();
-  const path=`produtos/${Date.now()}.${ext}`;
+  const ext=file.name.split('.').pop();const path=`produtos/${Date.now()}.${ext}`;
   const{data,error}=await sb.storage.from('product-images').upload(path,file,{upsert:true});
   if(error){toast('Erro ao enviar foto','error');return;}
   const{data:{publicUrl}}=sb.storage.from('product-images').getPublicUrl(path);
   ST.modal.p.foto_url=publicUrl;render();
 }
-// Calculadora helpers
 function onCalcProd(id){
-  ST.calc.prodId=id;ST.calc.kit=null;
+  ST.calc.prodId=id;ST.calc.kit=null;ST.calc.preco='';ST.calc.custo='';ST.calc.peso='';
   const cli=gc();const p=cli.produtos.find(x=>String(x.id)===id);
-  if(p&&p.kits.length===1){ST.calc.kit=p.kits[0].qty;onCalcKit(p.kits[0].qty);}
+  if(p&&p.kits.length===1){ST.calc.kit=p.kits[0].qty;onCalcKit(p.kits[0].qty);return;}
   renderTab();
 }
 function onCalcKit(qty){
   qty=parseInt(qty)||null;ST.calc.kit=qty;
   const cli=gc();const p=cli.produtos.find(x=>String(x.id)===String(ST.calc.prodId));
   const k=p?.kits?.find(x=>x.qty===qty);
-  if(k){
-    const pl=ST.calc.plat;
-    if(k.precos?.[pl]) ST.calc.preco=String(k.precos[pl]);
-    if(k.custos?.[pl]) ST.calc.custo=String(k.custos[pl]);
-    if(k.peso_kg) ST.calc.peso=String(k.peso_kg);
-  }
+  if(k){const pl=ST.calc.plat;if(k.precos?.[pl])ST.calc.preco=String(k.precos[pl]);if(k.custos?.[pl])ST.calc.custo=String(k.custos[pl]);if(k.peso_kg)ST.calc.peso=String(k.peso_kg);}
   renderTab();
 }
 
