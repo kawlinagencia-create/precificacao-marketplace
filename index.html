@@ -489,41 +489,92 @@ function renderProdutos(c){
           </div>
         </div>
         <div class="prod-card-body ${ST.open['p_'+p.id]?'open':''}">
-          <div class="table-scroll">
-          <table class="data-table">
-            <thead><tr><th>Plataforma</th><th>Kit</th><th>Peso</th><th>Preço</th><th>Custo</th>${ar.length&&ar[0].r.percDetail?ar[0].r.percDetail.map(d=>`<th>${d.n}</th>`).join(''):''}${ar.length&&ar[0].r.fixaDetail?ar[0].r.fixaDetail.map(d=>`<th>${d.n}</th>`).join(''):''}<th>Total Taxas</th><th>Lucro</th><th>R$/pç</th><th>Margem</th></tr></thead>
-            <tbody>${(()=>{
-              const rows=[];
-              const allRows=[];
-              // Calcular todas as linhas para achar melhor e pior
-              for(const pl of(p.plataformas||[])){
-                const po=PLATS.find(x=>x.id===pl);
-                for(const k of(p.kits||[])){
-                  const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
-                  if(r2) allRows.push({pl,k,r2,po});
-                }
-              }
-              const bestLucro=allRows.length?Math.max(...allRows.map(x=>x.r2.lucro)):-Infinity;
-              const worstLucro=allRows.length?Math.min(...allRows.filter(x=>x.r2.lucro<0).map(x=>x.r2.lucro)):Infinity;
-              for(const pl of(p.plataformas||[])){
-                const po=PLATS.find(x=>x.id===pl);
-                for(const k of(p.kits||[])){
-                  const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
-                  const co2=cor(r2,k.qty,c);
-                  if(!r2){rows.push(`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="20" style="color:var(--text3)">Sem dados</td></tr>`);continue;}
-                  const isBest=r2.lucro===bestLucro;
-                  const isWorst=r2.lucro<0&&r2.lucro===worstLucro;
-                  const rowStyle=isBest?'background:#f0fdf4;outline:2px solid #4ade80;outline-offset:-2px':isWorst?'background:#fff5f5;outline:2px solid #fca5a5;outline-offset:-2px':'';
-                  const bestBadge=isBest?'<span style="font-size:9px;background:#4ade80;color:#14532d;padding:1px 5px;border-radius:20px;margin-left:4px;font-weight:700">⬆ MELHOR</span>':'';
-                  const worstBadge=isWorst?'<span style="font-size:9px;background:#fca5a5;color:#7f1d1d;padding:1px 5px;border-radius:20px;margin-left:4px;font-weight:700">⬇ PIOR</span>':'';
-                  const pCells=r2.percDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}<br><span style="font-size:9px;opacity:.7">${d.v.toFixed(1)}%</span></td>`).join('');
-                  const fCells=r2.fixaDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}</td>`).join('');
-                  rows.push(`<tr style="${rowStyle}"><td><span class="chip ${po?.cls}">${po?.label||pl}</span>${bestBadge}${worstBadge}</td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td>${pCells}${fCells}<td class="mono" style="font-weight:700">R$${r2.tax.toFixed(2)}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`);
-                }
-              }
-              return rows.join('');
-            })()}</tbody>
-          </table></div>
+          ${(()=>{
+            const allRows=[];
+            for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){
+              const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
+              if(r2) allRows.push({pl,k,r2});
+            }
+            const bestLucro=allRows.length?Math.max(...allRows.map(x=>x.r2.lucro)):-Infinity;
+            const worstLucro=allRows.length&&allRows.some(x=>x.r2.lucro<0)?Math.min(...allRows.filter(x=>x.r2.lucro<0).map(x=>x.r2.lucro)):Infinity;
+            const platAtiva=ST.open['platfilt_'+p.id]||'';
+            const platsDisponiveis=p.plataformas||[];
+            const platsVisiveis=platAtiva?[platAtiva]:platsDisponiveis;
+
+            // Mini filtro de plataforma dentro do produto
+            const filtroHtml=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+              <span style="font-size:11px;font-weight:600;color:var(--text3)">Ver:</span>
+              <button onclick="ST.open['platfilt_${p.id}']=null;renderTab()" style="padding:3px 10px;font-size:11px;border-radius:20px;border:1px solid ${!platAtiva?'var(--text)':'var(--border)'};background:${!platAtiva?'var(--text)':'transparent'};color:${!platAtiva?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">Todas</button>
+              ${platsDisponiveis.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<button onclick="ST.open['platfilt_${p.id}']='${pl}';renderTab()" style="padding:3px 10px;font-size:11px;border-radius:20px;border:1px solid ${platAtiva===pl?'var(--text)':'var(--border)'};background:${platAtiva===pl?'var(--text)':'transparent'};color:${platAtiva===pl?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">${po?.label||pl}</button>`;}).join('')}
+            </div>`;
+
+            return filtroHtml + platsVisiveis.map(pl=>{
+              const po=PLATS.find(x=>x.id===pl);
+              const kits=p.kits||[];
+              if(!kits.length) return '';
+              const kitsComDados=kits.filter(k=>calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty));
+              const kitsSemDados=kits.filter(k=>!calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty));
+              return`<div style="margin-bottom:16px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)">
+                  <span class="chip ${po?.cls}" style="font-size:12px;padding:3px 10px">${po?.label||pl}</span>
+                  ${kitsSemDados.length?`<span style="font-size:10px;color:var(--text3)">${kitsSemDados.map(k=>`K${k.qty}`).join(', ')} sem dados</span>`:''}
+                </div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap">
+                  ${kitsComDados.map(k=>{
+                    const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
+                    const co2=cor(r2,k.qty,c);
+                    const isBest=r2.lucro===bestLucro;
+                    const isWorst=r2.lucro<0&&r2.lucro===worstLucro;
+                    const borderColor=isBest?'#4ade80':isWorst?'#fca5a5':co2==='g'?'#86efac':co2==='a'?'#fcd34d':co2==='l'?'#fdba74':'#fca5a5';
+                    const headerBg=isBest?'#f0fdf4':isWorst?'#fff5f5':co2==='g'?'#f0fdf4':co2==='a'?'#fffbeb':co2==='l'?'#fff7ed':'#fff5f5';
+                    const lucroColor=co2==='g'?'var(--success)':co2==='a'?'var(--warn)':co2==='l'?'var(--orange)':'var(--danger)';
+                    return`<div style="min-width:160px;flex:1;max-width:220px;border:2px solid ${borderColor};border-radius:var(--r-lg);overflow:hidden;background:var(--surface)">
+                      <div style="background:${headerBg};padding:8px 12px;border-bottom:1px solid ${borderColor};display:flex;align-items:center;justify-content:space-between">
+                        <span style="font-size:13px;font-weight:700;color:var(--text)">KIT ${k.qty}</span>
+                        <div style="display:flex;gap:4px;align-items:center">
+                          ${isBest?'<span style="font-size:9px;background:#4ade80;color:#14532d;padding:1px 6px;border-radius:20px;font-weight:700">⬆ MELHOR</span>':''}
+                          ${isWorst?'<span style="font-size:9px;background:#fca5a5;color:#7f1d1d;padding:1px 6px;border-radius:20px;font-weight:700">⬇ PIOR</span>':''}
+                          ${k.peso_kg>0?`<span style="font-size:9px;color:var(--text3)">${k.peso_kg}kg</span>`:''}
+                        </div>
+                      </div>
+                      <div style="padding:10px 12px;display:flex;flex-direction:column;gap:3px;font-size:11px">
+                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
+                          <span style="color:var(--text2)">Preço de Venda</span>
+                          <span style="font-family:var(--mono);font-weight:600">R$${r2.preco.toFixed(2)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
+                          <span style="color:var(--text2)">Custo de Compra</span>
+                          <span style="font-family:var(--mono);font-weight:600;color:var(--danger)">R$${r2.custo.toFixed(2)}</span>
+                        </div>
+                        <div style="height:3px"></div>
+                        ${r2.percDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n} <span style="font-size:9px">(${d.v.toFixed(1)}%)</span></span><span style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
+                        ${r2.fixaDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n}</span><span style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
+                        <div style="border-top:2px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between">
+                          <span style="font-weight:700;color:var(--text)">Total de Taxas</span>
+                          <span style="font-family:var(--mono);font-weight:700;color:var(--danger)">R$${r2.tax.toFixed(2)}</span>
+                        </div>
+                        <div style="background:${headerBg};border-radius:6px;padding:8px;margin-top:4px">
+                          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                            <span style="font-weight:700;font-size:12px;color:${lucroColor}">LUCRO EM R$</span>
+                            <span style="font-family:var(--mono);font-weight:700;font-size:14px;color:${lucroColor}">R$${r2.lucro.toFixed(2)}</span>
+                          </div>
+                          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                            <span style="font-weight:700;font-size:12px;color:${lucroColor}">LUCRO EM %</span>
+                            <span style="font-family:var(--mono);font-weight:700;font-size:14px;color:${lucroColor}">${r2.margem.toFixed(2)}%</span>
+                          </div>
+                          <div style="display:flex;justify-content:space-between">
+                            <span style="font-size:10px;color:${lucroColor};opacity:.8">R$ por peça</span>
+                            <span style="font-family:var(--mono);font-size:11px;color:${lucroColor};opacity:.8">R$${(r2.lucro/k.qty).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>`;
+                  }).join('')}
+                  ${!kitsComDados.length?`<div style="padding:12px;color:var(--text3);font-size:12px">Nenhum kit com dados cadastrados para esta plataforma</div>`:''}
+                </div>
+              </div>`;
+            }).join('');
+          })()}
         </div>
       </div>`;
     }).join('')}
