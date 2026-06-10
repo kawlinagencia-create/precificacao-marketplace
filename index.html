@@ -130,11 +130,10 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 .kit-block{background:var(--surface2);border-radius:var(--r);padding:12px;margin-bottom:8px;border:1px solid var(--border)}
 /* Tooltip */
 .tip-wrap{position:relative;display:inline-block;cursor:help}
-.tip-wrap .tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--text);color:#fff;border-radius:var(--r);padding:8px 10px;font-size:11px;white-space:nowrap;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.2);min-width:180px}
-.tip-wrap .tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--text)}
+.tip-wrap .tip{display:none;position:fixed;background:var(--text);color:#fff;border-radius:var(--r);padding:8px 10px;font-size:11px;white-space:nowrap;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);min-width:200px;pointer-events:none}
 .tip-wrap:hover .tip{display:block}
-.tip-row{display:flex;justify-content:space-between;gap:16px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1)}
-.tip-row:last-child{border-bottom:none;font-weight:700;margin-top:4px;padding-top:4px}
+.tip-row{display:flex;justify-content:space-between;gap:16px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.12)}
+.tip-row:last-child{border-bottom:none;font-weight:700;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,.25)}
 /* Lucro preview no kit */
 .lucro-preview{margin-top:8px;padding:8px 10px;border-radius:var(--r);font-size:12px;border:1px solid var(--border)}
 .lucro-preview.pos{background:var(--success-bg);border-color:#86efac;color:var(--success)}
@@ -230,13 +229,27 @@ async function saveProduct(p,clientId){
 }
 async function deleteProduct(pid){await sb.from('prec_products').delete().eq('id',pid);}
 
-function calcR(preco,custo,platId,taxas,pesoKg){
+function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   if(!preco||preco<=0||!custo||custo<=0)return null;
   const t=taxas[platId];if(!t)return null;
   let totalPerc=0;const percDetail=[];
   for(const r of t.perc){let v=r.v;if(platId==='shopee'&&r.n==='Comissão')v=shopeeComissao(preco)*100;totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100});}
   let totalFixa=0;const fixaDetail=[];
-  for(const r of t.fixas){let v=r.v;if(platId==='shopee'&&r.n==='Taxa Fixa')v=shopeeTaxaFixa(preco);totalFixa+=v;fixaDetail.push({n:r.n,v,val:v});}
+  for(const r of t.fixas){
+    let v=r.v;
+    if(platId==='shopee'&&r.n==='Taxa Fixa') v=shopeeTaxaFixa(preco);
+    // Embalagem: usar só a correspondente ao kit
+    const nL=r.n.toLowerCase();
+    if(nL.includes('embal')||nL.includes('embalagem')){
+      if(kitQty){
+        // só inclui se o nome bate com o kit atual
+        if(kitQty<=3&&!nL.includes('k3'))continue;
+        if(kitQty>3&&kitQty<=5&&!nL.includes('k5'))continue;
+        if(kitQty>5&&!nL.includes('k10'))continue;
+      }
+    }
+    totalFixa+=v;fixaDetail.push({n:r.n,v,val:v});
+  }
   let freteML=0;
   if((platId==='ml_classico'||platId==='ml_premium')&&pesoKg>0){freteML=calcFreteML(pesoKg,preco);totalFixa+=freteML;fixaDetail.push({n:'Frete ML (auto)',v:freteML,val:freteML});}
   const tax=preco*totalPerc+totalFixa;const lucro=preco-custo-tax;
@@ -247,7 +260,7 @@ function cor(r,qty,c){
   const val=(c.regra_tipo||'peca')==='peca'?(qty>0?r.lucro/qty:r.lucro):r.margem;
   if(val<=(c.regra_t1||1.2))return 'r';if(val<=(c.regra_t2||1.5))return 'l';if(val<=(c.regra_t3||1.8))return 'a';return 'g';
 }
-function allRes(c){const out=[];for(const p of c.produtos)for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c)});}return out;}
+function allRes(c){const out=[];for(const p of c.produtos)for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c)});}return out;}
 // allPlats: todas as plataformas onde pelo menos 1 produto está cadastrado (mesmo sem dados)
 function allPlats(c){const s=new Set();for(const p of c.produtos)for(const pl of(p.plataformas||[]))s.add(pl);return[...s];}
 function applyFilter(arr){
@@ -263,22 +276,43 @@ function applyFilter(arr){
     return true;
   });
 }
+function positionTip(e){
+  const tip=e.currentTarget.querySelector('.tip');if(!tip)return;
+  const rect=e.currentTarget.getBoundingClientRect();
+  let top=rect.top-8;let left=rect.left+rect.width/2;
+  tip.style.left=Math.max(8,Math.min(left-100,window.innerWidth-220))+'px';
+  tip.style.top=Math.max(8,top-tip.offsetHeight-4)+'px';
+}
 function renderFilterBar(c,idPrefix){
   const platsC=allPlats(c);
   const hasFilter=ST.filter.sku||ST.filter.plat;
   return`<div class="filter-bar">
     <span style="font-size:11px;font-weight:600;color:var(--text3)">Filtrar:</span>
-    <input class="filter-input" id="filter-sku-${idPrefix}" placeholder="SKU ou nome" value="${ST.filter.sku}" oninput="ST.filter.sku=this.value;applyFilterView()" style="width:160px"/>
+    <input class="filter-input" id="filter-sku-${idPrefix}" placeholder="SKU ou nome" value="${ST.filter.sku}" oninput="onFilterInput(this.value,'${idPrefix}')" style="width:160px"/>
     <select class="filter-select" onchange="ST.filter.plat=this.value;renderTab()">
       <option value="">Todas as plataformas</option>
       ${PLATS.filter(pl=>platsC.includes(pl.id)).map(pl=>`<option value="${pl.id}" ${ST.filter.plat===pl.id?'selected':''}>${pl.label}</option>`).join('')}
     </select>
     ${hasFilter?`<button class="filter-clear" onclick="ST.filter={sku:'',plat:''};renderTab()">✕ Limpar</button>`:''}
-    <span style="margin-left:auto;font-size:11px;color:var(--text3)" id="${idPrefix}-count"></span>
   </div>`;
 }
-function applyFilterView(){renderTab();}
-function bestR(p,c){let best=null,bc=null;const pri={g:4,a:3,l:2,r:1};for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);if(r){const co=cor(r,k.qty,c);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
+function onFilterInput(v,prefix){
+  ST.filter.sku=v;
+  // re-render só o conteúdo abaixo do filtro sem recriar o input
+  const t=ST.tab;
+  const c=gc();if(!c)return;
+  if(t==='dashboard'){
+    const allFull=allRes(c);const all=applyFilter(allFull);
+    const tbody=document.querySelector('#content .data-table tbody');
+    if(tbody){const po2=x=>{const po=PLATS.find(p=>p.id===x.pl);return po;};
+      tbody.innerHTML=all.map(x=>{const po=po2(x);
+        const tipContent=[...x.r.percDetail,...x.r.fixaDetail].filter(d=>d.val>0).map(d=>{const isP=x.r.percDetail.includes(d);return`<div class="tip-row"><span>${d.n} ${isP?`(${d.v.toFixed(1)}%)`:''}</span><span>R$${d.val.toFixed(2)}</span></div>`;}).join('')+`<div class="tip-row"><span>Total</span><span>R$${x.r.tax.toFixed(2)}</span></div>`;
+        return`<tr><td>${x.p.foto_url?`<img src="${x.p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}</td><td class="mono" style="color:var(--text3)">${x.p.sku||'—'}</td><td style="font-weight:600">${x.p.nome}</td><td><span class="chip ${po?.cls}">${po?.label||x.pl}</span></td><td class="mono">K${x.k.qty}</td><td class="mono">R$${x.r.preco.toFixed(2)}</td><td class="mono">R$${x.r.custo.toFixed(2)}</td><td><div class="tip-wrap" onmouseenter="positionTip(event)"><span class="mono" style="color:var(--text3);border-bottom:1px dashed var(--text3)">R$${x.r.tax.toFixed(2)}</span><div class="tip">${tipContent}</div></div></td><td><span class="lv lv-${x.cor}">R$${x.r.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(x.r.lucro/x.k.qty).toFixed(2)}</td><td><span class="lv lv-${x.cor}">${x.r.margem.toFixed(1)}%</span></td></tr>`;
+      }).join('');
+    }
+  } else {renderTab();setTimeout(()=>{const el=document.getElementById('filter-sku-'+prefix);if(el){el.focus();el.setSelectionRange(v.length,v.length);}},0);}
+}
+function bestR(p,c){let best=null,bc=null;const pri={g:4,a:3,l:2,r:1};for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
 function hlMark(str,q){if(!q||!str)return String(str||'');return String(str).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
 function toast(msg,type='success'){const w=document.getElementById('toasts');const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=msg;w.appendChild(e);setTimeout(()=>e.remove(),3000);}
 
@@ -352,7 +386,7 @@ function updateSearch(){
     const pH=(p.plataformas||[]).map(pl=>{const po=PLATS.find(x=>x.id===pl);return po?`<span class="chip ${po.cls}">${po.label}</span>`:''}).join('');
     const kH=(p.kits||[]).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('');
     const lk=p.links&&Object.keys(p.links).filter(k=>p.links[k]).length?'<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">'+Object.entries(p.links).filter(([,v])=>v).map(([pl,url])=>{const po=PLATS.find(x=>x.id===pl);return`<a href="${url}" target="_blank" class="link-chip" onclick="event.stopPropagation()">🔗 ${po?.label||pl}</a>`;}).join('')+'</div>':'';
-    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0);const co2=cor(r2,k.qty,cli);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
+    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
     return`<div class="prod-card"><div class="prod-card-head" onclick="togOpen('s_${p.id}')">
       <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0">
         ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
@@ -389,7 +423,14 @@ function renderDash(c){
   <div class="sec"><div class="sec-head"><div class="sec-title">Todos os produtos ${all.length!==allFull.length?`<span class="badge badge-gray" style="margin-left:6px">${all.length} filtrados</span>`:''}</div><div class="sec-line"></div></div>
     <div class="table-scroll"><table class="data-table">
       <thead><tr><th></th><th>SKU</th><th>Produto</th><th>Plataforma</th><th>Kit</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Lucro R$</th><th>R$/peça</th><th>Margem %</th></tr></thead>
-      <tbody>${all.map(x=>{const po=PLATS.find(p=>p.id===x.pl);const tipContent=x.r.percDetail&&x.r.fixaDetail?[...x.r.percDetail,...x.r.fixaDetail].filter(d=>d.val>0).map(d=>`<div class="tip-row"><span>${d.n}</span><span>R$${d.val.toFixed(2)}</span></div>`).join('')+'<div class="tip-row"><span>Total</span><span>R$'+x.r.tax.toFixed(2)+'</span></div>':'';return`<tr><td>${x.p.foto_url?`<img src="${x.p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}</td><td class="mono" style="color:var(--text3)">${x.p.sku||'—'}</td><td style="font-weight:600">${x.p.nome}</td><td><span class="chip ${po?.cls}">${po?.label||x.pl}</span></td><td class="mono">K${x.k.qty}</td><td class="mono">R$${x.r.preco.toFixed(2)}</td><td class="mono">R$${x.r.custo.toFixed(2)}</td><td><div class="tip-wrap"><span class="mono" style="color:var(--text3);border-bottom:1px dashed var(--text3)">R$${x.r.tax.toFixed(2)}</span><div class="tip">${tipContent}</div></div></td><td><span class="lv lv-${x.cor}">R$${x.r.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(x.r.lucro/x.k.qty).toFixed(2)}</td><td><span class="lv lv-${x.cor}">${x.r.margem.toFixed(1)}%</span></td></tr>`;}).join('')}</tbody>
+      <tbody>${all.map(x=>{const po=PLATS.find(p=>p.id===x.pl);
+        const tipContent=x.r.percDetail&&x.r.fixaDetail?
+          [...x.r.percDetail,...x.r.fixaDetail].filter(d=>d.val>0).map(d=>{
+            const isPerc=x.r.percDetail.includes(d);
+            return`<div class="tip-row"><span>${d.n} ${isPerc?`(${d.v.toFixed(1)}%)`:''}</span><span>R$${d.val.toFixed(2)}</span></div>`;
+          }).join('')+`<div class="tip-row"><span>Total</span><span>R$${x.r.tax.toFixed(2)}</span></div>`:'';
+        return`<tr><td>${x.p.foto_url?`<img src="${x.p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}</td><td class="mono" style="color:var(--text3)">${x.p.sku||'—'}</td><td style="font-weight:600">${x.p.nome}</td><td><span class="chip ${po?.cls}">${po?.label||x.pl}</span></td><td class="mono">K${x.k.qty}</td><td class="mono">R$${x.r.preco.toFixed(2)}</td><td class="mono">R$${x.r.custo.toFixed(2)}</td><td><div class="tip-wrap" onmouseenter="positionTip(event)"><span class="mono" style="color:var(--text3);border-bottom:1px dashed var(--text3)">R$${x.r.tax.toFixed(2)}</span><div class="tip">${tipContent}</div></div></td><td><span class="lv lv-${x.cor}">R$${x.r.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(x.r.lucro/x.k.qty).toFixed(2)}</td><td><span class="lv lv-${x.cor}">${x.r.margem.toFixed(1)}%</span></td></tr>`;
+      }).join('')}</tbody>
     </table></div>
   </div>
   ${prej.length?`<div class="sec"><div class="sec-head"><div class="sec-title" style="color:var(--danger)">⚠️ Produtos com prejuízo (${Object.keys(prejPorProd).length})</div><div class="sec-line"></div></div>
@@ -451,7 +492,7 @@ function renderProdutos(c){
           <div class="table-scroll">
           <table class="data-table">
             <thead><tr><th>Plataforma</th><th>Kit</th><th>Peso</th><th>Preço</th><th>Custo</th>${ar.length&&ar[0].r.percDetail?ar[0].r.percDetail.map(d=>`<th>${d.n}</th>`).join(''):''}${ar.length&&ar[0].r.fixaDetail?ar[0].r.fixaDetail.map(d=>`<th>${d.n}</th>`).join(''):''}<th>Total Taxas</th><th>Lucro</th><th>R$/pç</th><th>Margem</th></tr></thead>
-            <tbody>${(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);const co2=cor(r2,k.qty,c);if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="20" style="color:var(--text3)">Sem dados</td></tr>`;const pCells=r2.percDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}<br><span style="font-size:9px;opacity:.7">${d.v.toFixed(1)}%</span></td>`).join('');const fCells=r2.fixaDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}</td>`).join('');return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td>${pCells}${fCells}<td class="mono" style="font-weight:700">R$${r2.tax.toFixed(2)}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('')}</tbody>
+            <tbody>${(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,c);if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="20" style="color:var(--text3)">Sem dados</td></tr>`;const pCells=r2.percDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}<br><span style="font-size:9px;opacity:.7">${d.v.toFixed(1)}%</span></td>`).join('');const fCells=r2.fixaDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}</td>`).join('');return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td>${pCells}${fCells}<td class="mono" style="font-weight:700">R$${r2.tax.toFixed(2)}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('')}</tbody>
           </table></div>
         </div>
       </div>`;
@@ -647,7 +688,7 @@ function renderKitBlock(k,i,plats){
   const lucroRows=plats.map(pl=>{
     const preco=k.precos?.[pl];const custo=k.custos?.[pl];
     if(!preco||!custo) return null;
-    const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0);
+    const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0,k.qty);
     if(!r) return null;
     const po=PLATS.find(x=>x.id===pl);
     const co=cor(r,k.qty||1,c);
@@ -748,6 +789,7 @@ function updateKitPreview(){
   const p=ST.modal.p;
   kitsEl.innerHTML=p.kits.length===0?`<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">Nenhum kit adicionado</div>`:p.kits.map((k,i)=>renderKitBlock(k,i,p.plataformas||[])).join('');
 }
+function onCalcProd(id){
   ST.calc.prodId=id;ST.calc.kit=null;ST.calc.preco='';ST.calc.custo='';ST.calc.peso='';
   const cli=gc();const p=cli.produtos.find(x=>String(x.id)===id);
   if(p&&p.kits.length===1){ST.calc.kit=p.kits[0].qty;onCalcKit(p.kits[0].qty);return;}
