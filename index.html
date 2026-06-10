@@ -128,6 +128,18 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 .form-input:focus{border-color:var(--accent)}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .kit-block{background:var(--surface2);border-radius:var(--r);padding:12px;margin-bottom:8px;border:1px solid var(--border)}
+/* Tooltip */
+.tip-wrap{position:relative;display:inline-block;cursor:help}
+.tip-wrap .tip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--text);color:#fff;border-radius:var(--r);padding:8px 10px;font-size:11px;white-space:nowrap;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.2);min-width:180px}
+.tip-wrap .tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--text)}
+.tip-wrap:hover .tip{display:block}
+.tip-row{display:flex;justify-content:space-between;gap:16px;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.tip-row:last-child{border-bottom:none;font-weight:700;margin-top:4px;padding-top:4px}
+/* Lucro preview no kit */
+.lucro-preview{margin-top:8px;padding:8px 10px;border-radius:var(--r);font-size:12px;border:1px solid var(--border)}
+.lucro-preview.pos{background:var(--success-bg);border-color:#86efac;color:var(--success)}
+.lucro-preview.neg{background:var(--danger-bg);border-color:#fca5a5;color:var(--danger)}
+.lucro-preview.neu{background:var(--surface2);color:var(--text3)}
 .plat-checks{display:flex;flex-wrap:wrap;gap:6px}
 .plat-cb{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;user-select:none;transition:all .15s;background:var(--surface)}
 .plat-cb.on{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-text);font-weight:500}
@@ -168,6 +180,13 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 .toast.success{background:var(--success)}
 @keyframes slideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
 .shopee-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:20px;font-size:9px;font-weight:600;background:#fef9c3;color:#713f12;margin-left:4px}
+.filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:14px}
+.filter-input{padding:5px 10px;font-size:12px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font);outline:none;min-width:0}
+.filter-input:focus{border-color:var(--accent);background:var(--surface)}
+.filter-select{padding:5px 10px;font-size:12px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);color:var(--text);font-family:var(--font);outline:none}
+.filter-clear{font-size:11px;color:var(--text3);cursor:pointer;background:none;border:none;font-family:var(--font);padding:4px 6px;border-radius:var(--r)}
+.filter-clear:hover{color:var(--danger);background:var(--danger-bg)}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 </style>
 </head>
 <body>
@@ -178,7 +197,7 @@ const SUPABASE_URL='https://yvgoseljxxdczpziituq.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2Z29zZWxqeHhkY3pwemlpdHVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MTQ0MzksImV4cCI6MjA5NTI5MDQzOX0.1gEdI1aaw97oYMQV0pmWJR2JXQgtp514ZuUsKHI9dZE';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const PLATS=[{id:'shopee',label:'Shopee',cls:'chip-shopee'},{id:'shein',label:'Shein',cls:'chip-shein'},{id:'ml_classico',label:'ML Clássico',cls:'chip-ml'},{id:'ml_premium',label:'ML Premium',cls:'chip-ml'},{id:'tiktok',label:'TikTok',cls:'chip-tiktok'}];
-const TAXA_D={shopee:[{n:'Comissão',v:20,obs:'20%(<=R$79) ou 14%(>=R$80) automático'},{n:'Nota Fiscal',v:6.76},{n:'Afiliados',v:2.8},{n:'Ads',v:3.5},{n:'Cupom',v:1.5},{n:'Of. Relâmpago',v:0.3},{n:'Campanha',v:3.5},{n:'Leve+Por',v:0.2},{n:'Live/Vídeo',v:0.15},{n:'Mão de Obra',v:1.5}],shein:[{n:'Comissão',v:16},{n:'Nota Fiscal',v:7.3},{n:'Campanha',v:20},{n:'Of. Relâmpago',v:0.3},{n:'Cupom',v:1.67},{n:'Leve+Por',v:0.1},{n:'Mão de Obra',v:1.5}],ml_classico:[{n:'Comissão',v:14},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Mão de Obra',v:1.5}],ml_premium:[{n:'Comissão',v:19},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Mão de Obra',v:1.5}],tiktok:[{n:'Comissão',v:6},{n:'Taxa Frete%',v:6},{n:'Ads',v:5},{n:'Campanha',v:5},{n:'Afiliados',v:7},{n:'Cupom',v:0.9},{n:'Leve+Por',v:0.2},{n:'Nota Fiscal',v:7.3},{n:'Mão de Obra',v:1.5}]};
+const TAXA_D={shopee:[{n:'Comissão',v:20,obs:'20%(<=R$79) ou 14%(>=R$80) automático'},{n:'Nota Fiscal',v:6.76},{n:'Afiliados',v:2.8},{n:'Ads',v:3.5},{n:'Cupom',v:1.5},{n:'Of. Relâmpago',v:0.3},{n:'Campanha',v:3.5},{n:'Leve+Por',v:0.2},{n:'Live/Vídeo',v:0.15},{n:'Mão de Obra',v:1.5}],shein:[{n:'Comissão',v:16},{n:'Nota Fiscal',v:7.3},{n:'Campanha',v:20},{n:'Of. Relâmpago',v:0.3},{n:'Cupom',v:1.67},{n:'Leve+Por',v:0.1},{n:'Mão de Obra',v:1.5}],ml_classico:[{n:'Comissão',v:14},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Estoque Full (ML Full)',v:0,obs:'Preencha se usar estoque Full'},{n:'Frete Full (ML Full)',v:0,obs:'Preencha se usar frete Full'},{n:'Mão de Obra',v:1.5}],ml_premium:[{n:'Comissão',v:19},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Estoque Full (ML Full)',v:0,obs:'Preencha se usar estoque Full'},{n:'Frete Full (ML Full)',v:0,obs:'Preencha se usar frete Full'},{n:'Mão de Obra',v:1.5}],tiktok:[{n:'Comissão',v:6},{n:'Taxa Frete%',v:6},{n:'Ads',v:5},{n:'Campanha',v:5},{n:'Afiliados',v:7},{n:'Cupom',v:0.9},{n:'Leve+Por',v:0.2},{n:'Nota Fiscal',v:7.3},{n:'Mão de Obra',v:1.5}]};
 const TF_D={shopee:[{n:'Taxa Fixa',v:4,obs:'R$4(<=R$79)/R$16(R$80-99)/R$20(R$100-199)/R$26(R$200-499) automático'},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],shein:[{n:'Frete K3/5',v:4},{n:'Frete K10',v:5},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],ml_classico:[{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],ml_premium:[{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],tiktok:[{n:'Taxa Fixa',v:4},{n:'Live/Vídeo',v:0.5},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}]};
 const COLORS=['#2d6a4f','#6d28d9','#c2410c','#0369a1','#be185d'];
 const ML_FRETE=[[0.3,[5.65,6.55,7.75,12.35,14.35,16.45,18.45,20.95]],[0.5,[5.95,6.65,7.85,13.25,15.45,17.65,19.85,22.55]],[1.0,[6.05,6.75,7.95,13.85,16.15,18.45,20.75,23.65]],[1.5,[6.15,6.85,8.05,14.15,16.45,18.85,21.15,24.65]],[2.0,[6.25,6.95,8.15,14.45,16.85,19.25,21.65,24.65]],[3.0,[6.35,7.95,8.55,15.75,18.35,21.05,23.65,26.25]],[4.0,[6.45,8.15,8.95,17.05,19.85,22.65,25.55,28.35]],[5.0,[6.55,8.35,9.75,18.45,21.55,24.65,27.75,30.75]],[6.0,[6.65,8.55,9.95,25.45,28.55,32.65,35.75,39.75]],[7.0,[6.75,8.75,10.15,27.05,31.05,36.05,40.05,44.05]],[8.0,[6.85,8.95,10.35,28.85,33.65,38.45,43.25,48.05]],[9.0,[6.95,9.15,10.55,29.65,34.55,39.55,44.45,49.35]],[11.0,[7.05,9.55,10.95,41.25,48.05,54.95,61.75,68.65]],[13.0,[7.15,9.95,11.35,42.15,49.25,56.25,63.25,70.25]],[15.0,[7.25,10.15,11.55,45.05,52.45,59.95,67.45,74.95]],[17.0,[7.35,10.35,11.75,48.55,56.05,63.55,70.75,78.65]],[20.0,[7.55,10.75,12.15,53.05,63.85,72.95,82.05,91.15]],[25.0,[7.75,11.25,12.65,58.35,75.05,84.75,95.35,105.95]],[30.0,[7.95,11.75,13.15,63.75,75.45,85.55,96.25,106.95]]];
@@ -188,7 +207,7 @@ function shopeeComissao(p){return p<=79.99?0.20:0.14;}
 function shopeeTaxaFixa(p){if(p<=79.99)return 4;if(p<=99.99)return 16;if(p<=199.99)return 20;return 26;}
 function mkTaxas(){const t={};for(const k of Object.keys(TAXA_D))t[k]={perc:TAXA_D[k].map(r=>({...r})),fixas:TF_D[k].map(r=>({...r}))};return t;}
 
-let ST={clients:[],activeId:null,tab:'busca',open:{},search:{q:'',scope:'todos'},modal:null,loading:true,calc:{plat:'shopee',prodId:null,kit:null,preco:'',custo:'',margem:'',peso:''}};
+let ST={clients:[],activeId:null,tab:'busca',open:{},search:{q:'',scope:'todos'},modal:null,loading:true,calc:{plat:'shopee',prodId:null,kit:null,preco:'',custo:'',margem:'',peso:''},filter:{sku:'',plat:'',loja:''}};
 function gc(){return ST.clients.find(c=>c.id===ST.activeId)||ST.clients[0]||null;}
 
 async function loadAll(){
@@ -229,6 +248,36 @@ function cor(r,qty,c){
   if(val<=(c.regra_t1||1.2))return 'r';if(val<=(c.regra_t2||1.5))return 'l';if(val<=(c.regra_t3||1.8))return 'a';return 'g';
 }
 function allRes(c){const out=[];for(const p of c.produtos)for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c)});}return out;}
+// allPlats: todas as plataformas onde pelo menos 1 produto está cadastrado (mesmo sem dados)
+function allPlats(c){const s=new Set();for(const p of c.produtos)for(const pl of(p.plataformas||[]))s.add(pl);return[...s];}
+function applyFilter(arr){
+  const{sku,plat}=ST.filter;
+  return arr.filter(x=>{
+    const p=x.p||x;
+    const pl=x.pl||null;
+    if(sku&&!String(p.sku||'').toLowerCase().includes(sku.toLowerCase())&&!(p.nome||'').toLowerCase().includes(sku.toLowerCase()))return false;
+    if(plat){
+      if(pl&&pl!==plat)return false;
+      if(!pl&&!(p.plataformas||[]).includes(plat))return false;
+    }
+    return true;
+  });
+}
+function renderFilterBar(c,idPrefix){
+  const platsC=allPlats(c);
+  const hasFilter=ST.filter.sku||ST.filter.plat;
+  return`<div class="filter-bar">
+    <span style="font-size:11px;font-weight:600;color:var(--text3)">Filtrar:</span>
+    <input class="filter-input" id="filter-sku-${idPrefix}" placeholder="SKU ou nome" value="${ST.filter.sku}" oninput="ST.filter.sku=this.value;applyFilterView()" style="width:160px"/>
+    <select class="filter-select" onchange="ST.filter.plat=this.value;renderTab()">
+      <option value="">Todas as plataformas</option>
+      ${PLATS.filter(pl=>platsC.includes(pl.id)).map(pl=>`<option value="${pl.id}" ${ST.filter.plat===pl.id?'selected':''}>${pl.label}</option>`).join('')}
+    </select>
+    ${hasFilter?`<button class="filter-clear" onclick="ST.filter={sku:'',plat:''};renderTab()">✕ Limpar</button>`:''}
+    <span style="margin-left:auto;font-size:11px;color:var(--text3)" id="${idPrefix}-count"></span>
+  </div>`;
+}
+function applyFilterView(){renderTab();}
 function bestR(p,c){let best=null,bc=null;const pri={g:4,a:3,l:2,r:1};for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);if(r){const co=cor(r,k.qty,c);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
 function hlMark(str,q){if(!q||!str)return String(str||'');return String(str).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
 function toast(msg,type='success'){const w=document.getElementById('toasts');const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=msg;w.appendChild(e);setTimeout(()=>e.remove(),3000);}
@@ -272,8 +321,8 @@ function renderBusca(c){
   const q=ST.search.q,sc=ST.search.scope;
   return`<div class="search-wrap">
     <span class="search-icon-left">🔍</span>
-    <input class="search-input" id="si" type="text" placeholder="Buscar por SKU ou nome..." value="${q}" oninput="ST.search.q=this.value;updateSearch()"/>
-    ${q?`<button class="search-clear" onclick="ST.search.q='';this.previousElementSibling.value='';updateSearch()">✕</button>`:''}
+    <input class="search-input" id="si" type="text" placeholder="Buscar por SKU ou nome..." value="${q}" oninput="onSearchInput(this.value)"/>
+    ${q?`<button class="search-clear" onclick="onSearchClear()">✕</button>`:''}
   </div>
   <div class="scope-row" id="scope-row">
     ${[['todos','SKU ou nome'],['sku','Só SKU'],['produto','Só nome'],['global','Todos os clientes']].map(([id,lb])=>`<button class="scope-btn ${sc===id?'active':''}" data-scope="${id}" onclick="ST.search.scope='${id}';updateSearch()">${lb}</button>`).join('')}
@@ -281,6 +330,8 @@ function renderBusca(c){
   </div>
   <div id="search-results"></div>`;
 }
+function onSearchInput(v){ST.search.q=v;updateSearch();}
+function onSearchClear(){ST.search.q='';const el=document.getElementById('si');if(el)el.value='';updateSearch();}
 
 function updateSearch(){
   const q=ST.search.q.trim(),sc=ST.search.scope;
@@ -293,6 +344,7 @@ function updateSearch(){
     if(ok){const{r,cor:co}=bestR(p,cli);const ar=allRes(cli).filter(x=>x.p.id===p.id);const avgM=ar.length?ar.reduce((s,x)=>s+x.r.margem,0)/ar.length:0;res.push({p,cli,r,cor:co,avgM});}
   }
   const infoEl=document.getElementById('search-info');if(infoEl)infoEl.textContent=`${res.length} resultado${res.length!==1?'s':''}`;
+  const clearBtn=document.querySelector('.search-clear');if(clearBtn)clearBtn.style.display=ST.search.q?'block':'none';
   const el=document.getElementById('search-results');if(!el)return;
   if(!res.length&&q){el.innerHTML=`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">🔎</div><div style="font-size:13px;font-weight:500">Nenhum resultado para "${q}"</div></div>`;return;}
   if(!res.length){el.innerHTML=`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📦</div><div style="font-size:13px;font-weight:500">Nenhum produto</div><button class="btn btn-primary" style="margin:12px auto 0" onclick="openNewProd()">+ Novo produto</button></div>`;return;}
@@ -313,31 +365,59 @@ function updateSearch(){
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><button class="btn-icon" onclick="event.stopPropagation();openEditProd('${p.id}','${cli.id}')">✏️</button><span style="color:var(--text3);font-size:12px">${ST.open['s_'+p.id]?'▲':'▼'}</span></div>
     </div>
     <div class="prod-card-body ${ST.open['s_'+p.id]?'open':''}">
-      <table class="data-table"><thead><tr><th>Plataforma</th><th>Kit</th><th>Peso</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Frete ML</th><th>Lucro</th><th>R$/peça</th><th>Margem</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="table-scroll"><table class="data-table"><thead><tr><th>Plataforma</th><th>Kit</th><th>Peso</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Frete ML</th><th>Lucro</th><th>R$/peça</th><th>Margem</th></tr></thead><tbody>${rows}</tbody></table></div>
     </div></div>`;
   }).join('');
 }
 
 function renderDash(c){
-  const all=allRes(c);
-  if(!all.length)return`<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px">📊</div><div style="font-size:13px;font-weight:500;color:var(--text2)">Sem dados</div></div>`;
-  const total=all.length,verm=all.filter(x=>x.cor==='r').length,grn=all.filter(x=>x.cor==='g').length;
-  const avgM=all.reduce((s,x)=>s+x.r.margem,0)/all.length;
-  const prej=all.filter(x=>x.r.lucro<0);
-  return`<div class="kpi-grid">
-    <div class="kpi ${verm>0?'danger':'success'}"><div class="kpi-label">Em prejuízo</div><div class="kpi-val">${verm}</div><div class="kpi-sub">de ${total} combinações</div></div>
+  const allFull=allRes(c);
+  if(!allFull.length)return`<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px">📊</div><div style="font-size:13px;font-weight:500;color:var(--text2)">Sem dados</div></div>`;
+  const all=applyFilter(allFull);
+  const total=allFull.length,verm=allFull.filter(x=>x.cor==='r').length,grn=allFull.filter(x=>x.cor==='g').length;
+  const avgM=allFull.reduce((s,x)=>s+x.r.margem,0)/allFull.length;
+  const prej=allFull.filter(x=>x.r.lucro<0);
+  // Agrupar prejuízos por produto
+  const prejPorProd={};for(const x of prej){const id=x.p.id;if(!prejPorProd[id])prejPorProd[id]={p:x.p,items:[]};prejPorProd[id].items.push(x);}
+  return`${renderFilterBar(c,'dash')}
+  <div class="kpi-grid">
+    <div class="kpi ${verm>0?'danger':'success'}"><div class="kpi-label">Combinações em prejuízo</div><div class="kpi-val">${verm}</div><div class="kpi-sub">de ${total} combinações</div></div>
     <div class="kpi ${avgM<5?'warn':avgM>=10?'success':''}"><div class="kpi-label">Margem média</div><div class="kpi-val">${avgM.toFixed(1)}%</div><div class="kpi-sub">sobre preço de venda</div></div>
     <div class="kpi ${grn<total/2?'warn':'success'}"><div class="kpi-label">No verde</div><div class="kpi-val">${grn}</div><div class="kpi-sub">${Math.round(grn/total*100)}% do total</div></div>
-    <div class="kpi"><div class="kpi-label">Produtos</div><div class="kpi-val">${c.produtos.length}</div><div class="kpi-sub">${[...new Set(all.map(x=>x.pl))].length} plataformas</div></div>
+    <div class="kpi"><div class="kpi-label">Produtos</div><div class="kpi-val">${c.produtos.length}</div><div class="kpi-sub">${[...new Set(allFull.map(x=>x.pl))].length} plataformas</div></div>
   </div>
-  <div class="sec"><div class="sec-head"><div class="sec-title">Todos os produtos — Preço · Custo · Lucro · Margem</div><div class="sec-line"></div></div>
-    <table class="data-table">
+  <div class="sec"><div class="sec-head"><div class="sec-title">Todos os produtos ${all.length!==allFull.length?`<span class="badge badge-gray" style="margin-left:6px">${all.length} filtrados</span>`:''}</div><div class="sec-line"></div></div>
+    <div class="table-scroll"><table class="data-table">
       <thead><tr><th></th><th>SKU</th><th>Produto</th><th>Plataforma</th><th>Kit</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Lucro R$</th><th>R$/peça</th><th>Margem %</th></tr></thead>
-      <tbody>${all.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<tr><td>${x.p.foto_url?`<img src="${x.p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}</td><td class="mono" style="color:var(--text3)">${x.p.sku||'—'}</td><td style="font-weight:600">${x.p.nome}</td><td><span class="chip ${po?.cls}">${po?.label||x.pl}</span></td><td class="mono">K${x.k.qty}</td><td class="mono">R$${x.r.preco.toFixed(2)}</td><td class="mono">R$${x.r.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${x.r.tax.toFixed(2)}</td><td><span class="lv lv-${x.cor}">R$${x.r.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(x.r.lucro/x.k.qty).toFixed(2)}</td><td><span class="lv lv-${x.cor}">${x.r.margem.toFixed(1)}%</span></td></tr>`;}).join('')}</tbody>
-    </table>
+      <tbody>${all.map(x=>{const po=PLATS.find(p=>p.id===x.pl);const tipContent=x.r.percDetail&&x.r.fixaDetail?[...x.r.percDetail,...x.r.fixaDetail].filter(d=>d.val>0).map(d=>`<div class="tip-row"><span>${d.n}</span><span>R$${d.val.toFixed(2)}</span></div>`).join('')+'<div class="tip-row"><span>Total</span><span>R$'+x.r.tax.toFixed(2)+'</span></div>':'';return`<tr><td>${x.p.foto_url?`<img src="${x.p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}</td><td class="mono" style="color:var(--text3)">${x.p.sku||'—'}</td><td style="font-weight:600">${x.p.nome}</td><td><span class="chip ${po?.cls}">${po?.label||x.pl}</span></td><td class="mono">K${x.k.qty}</td><td class="mono">R$${x.r.preco.toFixed(2)}</td><td class="mono">R$${x.r.custo.toFixed(2)}</td><td><div class="tip-wrap"><span class="mono" style="color:var(--text3);border-bottom:1px dashed var(--text3)">R$${x.r.tax.toFixed(2)}</span><div class="tip">${tipContent}</div></div></td><td><span class="lv lv-${x.cor}">R$${x.r.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(x.r.lucro/x.k.qty).toFixed(2)}</td><td><span class="lv lv-${x.cor}">${x.r.margem.toFixed(1)}%</span></td></tr>`;}).join('')}</tbody>
+    </table></div>
   </div>
-  ${prej.length?`<div class="sec"><div class="sec-head"><div class="sec-title" style="color:var(--danger)">⚠ Prejuízos (${prej.length})</div><div class="sec-line"></div></div>
-    <div class="alert-list">${prej.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<div class="alert-item red"><span style="font-size:18px;flex-shrink:0">⚠️</span><div style="flex:1"><div style="font-size:12px;font-weight:600">${x.p.nome} — K${x.k.qty} — ${po?.label||x.pl}</div><div style="font-size:11px;color:var(--text2)">Preço R$${x.r.preco.toFixed(2)} · Custo R$${x.r.custo.toFixed(2)} · Margem ${x.r.margem.toFixed(1)}%</div></div><span class="lv lv-r">−R$${Math.abs(x.r.lucro).toFixed(2)}</span></div>`;}).join('')}</div>
+  ${prej.length?`<div class="sec"><div class="sec-head"><div class="sec-title" style="color:var(--danger)">⚠️ Produtos com prejuízo (${Object.keys(prejPorProd).length})</div><div class="sec-line"></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+      ${Object.values(prejPorProd).map(({p,items})=>{
+        const piorLucro=Math.min(...items.map(x=>x.r.lucro));
+        return`<div style="background:#fff5f5;border:1px solid #fca5a5;border-radius:var(--r-lg);padding:14px">
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+            ${p.foto_url?`<img src="${p.foto_url}" style="width:40px;height:40px;border-radius:6px;object-fit:cover;flex-shrink:0"/>`:`<div style="width:40px;height:40px;border-radius:6px;background:#fca5a5;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">⚠️</div>`}
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#7f1d1d">${p.nome}</div>
+              <div style="font-size:11px;color:#b91c1c;margin-top:2px">SKU ${p.sku||'—'} · ${items.length} combinação${items.length>1?'ões':''} em prejuízo</div>
+            </div>
+          </div>
+          ${items.map(x=>{const po=PLATS.find(pl=>pl.id===x.pl);return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:#fee2e2;border-radius:6px;margin-bottom:4px;font-size:11px">
+            <div><span class="chip chip-${x.pl.includes('shopee')?'shopee':x.pl.includes('ml')?'ml':x.pl.includes('shein')?'shein':'tiktok'}" style="font-size:10px">${po?.label||x.pl}</span> K${x.k.qty}</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="color:var(--text3)">R$${x.r.preco.toFixed(2)}</span>
+              <span style="font-weight:700;color:#b91c1c">−R$${Math.abs(x.r.lucro).toFixed(2)}</span>
+            </div>
+          </div>`;}).join('')}
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid #fca5a5;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:11px;color:#b91c1c">Pior cenário</span>
+            <span style="font-size:14px;font-weight:700;font-family:var(--mono);color:#b91c1c">−R$${Math.abs(piorLucro).toFixed(2)}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
   </div>`:''}`;
 }
 
@@ -347,8 +427,9 @@ function renderProdutos(c){
       <div class="sec-title">Produtos cadastrados</div>
       <button class="btn btn-primary" onclick="openNewProd()">+ Novo produto</button>
     </div>
-    ${!(c.produtos||[]).length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📦</div><div style="font-size:13px;font-weight:500">Nenhum produto</div></div>`
-    :(c.produtos||[]).map(p=>{
+    ${renderFilterBar(c,'prod')}
+    ${!applyFilter(c.produtos.map(p=>({p,pl:'',k:{},r:null,cor:null}))).length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📦</div><div style="font-size:13px;font-weight:500">Nenhum produto encontrado</div></div>`
+    :applyFilter(c.produtos.map(p=>({p,pl:'',k:{},r:null,cor:null}))).map(({p})=>{
       const ar=allRes(c).filter(x=>x.p.id===p.id);
       const {r,cor:co}=bestR(p,c);
       return`<div class="prod-card" style="margin-bottom:8px">
@@ -367,7 +448,7 @@ function renderProdutos(c){
           </div>
         </div>
         <div class="prod-card-body ${ST.open['p_'+p.id]?'open':''}">
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
           <table class="data-table">
             <thead><tr><th>Plataforma</th><th>Kit</th><th>Peso</th><th>Preço</th><th>Custo</th>${ar.length&&ar[0].r.percDetail?ar[0].r.percDetail.map(d=>`<th>${d.n}</th>`).join(''):''}${ar.length&&ar[0].r.fixaDetail?ar[0].r.fixaDetail.map(d=>`<th>${d.n}</th>`).join(''):''}<th>Total Taxas</th><th>Lucro</th><th>R$/pç</th><th>Margem</th></tr></thead>
             <tbody>${(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0);const co2=cor(r2,k.qty,c);if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="20" style="color:var(--text3)">Sem dados</td></tr>`;const pCells=r2.percDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}<br><span style="font-size:9px;opacity:.7">${d.v.toFixed(1)}%</span></td>`).join('');const fCells=r2.fixaDetail.map(d=>`<td class="mono" style="color:var(--text3);font-size:10px">R$${d.val.toFixed(2)}</td>`).join('');return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td>${pCells}${fCells}<td class="mono" style="font-weight:700">R$${r2.tax.toFixed(2)}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('')}</tbody>
@@ -379,22 +460,26 @@ function renderProdutos(c){
 }
 
 function renderPlataformas(c){
-  const all=allRes(c);if(!all.length)return`<div class="empty">Sem dados</div>`;
-  const platsAtivas=[...new Set(all.map(x=>x.pl))];
-  return`<div class="sec"><div class="sec-head"><div class="sec-title">Comparativo de plataformas</div><div class="sec-line"></div></div>
-    <div class="plat-grid">${platsAtivas.map(pl=>{const po=PLATS.find(x=>x.id===pl);const its=all.filter(x=>x.pl===pl);const avgM=its.reduce((s,x)=>s+x.r.margem,0)/its.length;const avgL=its.reduce((s,x)=>s+x.r.lucro,0)/its.length;const vm=its.filter(x=>x.cor==='r').length,gn=its.filter(x=>x.cor==='g').length;return`<div class="plat-card"><div style="margin-bottom:10px"><span class="chip ${po?.cls}">${po?.label||pl}</span></div>${[['Produtos',[...new Set(its.map(x=>x.p.id))].length,null],['Margem média',avgM.toFixed(1)+'%',avgM>=10?'var(--success)':avgM>=5?'var(--warn)':'var(--danger)'],['Lucro médio','R$'+avgL.toFixed(2),null],['No verde',gn,'var(--success)'],['No vermelho',vm,vm>0?'var(--danger)':null]].map(([lb,val,col])=>`<div class="plat-stat"><span style="color:var(--text3)">${lb}</span><span style="font-weight:600;font-family:var(--mono)${col?`;color:${col}`:''}"> ${val}</span></div>`).join('')}</div>`;}).join('')}
+  const all=allRes(c);
+  // Mostrar TODAS as plataformas cadastradas nos produtos, mesmo sem dados calculados
+  const platsComDados=[...new Set(all.map(x=>x.pl))];
+  const todosPlats=[...new Set((c.produtos||[]).flatMap(p=>p.plataformas||[]))];
+  const filtAll=applyFilter(all);
+  return`${renderFilterBar(c,'plat')}
+  <div class="sec"><div class="sec-head"><div class="sec-title">Comparativo de plataformas</div><div class="sec-line"></div></div>
+    <div class="plat-grid">${todosPlats.map(pl=>{const po=PLATS.find(x=>x.id===pl);const its=filtAll.filter(x=>x.pl===pl);const avgM=its.length?its.reduce((s,x)=>s+x.r.margem,0)/its.length:0;const avgL=its.length?its.reduce((s,x)=>s+x.r.lucro,0)/its.length:0;const vm=its.filter(x=>x.cor==='r').length,gn=its.filter(x=>x.cor==='g').length;const nProds=[...new Set((c.produtos||[]).filter(p=>(p.plataformas||[]).includes(pl)).map(p=>p.id))].length;return`<div class="plat-card"><div style="margin-bottom:10px"><span class="chip ${po?.cls}">${po?.label||pl}</span></div>${[['Produtos cadastrados',nProds,null],['Com dados',its.length?[...new Set(its.map(x=>x.p.id))].length:0,null],['Margem média',its.length?avgM.toFixed(1)+'%':'—',its.length&&avgM>=10?'var(--success)':its.length&&avgM>=5?'var(--warn)':its.length?'var(--danger)':null],['Lucro médio',its.length?'R$'+avgL.toFixed(2):'—',null],['No verde',gn,gn>0?'var(--success)':null],['No vermelho',vm,vm>0?'var(--danger)':null]].map(([lb,val,col])=>`<div class="plat-stat"><span style="color:var(--text3)">${lb}</span><span style="font-weight:600;font-family:var(--mono)${col?`;color:${col}`:''}"> ${val}</span></div>`).join('')}</div>`;}).join('')}
     </div>
   </div>
-  <div class="sec"><div class="sec-head"><div class="sec-title">Ranking de lucro</div><div class="sec-line"></div></div>
-    <div class="bar-wrap">${all.sort((a,b)=>b.r.lucro-a.r.lucro).map(x=>{const po=PLATS.find(p=>p.id===x.pl);const pct=Math.max(0,Math.min(100,(x.r.lucro/30)*100));const col=x.r.lucro>=0?'#166534':'#b91c1c';const bg=x.r.lucro>=0?'#dcfce7':'#fee2e2';return`<div class="bar-row"><div class="bar-label">${x.p.sku} · ${po?.label||x.pl} · K${x.k.qty}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div><div class="bar-val"><span style="background:${bg};color:${col};border-radius:3px;padding:2px 5px;font-size:11px;font-family:var(--mono)">R$${x.r.lucro.toFixed(2)}</span></div></div>`;}).join('')}
+  ${filtAll.length?`<div class="sec"><div class="sec-head"><div class="sec-title">Ranking de lucro</div><div class="sec-line"></div></div>
+    <div class="bar-wrap">${filtAll.sort((a,b)=>b.r.lucro-a.r.lucro).map(x=>{const po=PLATS.find(p=>p.id===x.pl);const pct=Math.max(0,Math.min(100,(x.r.lucro/30)*100));const col=x.r.lucro>=0?'#166534':'#b91c1c';const bg=x.r.lucro>=0?'#dcfce7':'#fee2e2';return`<div class="bar-row"><div class="bar-label">${x.p.sku} · ${po?.label||x.pl} · K${x.k.qty}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${col}"></div></div><div class="bar-val"><span style="background:${bg};color:${col};border-radius:3px;padding:2px 5px;font-size:11px;font-family:var(--mono)">R$${x.r.lucro.toFixed(2)}</span></div></div>`;}).join('')}
     </div>
-  </div>`;
+  </div>`:''}`;
 }
 
 function renderAlertas(c){
-  const all=allRes(c);
-  const mk=(co,cls,title)=>{const its=all.filter(x=>x.cor===co).sort((a,b)=>a.r.lucro-b.r.lucro);if(!its.length)return'';return`<div class="sec"><div class="sec-head"><div class="sec-title">${title} (${its.length})</div><div class="sec-line"></div></div><div class="alert-list">${its.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<div class="alert-item ${cls}"><div style="flex:1"><div style="font-size:12px;font-weight:600">${x.p.nome} — K${x.k.qty} — ${po?.label||x.pl}</div><div style="font-size:11px;color:var(--text2)">Lucro R$${x.r.lucro.toFixed(2)} (R$${(x.r.lucro/x.k.qty).toFixed(2)}/pç) · Margem ${x.r.margem.toFixed(1)}% · Preço R$${x.r.preco.toFixed(2)} · Custo R$${x.r.custo.toFixed(2)}</div></div><span class="lv lv-${co}">${x.r.lucro<0?'−':''}R$${Math.abs(x.r.lucro).toFixed(2)}</span></div>`;}).join('')}</div></div>`;};
-  return mk('r','red','⛔ Vermelho — prejuízo')+mk('l','orange','🟠 Laranja — abaixo do ideal')+mk('a','yellow','🟡 Amarelo — atenção')||`<div class="empty"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="font-size:13px;font-weight:500">Tudo no verde!</div></div>`;
+  const filtAll=applyFilter(allRes(c));
+  const mk=(co,cls,title)=>{const its=filtAll.filter(x=>x.cor===co).sort((a,b)=>a.r.lucro-b.r.lucro);if(!its.length)return'';return`<div class="sec"><div class="sec-head"><div class="sec-title">${title} (${its.length})</div><div class="sec-line"></div></div><div class="alert-list">${its.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<div class="alert-item ${cls}"><div style="flex:1"><div style="font-size:12px;font-weight:600">${x.p.nome} — K${x.k.qty} — ${po?.label||x.pl}</div><div style="font-size:11px;color:var(--text2)">Lucro R$${x.r.lucro.toFixed(2)} (R$${(x.r.lucro/x.k.qty).toFixed(2)}/pç) · Margem ${x.r.margem.toFixed(1)}% · Preço R$${x.r.preco.toFixed(2)} · Custo R$${x.r.custo.toFixed(2)}</div></div><span class="lv lv-${co}">${x.r.lucro<0?'−':''}R$${Math.abs(x.r.lucro).toFixed(2)}</span></div>`;}).join('')}</div></div>`;};
+  return`${renderFilterBar(c,'alerta')}${mk('r','red','⛔ Vermelho — prejuízo')+mk('l','orange','🟠 Laranja — abaixo do ideal')+mk('a','yellow','🟡 Amarelo — atenção')||`<div class="empty"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="font-size:13px;font-weight:500">Tudo no verde!</div></div>`}`;
 }
 
 function renderTaxas(c){
@@ -557,19 +642,41 @@ function renderModal(){
 }
 function renderKitBlock(k,i,plats){
   const hasML=plats.some(pl=>pl==='ml_classico'||pl==='ml_premium');
+  const c=gc();
+  // Calcular lucro preview para cada plataforma
+  const lucroRows=plats.map(pl=>{
+    const preco=k.precos?.[pl];const custo=k.custos?.[pl];
+    if(!preco||!custo) return null;
+    const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0);
+    if(!r) return null;
+    const po=PLATS.find(x=>x.id===pl);
+    const co=cor(r,k.qty||1,c);
+    return{pl,label:po?.label||pl,r,co};
+  }).filter(Boolean);
   return`<div class="kit-block"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
     <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;flex-wrap:wrap">
-      Kit <input type="number" class="form-input" style="width:65px" value="${k.qty||''}" min="1" placeholder="qtd" onchange="ST.modal.p.kits[${i}].qty=parseInt(this.value)||null"/> peças
-      ${hasML?`<span style="font-size:11px;color:var(--text3)">Peso ML:</span><input type="number" class="form-input" style="width:70px" value="${k.peso_kg||''}" min="0" step="0.1" placeholder="0.0" onchange="ST.modal.p.kits[${i}].peso_kg=parseFloat(this.value)||0"/> kg`:''}
+      Kit <input type="number" class="form-input" style="width:65px" value="${k.qty||''}" min="1" placeholder="qtd" onchange="ST.modal.p.kits[${i}].qty=parseInt(this.value)||null;render()"/> peças
+      ${hasML?`<span style="font-size:11px;color:var(--text3)">Peso ML:</span><input type="number" class="form-input" style="width:70px" value="${k.peso_kg||''}" min="0" step="0.1" placeholder="0.0" onchange="ST.modal.p.kits[${i}].peso_kg=parseFloat(this.value)||0;render()"/> kg`:''}
     </div>
     <button class="btn-icon danger" onclick="rmKit(${i})">🗑️</button>
   </div>
   ${plats.length===0?`<div style="font-size:11px;color:var(--text3);text-align:center">Selecione plataformas primeiro</div>`:`
     <div style="display:grid;grid-template-columns:70px repeat(${plats.length},1fr);gap:5px;align-items:center;font-size:11px">
       <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`;}).join('')}
-      <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.precos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].precos['${pl}']=parseFloat(this.value)||null"/>`).join('')}
-      <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.custos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].custos['${pl}']=parseFloat(this.value)||null"/>`).join('')}
-    </div>`}
+      <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.precos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].precos['${pl}']=parseFloat(this.value)||null;updateKitPreview()" oninput="ST.modal.p.kits[${i}].precos['${pl}']=parseFloat(this.value)||null;updateKitPreview()"/>`).join('')}
+      <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.custos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].custos['${pl}']=parseFloat(this.value)||null;updateKitPreview()" oninput="ST.modal.p.kits[${i}].custos['${pl}']=parseFloat(this.value)||null;updateKitPreview()"/>`).join('')}
+    </div>
+    ${lucroRows.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Lucro calculado</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${lucroRows.map(({label,r,co})=>`
+        <div class="lucro-preview ${r.lucro>0?'pos':r.lucro<0?'neg':'neu'}" style="flex:1;min-width:100px">
+          <div style="font-size:10px;opacity:.8;margin-bottom:3px">${label}</div>
+          <div style="font-weight:700;font-family:var(--mono)">R$ ${r.lucro.toFixed(2)}</div>
+          <div style="font-size:10px;opacity:.8">${r.margem.toFixed(1)}% · R$${(r.lucro/(k.qty||1)).toFixed(2)}/pç</div>
+        </div>`).join('')}
+      </div>
+    </div>`:''}
+  `}
   </div>`;
 }
 
@@ -634,7 +741,13 @@ async function handleFoto(input){
   const{data:{publicUrl}}=sb.storage.from('product-images').getPublicUrl(path);
   ST.modal.p.foto_url=publicUrl;render();
 }
-function onCalcProd(id){
+function updateKitPreview(){
+  // Re-render só os kits sem re-renderizar o modal inteiro
+  const kitsEl=document.getElementById('kits-c');
+  if(!kitsEl||!ST.modal?.p) return;
+  const p=ST.modal.p;
+  kitsEl.innerHTML=p.kits.length===0?`<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">Nenhum kit adicionado</div>`:p.kits.map((k,i)=>renderKitBlock(k,i,p.plataformas||[])).join('');
+}
   ST.calc.prodId=id;ST.calc.kit=null;ST.calc.preco='';ST.calc.custo='';ST.calc.peso='';
   const cli=gc();const p=cli.produtos.find(x=>String(x.id)===id);
   if(p&&p.kits.length===1){ST.calc.kit=p.kits[0].qty;onCalcKit(p.kits[0].qty);return;}
