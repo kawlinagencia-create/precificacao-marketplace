@@ -764,41 +764,20 @@ function renderModal(){
 }
 function renderKitBlock(k,i,plats){
   const hasML=plats.some(pl=>pl==='ml_classico'||pl==='ml_premium');
-  const c=gc();
-  // Calcular lucro preview para cada plataforma
-  const lucroRows=plats.map(pl=>{
-    const preco=k.precos?.[pl];const custo=k.custos?.[pl];
-    if(!preco||!custo) return null;
-    const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0,k.qty);
-    if(!r) return null;
-    const po=PLATS.find(x=>x.id===pl);
-    const co=cor(r,k.qty||1,c);
-    return{pl,label:po?.label||pl,r,co};
-  }).filter(Boolean);
   return`<div class="kit-block"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
     <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;flex-wrap:wrap">
-      Kit <input type="number" class="form-input" style="width:65px" value="${k.qty||''}" min="1" placeholder="qtd" onchange="ST.modal.p.kits[${i}].qty=parseInt(this.value)||null;render()"/> peças
-      ${hasML?`<span style="font-size:11px;color:var(--text3)">Peso ML:</span><input type="number" class="form-input" style="width:70px" value="${k.peso_kg||''}" min="0" step="0.1" placeholder="0.0" onchange="ST.modal.p.kits[${i}].peso_kg=parseFloat(this.value)||0;render()"/> kg`:''}
+      Kit <input type="number" class="form-input" style="width:65px" value="${k.qty||''}" min="1" placeholder="qtd" onchange="ST.modal.p.kits[${i}].qty=parseInt(this.value)||null"/> peças
+      ${hasML?`<span style="font-size:11px;color:var(--text3)">Peso ML:</span><input type="number" class="form-input" style="width:70px" value="${k.peso_kg||''}" min="0" step="0.1" placeholder="0.0" onchange="ST.modal.p.kits[${i}].peso_kg=parseFloat(this.value)||0"/> kg`:''}
     </div>
     <button class="btn-icon danger" onclick="rmKit(${i})">🗑️</button>
   </div>
   ${plats.length===0?`<div style="font-size:11px;color:var(--text3);text-align:center">Selecione plataformas primeiro</div>`:`
     <div style="display:grid;grid-template-columns:70px repeat(${plats.length},1fr);gap:5px;align-items:center;font-size:11px">
       <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`;}).join('')}
-      <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.precos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].precos['${pl}']=parseFloat(this.value)||null;updateKitPreview()" oninput="ST.modal.p.kits[${i}].precos['${pl}']=parseFloat(this.value)||null;updateKitPreview()"/>`).join('')}
-      <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" value="${k.custos?.[pl]||''}" onchange="ST.modal.p.kits[${i}].custos['${pl}']=parseFloat(this.value)||null;updateKitPreview()" oninput="ST.modal.p.kits[${i}].custos['${pl}']=parseFloat(this.value)||null;updateKitPreview()"/>`).join('')}
+      <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" data-kit="${i}" data-plat="${pl}" data-tipo="precos" value="${k.precos?.[pl]||''}" oninput="onKitInput(${i},'precos','${pl}',this.value)"/>`).join('')}
+      <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" data-kit="${i}" data-plat="${pl}" data-tipo="custos" value="${k.custos?.[pl]||''}" oninput="onKitInput(${i},'custos','${pl}',this.value)"/>`).join('')}
     </div>
-    ${lucroRows.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
-      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Lucro calculado</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">${lucroRows.map(({label,r,co})=>`
-        <div class="lucro-preview ${r.lucro>0?'pos':r.lucro<0?'neg':'neu'}" style="flex:1;min-width:100px">
-          <div style="font-size:10px;opacity:.8;margin-bottom:3px">${label}</div>
-          <div style="font-weight:700;font-family:var(--mono)">R$ ${r.lucro.toFixed(2)}</div>
-          <div style="font-size:10px;opacity:.8">${r.margem.toFixed(1)}% · R$${(r.lucro/(k.qty||1)).toFixed(2)}/pç</div>
-        </div>`).join('')}
-      </div>
-    </div>`:''}
-  `}
+    <div id="kit-preview-${i}"></div>`}
   </div>`;
 }
 
@@ -839,6 +818,17 @@ async function saveProduto(){
   if(!p.nome){toast('Informe o nome do produto','error');return;}
   if(!p.links)p.links={};
   PLATS.forEach(pl=>{const el=document.getElementById('link-'+pl.id);if(el)p.links[pl.id]=el.value.trim()||null;});
+  // Ler preços e custos diretamente dos inputs do DOM para não perder nenhuma edição
+  const kitsEl=document.getElementById('kits-c');
+  if(kitsEl){
+    kitsEl.querySelectorAll('input[type="number"]').forEach(el=>{
+      const ki=el.dataset?.kit;const pl=el.dataset?.plat;const tp=el.dataset?.tipo;
+      if(ki===undefined||!pl||!tp) return;
+      const i=parseInt(ki);if(!p.kits[i]) return;
+      if(!p.kits[i][tp]) p.kits[i][tp]={};
+      p.kits[i][tp][pl]=parseFloat(el.value)||null;
+    });
+  }
   const btn=document.getElementById('save-btn');if(btn){btn.disabled=true;btn.textContent='Salvando...';}
   const cli=ST.clients.find(c=>String(c.id)===String(m.clientId));
   await saveProduct(p,cli.id);
@@ -863,12 +853,46 @@ async function handleFoto(input){
   const{data:{publicUrl}}=sb.storage.from('product-images').getPublicUrl(path);
   ST.modal.p.foto_url=publicUrl;render();
 }
+function onKitInput(kitIdx, field, plat, val){
+  if(!ST.modal?.p) return;
+  const k=ST.modal.p.kits[kitIdx];if(!k) return;
+  if(!k[field]) k[field]={};
+  k[field][plat]=parseFloat(val)||null;
+  // Atualizar só o preview de lucro sem re-renderizar o modal
+  updateKitPreviewInline(kitIdx);
+}
+
+function updateKitPreviewInline(kitIdx){
+  const c=gc();if(!c||!ST.modal?.p) return;
+  const k=ST.modal.p.kits[kitIdx];if(!k) return;
+  const plats=ST.modal.p.plataformas||[];
+  const previewEl=document.getElementById('kit-preview-'+kitIdx);
+  if(!previewEl) return;
+  const rows=plats.map(pl=>{
+    const preco=k.precos?.[pl];const custo=k.custos?.[pl];
+    if(!preco||!custo) return null;
+    const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0,k.qty||1);
+    if(!r) return null;
+    const po=PLATS.find(x=>x.id===pl);
+    const co=cor(r,k.qty||1,c);
+    const color=co==='g'?'var(--success)':co==='a'?'var(--warn)':co==='l'?'var(--orange)':'var(--danger)';
+    const bg=co==='g'?'var(--success-bg)':co==='a'?'var(--warn-bg)':co==='l'?'var(--orange-bg)':'var(--danger-bg)';
+    return`<div class="lucro-preview" style="background:${bg};border-color:${color};flex:1;min-width:100px">
+      <div style="font-size:10px;opacity:.8;margin-bottom:3px">${po?.label||pl}</div>
+      <div style="font-weight:700;font-family:var(--mono);color:${color}">R$ ${r.lucro.toFixed(2)}</div>
+      <div style="font-size:10px;opacity:.8;color:${color}">${r.margem.toFixed(1)}% · R$${(r.lucro/(k.qty||1)).toFixed(2)}/pç</div>
+    </div>`;
+  }).filter(Boolean);
+  previewEl.innerHTML=rows.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Lucro calculado</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${rows.join('')}</div>
+  </div>`:'';
+}
+
 function updateKitPreview(){
-  // Re-render só os kits sem re-renderizar o modal inteiro
-  const kitsEl=document.getElementById('kits-c');
-  if(!kitsEl||!ST.modal?.p) return;
-  const p=ST.modal.p;
-  kitsEl.innerHTML=p.kits.length===0?`<div style="text-align:center;padding:16px;color:var(--text3);font-size:12px">Nenhum kit adicionado</div>`:p.kits.map((k,i)=>renderKitBlock(k,i,p.plataformas||[])).join('');
+  // Mantido para compatibilidade — atualiza todos os previews
+  if(!ST.modal?.p) return;
+  ST.modal.p.kits.forEach((_,i)=>updateKitPreviewInline(i));
 }
 function onCalcProd(id){
   ST.calc.prodId=id;ST.calc.kit=null;ST.calc.preco='';ST.calc.custo='';ST.calc.peso='';
