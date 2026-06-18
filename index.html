@@ -224,10 +224,20 @@ async function loadAll(){
 }
 async function saveProduct(p,clientId){
   const pay={client_id:clientId,sku:p.sku,nome:p.nome,fabricacao:p.fabricacao||false,plataformas:p.plataformas,kits:p.kits,foto_url:p.foto_url||null,links:p.links||{}};
-  if(p.id&&!String(p.id).startsWith('new')){await sb.from('prec_products').update(pay).eq('id',p.id);}
-  else{const{data}=await sb.from('prec_products').insert(pay).select().single();if(data)p.id=data.id;}
+  if(p.id&&!String(p.id).startsWith('new')){
+    const{error}=await sb.from('prec_products').update(pay).eq('id',p.id);
+    if(error){console.error('Erro ao salvar produto:',error);throw new Error(error.message||'Falha ao salvar produto no banco');}
+  }
+  else{
+    const{data,error}=await sb.from('prec_products').insert(pay).select().single();
+    if(error){console.error('Erro ao criar produto:',error);throw new Error(error.message||'Falha ao criar produto no banco');}
+    if(data)p.id=data.id;
+  }
 }
-async function deleteProduct(pid){await sb.from('prec_products').delete().eq('id',pid);}
+async function deleteProduct(pid){
+  const{error}=await sb.from('prec_products').delete().eq('id',pid);
+  if(error){console.error('Erro ao excluir produto:',error);throw new Error(error.message||'Falha ao excluir produto');}
+}
 
 function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   if(!preco||preco<=0||!custo||custo<=0)return null;
@@ -831,19 +841,26 @@ async function saveProduto(){
   }
   const btn=document.getElementById('save-btn');if(btn){btn.disabled=true;btn.textContent='Salvando...';}
   const cli=ST.clients.find(c=>String(c.id)===String(m.clientId));
-  await saveProduct(p,cli.id);
+  try{
+    await saveProduct(p,cli.id);
+  }catch(err){
+    // NUNCA fechar o modal ou mostrar sucesso se o salvamento falhou
+    if(btn){btn.disabled=false;btn.textContent=m.edit?'Salvar':'Cadastrar';}
+    toast('⚠️ ERRO ao salvar: '+(err.message||'falha desconhecida')+'. Tente novamente!','error');
+    return;
+  }
   if(m.edit){const idx=cli.produtos.findIndex(x=>String(x.id)===String(p.id));if(idx>=0)cli.produtos[idx]=p;else cli.produtos.push(p);}
   else cli.produtos.push(p);
-  ST.modal=null;toast(m.edit?'Produto atualizado!':'Produto cadastrado!');render();
+  ST.modal=null;toast(m.edit?'✅ Produto atualizado e salvo no banco!':'✅ Produto cadastrado e salvo no banco!');render();
 }
 function updTaxa(pl,tipo,i,v){gc().taxas[pl][tipo][i].v=parseFloat(v)||0;}
 function updTaxaNome(pl,tipo,i,v){gc().taxas[pl][tipo][i].n=v;}
 function rmTaxa(pl,tipo,i){gc().taxas[pl][tipo].splice(i,1);renderTab();}
 function addTaxa(pl,tipo){const id=tipo==='perc'?`an-${pl}`:`af-${pl}`;const el=document.getElementById(id);const name=el?.value?.trim();if(!name)return;gc().taxas[pl][tipo].push({n:name,v:0});el.value='';renderTab();}
-async function saveTaxas(){const c=gc();await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);toast('Taxas salvas!');}
+async function saveTaxas(){const c=gc();const{error}=await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);if(error){console.error('Erro ao salvar taxas:',error);toast('⚠️ ERRO ao salvar taxas: '+error.message,'error');return;}toast('✅ Taxas salvas no banco!');}
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
-async function saveConfig(){const c=gc();await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_t1:c.regra_t1,regra_t2:c.regra_t2,regra_t3:c.regra_t3}).eq('id',c.id);toast('Configurações salvas!');}
+async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_t1:c.regra_t1,regra_t2:c.regra_t2,regra_t3:c.regra_t3}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
 function closeModal(e){if(e&&e.target!==e.currentTarget)return;ST.modal=null;render();}
 async function handleFoto(input){
   const file=input.files[0];if(!file)return;
