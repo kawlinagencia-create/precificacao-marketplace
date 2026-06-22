@@ -755,13 +755,13 @@ function renderModal(){
           ${p.foto_url?`<button onclick="ST.modal.p.foto_url=null;render()" style="width:90px;margin-top:4px;font-size:10px;padding:3px;border:1px solid var(--border);border-radius:5px;background:transparent;cursor:pointer;color:var(--text3)">Remover</button>`:''}
         </div>
         <div style="flex:1">
-          <div class="form-row"><div class="form-group"><div class="form-label">SKU</div><input class="form-input" id="p-sku" value="${p.sku||''}" placeholder="001"/></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="p-nome" value="${p.nome||''}" placeholder="ex: Calçola Comfort"/></div></div>
+          <div class="form-row"><div class="form-group"><div class="form-label">SKU</div><input class="form-input" id="p-sku" value="${p.sku||''}" placeholder="001" oninput="ST.modal.p.sku=this.value"/></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="p-nome" value="${p.nome||''}" placeholder="ex: Calçola Comfort" oninput="ST.modal.p.nome=this.value"/></div></div>
           <div class="form-group"><div class="form-label">Tipo</div><div class="tgl-group"><button class="tgl-btn ${!p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=false;render()">🛒 Revenda</button><button class="tgl-btn ${p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=true;render()">🔨 Fabricação</button></div></div>
         </div>
       </div>
       <div class="form-group"><div class="form-label">Plataformas</div><div class="plat-checks">${PLATS.map(pl=>`<div class="plat-cb ${(p.plataformas||[]).includes(pl.id)?'on':''}" onclick="togPlat('${pl.id}')">✓ ${pl.label}</div>`).join('')}</div></div>
       <div class="form-group"><div class="form-label">Links dos anúncios</div>
-        <div style="display:flex;flex-direction:column;gap:6px">${PLATS.map(pl=>`<div style="display:flex;align-items:center;gap:8px"><span class="chip ${pl.cls}" style="width:90px;justify-content:center">${pl.label}</span><input class="form-input" id="link-${pl.id}" style="flex:1" placeholder="URL na ${pl.label}" value="${(p.links&&p.links[pl.id])||''}"/></div>`).join('')}</div>
+        <div style="display:flex;flex-direction:column;gap:6px">${PLATS.map(pl=>`<div style="display:flex;align-items:center;gap:8px"><span class="chip ${pl.cls}" style="width:90px;justify-content:center">${pl.label}</span><input class="form-input" id="link-${pl.id}" style="flex:1" placeholder="URL na ${pl.label}" value="${(p.links&&p.links[pl.id])||''}" oninput="if(!ST.modal.p.links)ST.modal.p.links={};ST.modal.p.links['${pl.id}']=this.value"/></div>`).join('')}</div>
       </div>
       <div class="divider"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-size:13px;font-weight:600">Kits e preços</div><button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="addKit()">+ Kit</button></div>
@@ -784,8 +784,8 @@ function renderKitBlock(k,i,plats){
   ${plats.length===0?`<div style="font-size:11px;color:var(--text3);text-align:center">Selecione plataformas primeiro</div>`:`
     <div style="display:grid;grid-template-columns:70px repeat(${plats.length},1fr);gap:5px;align-items:center;font-size:11px">
       <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`;}).join('')}
-      <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" data-kit="${i}" data-plat="${pl}" data-tipo="precos" value="${k.precos?.[pl]||''}" oninput="onKitInput(${i},'precos','${pl}',this.value)"/>`).join('')}
-      <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" data-kit="${i}" data-plat="${pl}" data-tipo="custos" value="${k.custos?.[pl]||''}" oninput="onKitInput(${i},'custos','${pl}',this.value)"/>`).join('')}
+      <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="precos" value="${k.precos?.[pl]||''}" oninput="onKitInput(${i},'precos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
+      <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="custos" value="${k.custos?.[pl]||''}" oninput="onKitInput(${i},'custos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
     </div>
     <div id="kit-preview-${i}"></div>`}
   </div>`;
@@ -861,7 +861,13 @@ async function saveTaxas(){const c=gc();const{error}=await sb.from('prec_clients
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
 async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_t1:c.regra_t1,regra_t2:c.regra_t2,regra_t3:c.regra_t3}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
-function closeModal(e){if(e&&e.target!==e.currentTarget)return;ST.modal=null;render();}
+function closeModal(e){
+  if(e&&e.target!==e.currentTarget)return;
+  if(ST.modal&&ST.modal.type==='prod'){
+    if(!confirm('Você tem alterações não salvas. Deseja realmente fechar sem salvar?'))return;
+  }
+  ST.modal=null;render();
+}
 async function handleFoto(input){
   const file=input.files[0];if(!file)return;
   const ext=file.name.split('.').pop();const path=`produtos/${Date.now()}.${ext}`;
@@ -869,6 +875,10 @@ async function handleFoto(input){
   if(error){toast('Erro ao enviar foto','error');return;}
   const{data:{publicUrl}}=sb.storage.from('product-images').getPublicUrl(path);
   ST.modal.p.foto_url=publicUrl;render();
+}
+function formatMoneyInput(el){
+  const v=parseFloat(el.value);
+  if(!isNaN(v)&&v>=0) el.value=v.toFixed(2);
 }
 function onKitInput(kitIdx, field, plat, val){
   if(!ST.modal?.p) return;
