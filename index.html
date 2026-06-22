@@ -239,15 +239,23 @@ async function deleteProduct(pid){
   if(error){console.error('Erro ao excluir produto:',error);throw new Error(error.message||'Falha ao excluir produto');}
 }
 
+function isTaxaFixaShopee(nome){
+  const n=(nome||'').toLowerCase().trim();
+  return n==='taxa fixa'||n==='taxa fixa shopee'||n==='taxa fixa (auto)';
+}
+function isComissaoShopee(nome){
+  const n=(nome||'').toLowerCase().trim();
+  return n==='comissão'||n==='comissao'||n==='taxa shopee'||n==='comissão shopee';
+}
 function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   if(!preco||preco<=0||!custo||custo<=0)return null;
   const t=taxas[platId];if(!t)return null;
   let totalPerc=0;const percDetail=[];
-  for(const r of t.perc){let v=r.v;if(platId==='shopee'&&r.n==='Comissão')v=shopeeComissao(preco)*100;totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100});}
+  for(const r of t.perc){let v=r.v;if(platId==='shopee'&&isComissaoShopee(r.n))v=shopeeComissao(preco)*100;totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100});}
   let totalFixa=0;const fixaDetail=[];
   for(const r of t.fixas){
     let v=r.v;
-    if(platId==='shopee'&&r.n==='Taxa Fixa') v=shopeeTaxaFixa(preco);
+    if(platId==='shopee'&&isTaxaFixaShopee(r.n)) v=shopeeTaxaFixa(preco);
     // Embalagem: usar só a correspondente ao kit
     const nL=r.n.toLowerCase();
     if(nL.includes('embal')||nL.includes('embalagem')){
@@ -706,7 +714,7 @@ function updateCalc(){
       let p=custo*2;
       for(let i=0;i<80;i++){
         const tp=platSel==='shopee'?shopeeComissao(p):t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
-        const tfE=platSel==='shopee'?t.fixas.filter(r=>r.n!=='Taxa Fixa').reduce((s,r)=>s+(r.v||0),0):0;
+        const tfE=platSel==='shopee'?t.fixas.filter(r=>!isTaxaFixaShopee(r.n)).reduce((s,r)=>s+(r.v||0),0):0;
         const tf=platSel==='shopee'?shopeeTaxaFixa(p)+tfE:t.fixas.reduce((s,r)=>s+(r.v||0),0);
         const fr=(platSel==='ml_classico'||platSel==='ml_premium')&&peso>0?calcFreteML(peso,p):0;
         const d=1-tp-ma;if(d<=0)break;
@@ -726,8 +734,8 @@ function updateCalc(){
   if(!r){resEl.innerHTML='<div style="color:var(--text3);padding:20px;text-align:center">Dados insuficientes</div>';return;}
   const cBg=r.lucro>=0?'var(--accent-bg)':'var(--danger-bg)';const cFg=r.lucro>=0?'var(--accent-text)':'var(--danger)';
   resEl.innerHTML=
-    r.percDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&d.n==='Comissão'?`<span class="shopee-badge">${preco<=79.99?'20% ≤R$79':'14% ≥R$80'}</span>`:''}</span><div style="display:flex;gap:8px;align-items:center"><span style="color:var(--text3);font-size:10px">${d.v.toFixed(2)}%</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div></div>`).join('')+
-    r.fixaDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&d.n==='Taxa Fixa'?`<span class="shopee-badge">R$${shopeeTaxaFixa(preco)} auto</span>`:''}</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div>`).join('')+
+    r.percDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&isComissaoShopee(d.n)?`<span class="shopee-badge">${preco<=79.99?'20% ≤R$79':'14% ≥R$80'}</span>`:''}</span><div style="display:flex;gap:8px;align-items:center"><span style="color:var(--text3);font-size:10px">${d.v.toFixed(2)}%</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div></div>`).join('')+
+    r.fixaDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&isTaxaFixaShopee(d.n)?`<span class="shopee-badge">R$${shopeeTaxaFixa(preco)} auto</span>`:''}</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div>`).join('')+
     `<div style="height:1px;background:var(--border);margin:8px 0"></div>
     <div class="calc-row total"><span>Total de Taxas</span><span class="calc-val" style="color:var(--danger)">R$ ${r.tax.toFixed(2)}</span></div>
     <div style="height:1px;background:var(--border);margin:8px 0"></div>
