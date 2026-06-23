@@ -297,14 +297,21 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   for(const r of t.fixas){
     let v=r.v;
     if(platId==='shopee'&&isTaxaFixaShopee(r.n)) v=shopeeTaxaFixa(preco);
-    // Embalagem: usar só a correspondente ao kit
+    // Embalagem ou Frete por kit: usar só a taxa correspondente ao kit atual
     const nL=r.n.toLowerCase();
-    if(nL.includes('embal')||nL.includes('embalagem')){
-      if(kitQty){
-        // só inclui se o nome bate com o kit atual
-        if(kitQty<=3&&!nL.includes('k3'))continue;
-        if(kitQty>3&&kitQty<=5&&!nL.includes('k5'))continue;
-        if(kitQty>5&&!nL.includes('k10'))continue;
+    const isKitSpecific=nL.includes('embal')||nL.includes('frete');
+    if(isKitSpecific&&kitQty){
+      // Detecta menções a kits, incluindo formatos compartilhados como "k3/5"
+      const mencionaK3=/\bk3\b/.test(nL)||/k3\/5/.test(nL)||/\b3\/5\b/.test(nL);
+      const mencionaK5=/\bk5\b/.test(nL)||/k3\/5/.test(nL)||/\b3\/5\b/.test(nL);
+      const mencionaK10=/\bk10\b/.test(nL);
+      // Se não menciona nenhum kit específico, aplica sempre (ex: "Frete" genérico sem kit no nome)
+      if(mencionaK3||mencionaK5||mencionaK10){
+        const kitAlvo=kitQty<=3?'k3':kitQty<=5?'k5':'k10';
+        const bateK3=kitAlvo==='k3'&&mencionaK3;
+        const bateK5=kitAlvo==='k5'&&mencionaK5;
+        const bateK10=kitAlvo==='k10'&&mencionaK10;
+        if(!bateK3&&!bateK5&&!bateK10)continue;
       }
     }
     totalFixa+=v;fixaDetail.push({n:r.n,v,val:v});
