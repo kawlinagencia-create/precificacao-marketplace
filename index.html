@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{--bg:#f7f7f5;--surface:#fff;--surface2:#f0f0ec;--border:#e5e5e0;--border2:#d0d0c8;--text:#1a1a18;--text2:#6b6b65;--text3:#9b9b94;--accent:#2d6a4f;--accent-bg:#e8f5ee;--accent-text:#1b4332;--danger:#c1121f;--danger-bg:#fee2e2;--warn:#d97706;--warn-bg:#fef3c7;--orange:#c05621;--orange-bg:#fff0e6;--success:#166534;--success-bg:#dcfce7;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;--r:8px;--r-lg:12px}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -222,16 +223,56 @@ async function loadAll(){
   if(!ST.activeId&&ST.clients.length)ST.activeId=ST.clients[0].id;
   ST.loading=false;render();
 }
-async function saveProduct(p,clientId){
+async function saveProduct(p,clientId,produtoAntigo){
   const pay={client_id:clientId,sku:p.sku,nome:p.nome,fabricacao:p.fabricacao||false,plataformas:p.plataformas,kits:p.kits,foto_url:p.foto_url||null,links:p.links||{}};
   if(p.id&&!String(p.id).startsWith('new')){
     const{error}=await sb.from('prec_products').update(pay).eq('id',p.id);
     if(error){console.error('Erro ao salvar produto:',error);throw new Error(error.message||'Falha ao salvar produto no banco');}
+    // Registrar histórico de alterações de preço/custo
+    if(produtoAntigo) await registrarHistorico(produtoAntigo,p,clientId);
   }
   else{
     const{data,error}=await sb.from('prec_products').insert(pay).select().single();
     if(error){console.error('Erro ao criar produto:',error);throw new Error(error.message||'Falha ao criar produto no banco');}
     if(data)p.id=data.id;
+  }
+}
+async function registrarHistorico(antigo,novo,clientId){
+  const cli=ST.clients.find(c=>String(c.id)===String(clientId));
+  if(!cli) return;
+  const registros=[];
+  const kitsAntigos=antigo.kits||[];
+  const kitsNovos=novo.kits||[];
+  for(const kNovo of kitsNovos){
+    const kAntigo=kitsAntigos.find(k=>k.qty===kNovo.qty);
+    if(!kAntigo) continue; // kit novo, sem histórico anterior
+    const plats=new Set([...(antigo.plataformas||[]),...(novo.plataformas||[])]);
+    for(const pl of plats){
+      const precoAntigo=kAntigo.precos?.[pl];
+      const precoNovo=kNovo.precos?.[pl];
+      const custoAntigo=kAntigo.custos?.[pl];
+      const custoNovo=kNovo.custos?.[pl];
+      const mudouPreco=precoAntigo!==precoNovo&&(precoAntigo||precoNovo);
+      const mudouCusto=custoAntigo!==custoNovo&&(custoAntigo||custoNovo);
+      if(!mudouPreco&&!mudouCusto) continue;
+      const rAntigo=calcR(precoAntigo,custoAntigo,pl,cli.taxas,kAntigo.peso_kg||0,kAntigo.qty);
+      const rNovo=calcR(precoNovo,custoNovo,pl,cli.taxas,kNovo.peso_kg||0,kNovo.qty);
+      registros.push({
+        client_id:clientId,product_id:novo.id,sku:novo.sku,nome_produto:novo.nome,
+        plataforma:pl,kit_qty:kNovo.qty,
+        campo:mudouPreco&&mudouCusto?'preco_custo':mudouPreco?'preco':'custo',
+        valor_antigo:mudouPreco?precoAntigo:custoAntigo,
+        valor_novo:mudouPreco?precoNovo:custoNovo,
+        lucro_antigo:rAntigo?rAntigo.lucro:null,
+        lucro_novo:rNovo?rNovo.lucro:null,
+        margem_antiga:rAntigo?rAntigo.margem:null,
+        margem_nova:rNovo?rNovo.margem:null,
+      });
+    }
+  }
+  if(registros.length){
+    const{error}=await sb.from('prec_historico').insert(registros);
+    if(error)console.error('Erro ao salvar histórico:',error);
   }
 }
 async function deleteProduct(pid){
@@ -501,6 +542,7 @@ function renderProdutos(c){
             </div>
           </div>
           <div style="display:flex;gap:4px;flex-shrink:0">
+            <button class="btn-icon" title="Histórico de alterações" onclick="event.stopPropagation();openHistorico('${p.id}','${c.id}')">🕒</button>
             <button class="btn-icon" onclick="event.stopPropagation();openEditProd('${p.id}','${c.id}')">✏️</button>
             <button class="btn-icon danger" onclick="event.stopPropagation();confirmDelProd('${p.id}')">🗑️</button>
             <span style="color:var(--text3);font-size:12px;margin-left:4px">${ST.open['p_'+p.id]?'▲':'▼'}</span>
@@ -752,6 +794,40 @@ function updateCalc(){
 function renderModal(){
   const m=ST.modal;
   if(m.type==='nc')return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><div class="modal-title">Novo cliente</div><button class="btn-icon" onclick="closeModal()">✕</button></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="nc-n" placeholder="ex: Maria Moda"/></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveNewClient()">Criar</button></div></div></div>`;
+  if(m.type==='historico'){
+    const regs=m.registros||[];
+    return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" style="width:780px" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div><div class="modal-title">🕒 Histórico de alterações</div><div style="font-size:12px;color:var(--text3);margin-top:2px">${m.nome} — SKU ${m.sku||'—'}</div></div>
+        <button class="btn-icon" onclick="closeModal()">✕</button>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="btn btn-outline" onclick="exportHistoricoExcel()" ${!regs.length?'disabled':''}>📊 Exportar Excel</button>
+      </div>
+      ${m.loading?`<div class="loading"><div class="spinner"></div> Carregando histórico...</div>`:
+        !regs.length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">🕒</div><div style="font-size:13px;font-weight:500">Nenhuma alteração registrada ainda</div><div style="font-size:11px;color:var(--text3);margin-top:4px">O histórico começa a partir de agora — alterações futuras de preço/custo aparecerão aqui</div></div>`
+        :`<div class="table-scroll" style="max-height:60vh;overflow-y:auto">
+        <table class="data-table">
+          <thead><tr><th>Data</th><th>Plataforma</th><th>Kit</th><th>Campo</th><th>Antes</th><th>Depois</th><th>Lucro Antes</th><th>Lucro Depois</th></tr></thead>
+          <tbody>${regs.map(r=>{
+            const po=PLATS.find(x=>x.id===r.plataforma);
+            const dt=new Date(r.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+            const campoLabel=r.campo==='preco'?'Preço':r.campo==='custo'?'Custo':'Preço+Custo';
+            const lucroSubiu=r.lucro_novo>r.lucro_antigo;
+            return`<tr>
+              <td class="mono" style="font-size:11px;color:var(--text3)">${dt}</td>
+              <td><span class="chip ${po?.cls}">${po?.label||r.plataforma}</span></td>
+              <td class="mono">K${r.kit_qty}</td>
+              <td style="font-size:11px">${campoLabel}</td>
+              <td class="mono" style="color:var(--text3)">R$${(r.valor_antigo||0).toFixed(2)}</td>
+              <td class="mono" style="font-weight:600">R$${(r.valor_novo||0).toFixed(2)}</td>
+              <td class="mono" style="color:var(--text3)">${r.lucro_antigo!=null?'R$'+r.lucro_antigo.toFixed(2):'—'}</td>
+              <td class="mono" style="font-weight:600;color:${lucroSubiu?'var(--success)':'var(--danger)'}">${r.lucro_novo!=null?'R$'+r.lucro_novo.toFixed(2):'—'}</td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>`}
+    </div></div>`;
+  }
   if(m.type==='prod'){
     const p=m.p;const kits=p.kits||[];
     return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()">
@@ -818,7 +894,41 @@ function openNewProd(){ST.modal={type:'prod',edit:false,clientId:ST.activeId,p:{
 function openEditProd(pid,cid){
   const cli=ST.clients.find(c=>String(c.id)===String(cid))||gc();
   const p=cli?.produtos?.find(x=>String(x.id)===String(pid));if(!p)return;
-  ST.modal={type:'prod',edit:true,clientId:cli.id,p:JSON.parse(JSON.stringify(p))};render();
+  ST.modal={type:'prod',edit:true,clientId:cli.id,p:JSON.parse(JSON.stringify(p)),snapshot:JSON.parse(JSON.stringify(p))};render();
+}
+async function openHistorico(pid,cid){
+  const cli=ST.clients.find(c=>String(c.id)===String(cid))||gc();
+  const p=cli?.produtos?.find(x=>String(x.id)===String(pid));if(!p)return;
+  ST.modal={type:'historico',nome:p.nome,sku:p.sku,productId:pid,registros:[],loading:true};render();
+  const{data,error}=await sb.from('prec_historico').select('*').eq('product_id',pid).order('created_at',{ascending:false});
+  if(error){console.error('Erro ao buscar histórico:',error);toast('Erro ao carregar histórico','error');}
+  if(ST.modal&&ST.modal.type==='historico'){ST.modal.registros=data||[];ST.modal.loading=false;render();}
+}
+function exportHistoricoExcel(){
+  const m=ST.modal;if(!m||!m.registros||!m.registros.length){toast('Nenhum dado para exportar','error');return;}
+  const rows=m.registros.map(r=>{
+    const po=PLATS.find(x=>x.id===r.plataforma);
+    return{
+      'Data':new Date(r.created_at).toLocaleString('pt-BR'),
+      'Produto':m.nome,
+      'SKU':m.sku||'',
+      'Plataforma':po?.label||r.plataforma,
+      'Kit':r.kit_qty,
+      'Campo Alterado':r.campo==='preco'?'Preço':r.campo==='custo'?'Custo':'Preço e Custo',
+      'Valor Antes (R$)':r.valor_antigo,
+      'Valor Depois (R$)':r.valor_novo,
+      'Lucro Antes (R$)':r.lucro_antigo,
+      'Lucro Depois (R$)':r.lucro_novo,
+      'Margem Antes (%)':r.margem_antiga,
+      'Margem Depois (%)':r.margem_nova,
+    };
+  });
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:18},{wch:25},{wch:10},{wch:14},{wch:6},{wch:16},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Histórico');
+  XLSX.writeFile(wb,`Historico_${(m.nome||'produto').replace(/[^a-z0-9]/gi,'_')}.xlsx`);
+  toast('Relatório exportado!');
 }
 function confirmDelProd(pid){const p=gc()?.produtos?.find(x=>String(x.id)===String(pid));ST.modal={type:'del',pid,nome:p?.nome||'produto'};render();}
 async function execDelProd(){
@@ -850,7 +960,7 @@ async function saveProduto(){
   const btn=document.getElementById('save-btn');if(btn){btn.disabled=true;btn.textContent='Salvando...';}
   const cli=ST.clients.find(c=>String(c.id)===String(m.clientId));
   try{
-    await saveProduct(p,cli.id);
+    await saveProduct(p,cli.id,m.edit?m.snapshot:null);
   }catch(err){
     // NUNCA fechar o modal ou mostrar sucesso se o salvamento falhou
     if(btn){btn.disabled=false;btn.textContent=m.edit?'Salvar':'Cadastrar';}
