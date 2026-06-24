@@ -291,10 +291,8 @@ function isComissaoShopee(nome){
 function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente){
   if(!custo||custo<=0) return null;
   const t=taxas[platId];if(!t) return null;
-  const tipo=cliente.regra_tipo||'peca';
-  // Meta: usar o limiar "verde" (t3) como referência de margem ideal
-  const metaPeca=tipo==='peca'?(cliente.regra_peca_t3??1.80):null;
-  const metaPerc=tipo==='perc'?(cliente.regra_perc_t3??20)/100:null;
+  // Margem Ideal: campo dedicado e independente das faixas de alerta de cor
+  const metaPerc=(cliente.margem_ideal_perc??20)/100;
   let p=custo*2;
   for(let i=0;i<100;i++){
     const tp=platId==='shopee'?shopeeComissao(p):t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
@@ -318,20 +316,13 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente){
     }
     const frML=(platId==='ml_classico'||platId==='ml_premium')&&pesoKg>0?calcFreteML(pesoKg,p):0;
     tf+=frML;
-    let p2;
-    if(tipo==='peca'){
-      // lucro/peça = metaPeca → (p - custo - tf - p*tp) / qty = metaPeca
-      const qty=kitQty||1;
-      p2=(custo+tf+metaPeca*qty)/(1-tp);
-    }else{
-      // margem % = metaPerc → (p - custo - tf - p*tp)/p = metaPerc
-      p2=(custo+tf)/(1-tp-metaPerc);
-    }
+    // margem % = metaPerc → (p - custo - tf - p*tp)/p = metaPerc
+    const p2=(custo+tf)/(1-tp-metaPerc);
     if(!isFinite(p2)||p2<=0) break;
     if(Math.abs(p2-p)<0.005) {p=p2;break;}
     p=p2;
   }
-  return Math.max(0,p);
+  return{preco:Math.max(0,p),margemPerc:metaPerc*100};
 }
 function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   if(!preco||preco<=0||!custo||custo<=0)return null;
@@ -659,13 +650,13 @@ function renderProdutos(c){
                           <span style="font-family:var(--mono);font-weight:600">R$${r2.preco.toFixed(2)}</span>
                         </div>
                         ${(()=>{
-                          const pIdeal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c);
-                          if(!pIdeal)return'';
-                          const diff=r2.preco-pIdeal;
+                          const ideal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c);
+                          if(!ideal)return'';
+                          const diff=r2.preco-ideal.preco;
                           const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
                           return`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-                            <span style="color:var(--text2)">Preço Ideal</span>
-                            <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${pIdeal.toFixed(2)} <span style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
+                            <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span></span>
+                            <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
                           </div>`;
                         })()}
                         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
@@ -749,12 +740,22 @@ function renderConfig(c){
   const v3=t==='peca'?(c.regra_peca_t3??1.80):(c.regra_perc_t3??20);
   const u=t==='peca'?'R$/pç':'%';
   const fieldPrefix=t==='peca'?'regra_peca_':'regra_perc_';
+  const margemIdeal=c.margem_ideal_perc??20;
   return`<div style="max-width:500px">
-    <div class="config-card"><div class="config-title">Tipo de regra de margem</div>
+    <div class="config-card" style="border-color:var(--accent);background:var(--accent-bg)">
+      <div class="config-title" style="color:var(--accent-text)">🎯 Margem Ideal desejada</div>
+      <div style="font-size:11px;color:var(--accent-text);margin-bottom:10px;opacity:.85">Define a margem que o cliente quer atingir. Usada para calcular automaticamente o "Preço Ideal" de cada produto — independente das faixas de cor abaixo.</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input class="taxa-input" style="width:90px;font-size:14px;font-weight:700" type="number" value="${margemIdeal}" step="1" min="0" onchange="updRegra('margem_ideal_perc',this.value)"/>
+        <span style="font-size:13px;font-weight:600;color:var(--accent-text)">% de margem sobre o preço de venda</span>
+      </div>
+    </div>
+    <div class="config-card"><div class="config-title">Tipo de regra de margem (alertas de cor)</div>
       <div class="tgl-group"><button class="tgl-btn ${t==='peca'?'on':''}" onclick="setRegraTipo('peca')">R$ por peça</button><button class="tgl-btn ${t==='perc'?'on':''}" onclick="setRegraTipo('perc')">% de margem</button></div>
-      <div style="font-size:11px;color:var(--text3);margin-top:8px">Cada modo guarda seus próprios valores — trocar de modo não altera os valores do outro.</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">Cada modo guarda seus próprios valores — trocar de modo não altera os valores do outro. Isso é só para as cores dos alertas, não afeta o Preço Ideal acima.</div>
     </div>
     <div class="config-card"><div class="config-title">Faixas de alerta (${t==='peca'?'R$ por peça':'% de margem'})</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Define as cores vermelho/laranja/amarelo/verde mostradas nos produtos.</div>
       ${[['#fee2e2','#b91c1c','Vermelho — de 0 até','t1',v1],['#ffedd5','#9a3412','Laranja — até','t2',v2],['#fef9c3','#713f12','Amarelo — até','t3',v3]].map(([bg,fg,lb,suffix,val])=>`<div style="display:grid;grid-template-columns:20px 1fr 90px 30px;gap:8px;align-items:center;margin-bottom:8px;font-size:12px"><div style="width:12px;height:12px;border-radius:50%;background:${bg};border:2px solid ${fg}"></div><span style="color:var(--text2)">${lb}</span><input class="taxa-input" style="width:80px" type="number" value="${val}" step="${t==='peca'?'0.01':'1'}" onchange="updRegra('${fieldPrefix}${suffix}',this.value)"/><span style="font-size:11px;color:var(--text3)">${u}</span></div>`).join('')}
       <div style="font-size:11px;color:var(--text3)">Verde — acima de ${v3}${u}</div>
     </div>
@@ -941,11 +942,11 @@ function renderKitBlock(k,i,plats){
     <div style="display:grid;grid-template-columns:70px repeat(${plats.length},1fr);gap:5px;align-items:center;font-size:11px">
       <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`;}).join('')}
       <div style="color:var(--text3);font-weight:500">Preço Atual</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="precos" value="${k.precos?.[pl]||''}" oninput="onKitInput(${i},'precos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
-      <div style="color:var(--text3);font-weight:500" title="Calculado automaticamente com base na regra de margem configurada em Config">Preço Ideal</div>${plats.map(pl=>{
+      <div style="color:var(--text3);font-weight:500" title="Calculado automaticamente com base na margem ideal configurada em Config">Preço Ideal</div>${plats.map(pl=>{
         const c=gc();
         const custo=k.custos?.[pl];
-        const pIdeal=(c&&custo)?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c):null;
-        return`<div id="ideal-${i}-${pl}" style="text-align:center;font-family:inherit;font-weight:400;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:5px;font-size:11px">${pIdeal?'R$'+pIdeal.toFixed(2):'—'}</div>`;
+        const ideal=(c&&custo)?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c):null;
+        return`<div id="ideal-${i}-${pl}" style="text-align:center;font-family:inherit;font-weight:400;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:5px;font-size:11px">${ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—'}</div>`;
       }).join('')}
       <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="custos" value="${k.custos?.[pl]||''}" oninput="onKitInput(${i},'custos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
     </div>
@@ -986,7 +987,7 @@ function openNewClient(){ST.modal={type:'nc'};render();}
 async function saveNewClient(){
   const name=document.getElementById('nc-n')?.value?.trim();if(!name)return;
   const color=COLORS[ST.clients.length%COLORS.length];
-  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),regra_tipo:'peca',regra_peca_t1:1.20,regra_peca_t2:1.50,regra_peca_t3:1.80,regra_perc_t1:10,regra_perc_t2:15,regra_perc_t3:20}).select().single();
+  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),regra_tipo:'peca',regra_peca_t1:1.20,regra_peca_t2:1.50,regra_peca_t3:1.80,regra_perc_t1:10,regra_perc_t2:15,regra_perc_t3:20,margem_ideal_perc:20}).select().single();
   if(error){toast('Erro ao criar cliente','error');return;}
   const nc={...data,produtos:[],taxas:data.taxas};ST.clients.push(nc);ST.activeId=nc.id;ST.modal=null;toast('Cliente criado!');render();
 }
@@ -1078,7 +1079,7 @@ function addTaxa(pl,tipo){const id=tipo==='perc'?`an-${pl}`:`af-${pl}`;const el=
 async function saveTaxas(){const c=gc();const{error}=await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);if(error){console.error('Erro ao salvar taxas:',error);toast('⚠️ ERRO ao salvar taxas: '+error.message,'error');return;}toast('✅ Taxas salvas no banco!');}
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
-async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
+async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3,margem_ideal_perc:c.margem_ideal_perc}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
 function closeModal(e){
   if(e&&e.target!==e.currentTarget)return;
   if(ST.modal&&ST.modal.type==='prod'){
@@ -1116,8 +1117,8 @@ function updateKitPreviewInline(kitIdx){
     const idealEl=document.getElementById(`ideal-${kitIdx}-${pl}`);
     if(!idealEl) return;
     const custo=k.custos?.[pl];
-    const pIdeal=custo?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c):null;
-    idealEl.textContent=pIdeal?'R$'+pIdeal.toFixed(2):'—';
+    const ideal=custo?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c):null;
+    idealEl.innerHTML=ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—';
   });
   const previewEl=document.getElementById('kit-preview-'+kitIdx);
   if(!previewEl) return;
