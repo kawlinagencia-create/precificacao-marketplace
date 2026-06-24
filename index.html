@@ -288,6 +288,51 @@ function isComissaoShopee(nome){
   const n=(nome||'').toLowerCase().trim();
   return n==='comissão'||n==='comissao'||n==='taxa shopee'||n==='comissão shopee';
 }
+function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente){
+  if(!custo||custo<=0) return null;
+  const t=taxas[platId];if(!t) return null;
+  const tipo=cliente.regra_tipo||'peca';
+  // Meta: usar o limiar "verde" (t3) como referência de margem ideal
+  const metaPeca=tipo==='peca'?(cliente.regra_peca_t3??1.80):null;
+  const metaPerc=tipo==='perc'?(cliente.regra_perc_t3??20)/100:null;
+  let p=custo*2;
+  for(let i=0;i<100;i++){
+    const tp=platId==='shopee'?shopeeComissao(p):t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
+    let tf=0;
+    for(const r of t.fixas){
+      let v=r.v;
+      if(platId==='shopee'&&isTaxaFixaShopee(r.n)) v=shopeeTaxaFixa(p);
+      const nL=r.n.toLowerCase();
+      const isKitSpecific=nL.includes('embal')||nL.includes('frete');
+      if(isKitSpecific&&kitQty){
+        const mencionaK3=/\bk3\b/.test(nL)||/k3\/5/.test(nL)||/\b3\/5\b/.test(nL);
+        const mencionaK5=/\bk5\b/.test(nL)||/k3\/5/.test(nL)||/\b3\/5\b/.test(nL);
+        const mencionaK10=/\bk10\b/.test(nL);
+        if(mencionaK3||mencionaK5||mencionaK10){
+          const kitAlvo=kitQty<=3?'k3':kitQty<=5?'k5':'k10';
+          const bate=(kitAlvo==='k3'&&mencionaK3)||(kitAlvo==='k5'&&mencionaK5)||(kitAlvo==='k10'&&mencionaK10);
+          if(!bate)continue;
+        }
+      }
+      tf+=v;
+    }
+    const frML=(platId==='ml_classico'||platId==='ml_premium')&&pesoKg>0?calcFreteML(pesoKg,p):0;
+    tf+=frML;
+    let p2;
+    if(tipo==='peca'){
+      // lucro/peça = metaPeca → (p - custo - tf - p*tp) / qty = metaPeca
+      const qty=kitQty||1;
+      p2=(custo+tf+metaPeca*qty)/(1-tp);
+    }else{
+      // margem % = metaPerc → (p - custo - tf - p*tp)/p = metaPerc
+      p2=(custo+tf)/(1-tp-metaPerc);
+    }
+    if(!isFinite(p2)||p2<=0) break;
+    if(Math.abs(p2-p)<0.005) {p=p2;break;}
+    p=p2;
+  }
+  return Math.max(0,p);
+}
 function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   if(!preco||preco<=0||!custo||custo<=0)return null;
   const t=taxas[platId];if(!t)return null;
@@ -610,22 +655,23 @@ function renderProdutos(c){
                       </div>
                       <div style="padding:10px 12px;display:flex;flex-direction:column;gap:3px;font-size:11px">
                         <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-                          <span style="color:var(--text2)">Preço de Venda</span>
+                          <span style="color:var(--text2)">Preço Atual</span>
                           <span style="font-family:var(--mono);font-weight:600">R$${r2.preco.toFixed(2)}</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-                          <span style="color:var(--text2)">Custo de Compra</span>
-                          <span style="font-family:var(--mono);font-weight:600;color:var(--danger)">R$${r2.custo.toFixed(2)}</span>
-                        </div>
-                        ${k.precos_ideais?.[pl]?(()=>{
-                          const pIdeal=k.precos_ideais[pl];
+                        ${(()=>{
+                          const pIdeal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c);
+                          if(!pIdeal)return'';
                           const diff=r2.preco-pIdeal;
                           const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
                           return`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
                             <span style="color:var(--accent-text)">🎯 Preço Ideal</span>
                             <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${pIdeal.toFixed(2)} <span style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
                           </div>`;
-                        })():''}
+                        })()}
+                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
+                          <span style="color:var(--text2)">Custo de Compra</span>
+                          <span style="font-family:var(--mono);font-weight:600;color:var(--danger)">R$${r2.custo.toFixed(2)}</span>
+                        </div>
                         <div style="height:3px"></div>
                         ${r2.percDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n} <span style="font-size:9px">(${d.v.toFixed(1)}%)</span></span><span style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
                         ${r2.fixaDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n}</span><span style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
@@ -894,12 +940,39 @@ function renderKitBlock(k,i,plats){
   ${plats.length===0?`<div style="font-size:11px;color:var(--text3);text-align:center">Selecione plataformas primeiro</div>`:`
     <div style="display:grid;grid-template-columns:70px repeat(${plats.length},1fr);gap:5px;align-items:center;font-size:11px">
       <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`;}).join('')}
-      <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="precos" value="${k.precos?.[pl]||''}" oninput="onKitInput(${i},'precos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
+      <div style="color:var(--text3);font-weight:500">Preço Atual</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="precos" value="${k.precos?.[pl]||''}" oninput="onKitInput(${i},'precos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
+      <div style="color:var(--accent-text);font-weight:500" title="Calculado automaticamente com base na regra de margem configurada em Config">🎯 Preço Ideal</div>${plats.map(pl=>{
+        const c=gc();
+        const custo=k.custos?.[pl];
+        const pIdeal=(c&&custo)?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c):null;
+        return`<div id="ideal-${i}-${pl}" style="text-align:center;font-family:var(--mono);font-weight:600;color:var(--accent-text);background:var(--accent-bg);border-radius:6px;padding:5px;font-size:11px">${pIdeal?'R$'+pIdeal.toFixed(2):'—'}</div>`;
+      }).join('')}
       <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="custos" value="${k.custos?.[pl]||''}" oninput="onKitInput(${i},'custos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
-      <div style="color:var(--accent);font-weight:500" title="Preço alvo definido manualmente — não entra no cálculo, é só referência">🎯 P. Ideal</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px;border-color:var(--accent2,#86efac)" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="precos_ideais" value="${k.precos_ideais?.[pl]||''}" oninput="onKitInput(${i},'precos_ideais','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
     </div>
-    <div id="kit-preview-${i}"></div>`}
+    <div id="kit-preview-${i}">${renderLucroPreviewHTML(k,plats)}</div>`}
   </div>`;
+}
+function renderLucroPreviewHTML(k,plats){
+  const c=gc();if(!c) return'';
+  const rows=plats.map(pl=>{
+    const preco=k.precos?.[pl];const custo=k.custos?.[pl];
+    if(!preco||!custo) return null;
+    const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0,k.qty||1);
+    if(!r) return null;
+    const po=PLATS.find(x=>x.id===pl);
+    const co=cor(r,k.qty||1,c);
+    const color=co==='g'?'var(--success)':co==='a'?'var(--warn)':co==='l'?'var(--orange)':'var(--danger)';
+    const bg=co==='g'?'var(--success-bg)':co==='a'?'var(--warn-bg)':co==='l'?'var(--orange-bg)':'var(--danger-bg)';
+    return`<div class="lucro-preview" style="background:${bg};border-color:${color};flex:1;min-width:100px">
+      <div style="font-size:10px;opacity:.8;margin-bottom:3px">${po?.label||pl}</div>
+      <div style="font-weight:700;font-family:var(--mono);color:${color}">R$ ${r.lucro.toFixed(2)}</div>
+      <div style="font-size:10px;opacity:.8;color:${color}">${r.margem.toFixed(1)}% · R$${(r.lucro/(k.qty||1)).toFixed(2)}/pç</div>
+    </div>`;
+  }).filter(Boolean);
+  return rows.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
+    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Lucro calculado</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${rows.join('')}</div>
+  </div>`:'';
 }
 
 function selC(id){ST.activeId=id;ST.tab='busca';ST.open={};ST.search={q:'',scope:'todos'};render();}
@@ -1038,27 +1111,17 @@ function updateKitPreviewInline(kitIdx){
   const c=gc();if(!c||!ST.modal?.p) return;
   const k=ST.modal.p.kits[kitIdx];if(!k) return;
   const plats=ST.modal.p.plataformas||[];
+  // Atualizar os valores de Preço Ideal (dependem do custo)
+  plats.forEach(pl=>{
+    const idealEl=document.getElementById(`ideal-${kitIdx}-${pl}`);
+    if(!idealEl) return;
+    const custo=k.custos?.[pl];
+    const pIdeal=custo?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c):null;
+    idealEl.textContent=pIdeal?'R$'+pIdeal.toFixed(2):'—';
+  });
   const previewEl=document.getElementById('kit-preview-'+kitIdx);
   if(!previewEl) return;
-  const rows=plats.map(pl=>{
-    const preco=k.precos?.[pl];const custo=k.custos?.[pl];
-    if(!preco||!custo) return null;
-    const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0,k.qty||1);
-    if(!r) return null;
-    const po=PLATS.find(x=>x.id===pl);
-    const co=cor(r,k.qty||1,c);
-    const color=co==='g'?'var(--success)':co==='a'?'var(--warn)':co==='l'?'var(--orange)':'var(--danger)';
-    const bg=co==='g'?'var(--success-bg)':co==='a'?'var(--warn-bg)':co==='l'?'var(--orange-bg)':'var(--danger-bg)';
-    return`<div class="lucro-preview" style="background:${bg};border-color:${color};flex:1;min-width:100px">
-      <div style="font-size:10px;opacity:.8;margin-bottom:3px">${po?.label||pl}</div>
-      <div style="font-weight:700;font-family:var(--mono);color:${color}">R$ ${r.lucro.toFixed(2)}</div>
-      <div style="font-size:10px;opacity:.8;color:${color}">${r.margem.toFixed(1)}% · R$${(r.lucro/(k.qty||1)).toFixed(2)}/pç</div>
-    </div>`;
-  }).filter(Boolean);
-  previewEl.innerHTML=rows.length?`<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">
-    <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Lucro calculado</div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">${rows.join('')}</div>
-  </div>`:'';
+  previewEl.innerHTML=renderLucroPreviewHTML(k,plats);
 }
 
 function updateKitPreview(){
