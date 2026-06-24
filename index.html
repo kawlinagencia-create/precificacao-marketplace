@@ -323,8 +323,12 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
 }
 function cor(r,qty,c){
   if(!r)return null;
-  const val=(c.regra_tipo||'peca')==='peca'?(qty>0?r.lucro/qty:r.lucro):r.margem;
-  if(val<=(c.regra_t1||1.2))return 'r';if(val<=(c.regra_t2||1.5))return 'l';if(val<=(c.regra_t3||1.8))return 'a';return 'g';
+  const tipo=c.regra_tipo||'peca';
+  const val=tipo==='peca'?(qty>0?r.lucro/qty:r.lucro):r.margem;
+  const t1=tipo==='peca'?(c.regra_peca_t1??1.20):(c.regra_perc_t1??10);
+  const t2=tipo==='peca'?(c.regra_peca_t2??1.50):(c.regra_perc_t2??15);
+  const t3=tipo==='peca'?(c.regra_peca_t3??1.80):(c.regra_perc_t3??20);
+  if(val<=t1)return 'r';if(val<=t2)return 'l';if(val<=t3)return 'a';return 'g';
 }
 function allRes(c){const out=[];for(const p of c.produtos)for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c)});}return out;}
 // allPlats: todas as plataformas onde pelo menos 1 produto está cadastrado (mesmo sem dados)
@@ -613,6 +617,15 @@ function renderProdutos(c){
                           <span style="color:var(--text2)">Custo de Compra</span>
                           <span style="font-family:var(--mono);font-weight:600;color:var(--danger)">R$${r2.custo.toFixed(2)}</span>
                         </div>
+                        ${k.precos_ideais?.[pl]?(()=>{
+                          const pIdeal=k.precos_ideais[pl];
+                          const diff=r2.preco-pIdeal;
+                          const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
+                          return`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
+                            <span style="color:var(--accent-text)">🎯 Preço Ideal</span>
+                            <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${pIdeal.toFixed(2)} <span style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
+                          </div>`;
+                        })():''}
                         <div style="height:3px"></div>
                         ${r2.percDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n} <span style="font-size:9px">(${d.v.toFixed(1)}%)</span></span><span style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
                         ${r2.fixaDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n}</span><span style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
@@ -684,13 +697,19 @@ function renderTaxas(c){
 }
 
 function renderConfig(c){
-  const t=c.regra_tipo||'peca';const v1=c.regra_t1||1.20,v2=c.regra_t2||1.50,v3=c.regra_t3||1.80;const u=t==='peca'?'R$/pç':'%';
+  const t=c.regra_tipo||'peca';
+  const v1=t==='peca'?(c.regra_peca_t1??1.20):(c.regra_perc_t1??10);
+  const v2=t==='peca'?(c.regra_peca_t2??1.50):(c.regra_perc_t2??15);
+  const v3=t==='peca'?(c.regra_peca_t3??1.80):(c.regra_perc_t3??20);
+  const u=t==='peca'?'R$/pç':'%';
+  const fieldPrefix=t==='peca'?'regra_peca_':'regra_perc_';
   return`<div style="max-width:500px">
     <div class="config-card"><div class="config-title">Tipo de regra de margem</div>
       <div class="tgl-group"><button class="tgl-btn ${t==='peca'?'on':''}" onclick="setRegraTipo('peca')">R$ por peça</button><button class="tgl-btn ${t==='perc'?'on':''}" onclick="setRegraTipo('perc')">% de margem</button></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">Cada modo guarda seus próprios valores — trocar de modo não altera os valores do outro.</div>
     </div>
-    <div class="config-card"><div class="config-title">Faixas de alerta</div>
-      ${[['#fee2e2','#b91c1c','Vermelho — de 0 até','regra_t1',v1],['#ffedd5','#9a3412','Laranja — até','regra_t2',v2],['#fef9c3','#713f12','Amarelo — até','regra_t3',v3]].map(([bg,fg,lb,field,val])=>`<div style="display:grid;grid-template-columns:20px 1fr 90px 30px;gap:8px;align-items:center;margin-bottom:8px;font-size:12px"><div style="width:12px;height:12px;border-radius:50%;background:${bg};border:2px solid ${fg}"></div><span style="color:var(--text2)">${lb}</span><input class="taxa-input" style="width:80px" type="number" value="${val}" step="${t==='peca'?'0.01':'1'}" onchange="updRegra('${field}',this.value)"/><span style="font-size:11px;color:var(--text3)">${u}</span></div>`).join('')}
+    <div class="config-card"><div class="config-title">Faixas de alerta (${t==='peca'?'R$ por peça':'% de margem'})</div>
+      ${[['#fee2e2','#b91c1c','Vermelho — de 0 até','t1',v1],['#ffedd5','#9a3412','Laranja — até','t2',v2],['#fef9c3','#713f12','Amarelo — até','t3',v3]].map(([bg,fg,lb,suffix,val])=>`<div style="display:grid;grid-template-columns:20px 1fr 90px 30px;gap:8px;align-items:center;margin-bottom:8px;font-size:12px"><div style="width:12px;height:12px;border-radius:50%;background:${bg};border:2px solid ${fg}"></div><span style="color:var(--text2)">${lb}</span><input class="taxa-input" style="width:80px" type="number" value="${val}" step="${t==='peca'?'0.01':'1'}" onchange="updRegra('${fieldPrefix}${suffix}',this.value)"/><span style="font-size:11px;color:var(--text3)">${u}</span></div>`).join('')}
       <div style="font-size:11px;color:var(--text3)">Verde — acima de ${v3}${u}</div>
     </div>
     <div style="background:var(--surface2);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
@@ -877,6 +896,7 @@ function renderKitBlock(k,i,plats){
       <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`;}).join('')}
       <div style="color:var(--text3);font-weight:500">Preço</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="precos" value="${k.precos?.[pl]||''}" oninput="onKitInput(${i},'precos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
       <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="custos" value="${k.custos?.[pl]||''}" oninput="onKitInput(${i},'custos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
+      <div style="color:var(--accent);font-weight:500" title="Preço alvo definido manualmente — não entra no cálculo, é só referência">🎯 P. Ideal</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px;border-color:var(--accent2,#86efac)" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="precos_ideais" value="${k.precos_ideais?.[pl]||''}" oninput="onKitInput(${i},'precos_ideais','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
     </div>
     <div id="kit-preview-${i}"></div>`}
   </div>`;
@@ -893,7 +913,7 @@ function openNewClient(){ST.modal={type:'nc'};render();}
 async function saveNewClient(){
   const name=document.getElementById('nc-n')?.value?.trim();if(!name)return;
   const color=COLORS[ST.clients.length%COLORS.length];
-  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),regra_tipo:'peca',regra_t1:1.20,regra_t2:1.50,regra_t3:1.80}).select().single();
+  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),regra_tipo:'peca',regra_peca_t1:1.20,regra_peca_t2:1.50,regra_peca_t3:1.80,regra_perc_t1:10,regra_perc_t2:15,regra_perc_t3:20}).select().single();
   if(error){toast('Erro ao criar cliente','error');return;}
   const nc={...data,produtos:[],taxas:data.taxas};ST.clients.push(nc);ST.activeId=nc.id;ST.modal=null;toast('Cliente criado!');render();
 }
@@ -985,7 +1005,7 @@ function addTaxa(pl,tipo){const id=tipo==='perc'?`an-${pl}`:`af-${pl}`;const el=
 async function saveTaxas(){const c=gc();const{error}=await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);if(error){console.error('Erro ao salvar taxas:',error);toast('⚠️ ERRO ao salvar taxas: '+error.message,'error');return;}toast('✅ Taxas salvas no banco!');}
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
-async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_t1:c.regra_t1,regra_t2:c.regra_t2,regra_t3:c.regra_t3}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
+async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
 function closeModal(e){
   if(e&&e.target!==e.currentTarget)return;
   if(ST.modal&&ST.modal.type==='prod'){
