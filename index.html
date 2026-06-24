@@ -664,7 +664,7 @@ function renderProdutos(c){
                           const diff=r2.preco-pIdeal;
                           const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
                           return`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-                            <span style="color:var(--accent-text)">🎯 Preço Ideal</span>
+                            <span style="color:var(--text2)">Preço Ideal</span>
                             <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${pIdeal.toFixed(2)} <span style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
                           </div>`;
                         })()}
@@ -941,11 +941,11 @@ function renderKitBlock(k,i,plats){
     <div style="display:grid;grid-template-columns:70px repeat(${plats.length},1fr);gap:5px;align-items:center;font-size:11px">
       <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`;}).join('')}
       <div style="color:var(--text3);font-weight:500">Preço Atual</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="precos" value="${k.precos?.[pl]||''}" oninput="onKitInput(${i},'precos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
-      <div style="color:var(--accent-text);font-weight:500" title="Calculado automaticamente com base na regra de margem configurada em Config">🎯 Preço Ideal</div>${plats.map(pl=>{
+      <div style="color:var(--text3);font-weight:500" title="Calculado automaticamente com base na regra de margem configurada em Config">Preço Ideal</div>${plats.map(pl=>{
         const c=gc();
         const custo=k.custos?.[pl];
         const pIdeal=(c&&custo)?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c):null;
-        return`<div id="ideal-${i}-${pl}" style="text-align:center;font-family:var(--mono);font-weight:600;color:var(--accent-text);background:var(--accent-bg);border-radius:6px;padding:5px;font-size:11px">${pIdeal?'R$'+pIdeal.toFixed(2):'—'}</div>`;
+        return`<div id="ideal-${i}-${pl}" style="text-align:center;font-family:inherit;font-weight:400;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:5px;font-size:11px">${pIdeal?'R$'+pIdeal.toFixed(2):'—'}</div>`;
       }).join('')}
       <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="custos" value="${k.custos?.[pl]||''}" oninput="onKitInput(${i},'custos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
     </div>
