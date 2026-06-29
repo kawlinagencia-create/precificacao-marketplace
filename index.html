@@ -295,7 +295,13 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente){
   const metaPerc=(cliente.margem_ideal_perc??20)/100;
   let p=custo*2;
   for(let i=0;i<100;i++){
-    const tp=platId==='shopee'?shopeeComissao(p):t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
+    // Soma TODAS as taxas percentuais, usando a comissão automática da Shopee quando aplicável
+    let tp=0;
+    for(const r of t.perc){
+      let v=r.v;
+      if(platId==='shopee'&&isComissaoShopee(r.n)) v=shopeeComissao(p)*100;
+      tp+=v/100;
+    }
     let tf=0;
     for(const r of t.fixas){
       let v=r.v;
