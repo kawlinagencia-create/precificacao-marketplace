@@ -140,6 +140,8 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 .lucro-preview.pos{background:var(--success-bg);border-color:#86efac;color:var(--success)}
 .lucro-preview.neg{background:var(--danger-bg);border-color:#fca5a5;color:var(--danger)}
 .lucro-preview.neu{background:var(--surface2);color:var(--text3)}
+.preco-inline-display:hover{background:var(--accent-bg);color:var(--accent-text);border-bottom-color:var(--accent)}
+.preco-inline-input{width:80px;padding:2px 5px;font-size:11px;font-family:var(--mono);font-weight:600;border:1px solid var(--accent);border-radius:4px;outline:none;text-align:right}
 .plat-checks{display:flex;flex-wrap:wrap;gap:6px}
 .plat-cb{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;border:1px solid var(--border);cursor:pointer;font-size:12px;user-select:none;transition:all .15s;background:var(--surface)}
 .plat-cb.on{border-color:var(--accent);background:var(--accent-bg);color:var(--accent-text);font-weight:500}
@@ -291,8 +293,9 @@ function isComissaoShopee(nome){
 function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente){
   if(!custo||custo<=0) return null;
   const t=taxas[platId];if(!t) return null;
-  // Margem Ideal: campo dedicado e independente das faixas de alerta de cor
-  const metaPerc=(cliente.margem_ideal_perc??20)/100;
+  // Margem Ideal: agora configurável por plataforma (objeto {shopee:20, shein:15, ...})
+  const margens=cliente.margem_ideal_por_plat||{};
+  const metaPerc=(margens[platId]??20)/100;
   let p=custo*2;
   for(let i=0;i<100;i++){
     // Soma TODAS as taxas percentuais, usando a comissão automática da Shopee quando aplicável
@@ -574,6 +577,69 @@ function renderDash(c){
   </div>`:''}`;
 }
 
+function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
+  const precoUsado=precoOverride!=null?precoOverride:k.precos?.[pl];
+  const r2=calcR(precoUsado,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
+  if(!r2) return`<div id="kitcard-${p.id}-${pl}-${k.qty}" style="min-width:160px;flex:1;max-width:220px;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:14px;color:var(--text3);font-size:11px;text-align:center">Sem dados válidos</div>`;
+  const co2=cor(r2,k.qty,c);
+  const isBest=precoOverride==null&&r2.lucro===bestLucro;
+  const isWorst=precoOverride==null&&r2.lucro<0&&r2.lucro===worstLucro;
+  const borderColor=isBest?'#4ade80':isWorst?'#fca5a5':co2==='g'?'#86efac':co2==='a'?'#fcd34d':co2==='l'?'#fdba74':'#fca5a5';
+  const headerBg=isBest?'#f0fdf4':isWorst?'#fff5f5':co2==='g'?'#f0fdf4':co2==='a'?'#fffbeb':co2==='l'?'#fff7ed':'#fff5f5';
+  const lucroColor=co2==='g'?'var(--success)':co2==='a'?'var(--warn)':co2==='l'?'var(--orange)':'var(--danger)';
+  const ideal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c);
+  let idealHTML='';
+  if(ideal){
+    const diff=r2.preco-ideal.preco;
+    const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
+    idealHTML=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span></span>
+      <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
+    </div>`;
+  }
+  return`<div id="kitcard-${p.id}-${pl}-${k.qty}" style="min-width:160px;flex:1;max-width:220px;border:2px solid ${borderColor};border-radius:var(--r-lg);overflow:hidden;background:var(--surface)">
+    <div style="background:${headerBg};padding:8px 12px;border-bottom:1px solid ${borderColor};display:flex;align-items:center;justify-content:space-between">
+      <span style="font-size:13px;font-weight:700;color:var(--text)">KIT ${k.qty}</span>
+      <div style="display:flex;gap:4px;align-items:center">
+        ${isBest?'<span style="font-size:9px;background:#4ade80;color:#14532d;padding:1px 6px;border-radius:20px;font-weight:700">⬆ MELHOR</span>':''}
+        ${isWorst?'<span style="font-size:9px;background:#fca5a5;color:#7f1d1d;padding:1px 6px;border-radius:20px;font-weight:700">⬇ PIOR</span>':''}
+        ${k.peso_kg>0?`<span style="font-size:9px;color:var(--text3)">${k.peso_kg}kg</span>`:''}
+      </div>
+    </div>
+    <div style="padding:10px 12px;display:flex;flex-direction:column;gap:3px;font-size:11px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text2)">Preço Atual</span>
+        <span class="preco-inline-display" id="pd-${p.id}-${pl}-${k.qty}" onclick="startInlineEditPreco(this,'${p.id}','${c.id}','${pl}',${k.qty})" style="font-family:var(--mono);font-weight:600;cursor:pointer;border-bottom:1px dashed var(--text3);padding:1px 3px;border-radius:3px" title="Clique para editar">R$${r2.preco.toFixed(2)}</span>
+      </div>
+      ${idealHTML}
+      <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text2)">Custo de Compra</span>
+        <span style="font-family:var(--mono);font-weight:600;color:var(--danger)">R$${r2.custo.toFixed(2)}</span>
+      </div>
+      <div style="height:3px"></div>
+      ${r2.percDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n} <span style="font-size:9px">(${d.v.toFixed(1)}%)</span></span><span data-perctax style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
+      ${r2.fixaDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n}</span><span data-fixtax style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
+      <div style="border-top:2px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between">
+        <span style="font-weight:700;color:var(--text)">Total de Taxas</span>
+        <span data-f="total-taxas" style="font-family:var(--mono);font-weight:700;color:var(--danger)">R$${r2.tax.toFixed(2)}</span>
+      </div>
+      <div data-f="lucro-box" style="background:${headerBg};border-radius:6px;padding:8px;margin-top:4px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-weight:700;font-size:12px;color:${lucroColor}">LUCRO EM R$</span>
+          <span data-f="lucro-rs" style="font-family:var(--mono);font-weight:700;font-size:14px;color:${lucroColor}">R$${r2.lucro.toFixed(2)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-weight:700;font-size:12px;color:${lucroColor}">LUCRO EM %</span>
+          <span data-f="lucro-pc" style="font-family:var(--mono);font-weight:700;font-size:14px;color:${lucroColor}">${r2.margem.toFixed(2)}%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between">
+          <span style="font-size:10px;color:${lucroColor};opacity:.8">R$ por peça</span>
+          <span data-f="lucro-peca" style="font-family:var(--mono);font-size:11px;color:${lucroColor};opacity:.8">R$${(r2.lucro/k.qty).toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
 function renderProdutos(c){
   return`<div class="sec" style="margin-bottom:0">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
@@ -633,66 +699,7 @@ function renderProdutos(c){
                   ${kitsSemDados.length?`<span style="font-size:10px;color:var(--text3)">${kitsSemDados.map(k=>`K${k.qty}`).join(', ')} sem dados</span>`:''}
                 </div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap">
-                  ${kitsComDados.map(k=>{
-                    const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
-                    const co2=cor(r2,k.qty,c);
-                    const isBest=r2.lucro===bestLucro;
-                    const isWorst=r2.lucro<0&&r2.lucro===worstLucro;
-                    const borderColor=isBest?'#4ade80':isWorst?'#fca5a5':co2==='g'?'#86efac':co2==='a'?'#fcd34d':co2==='l'?'#fdba74':'#fca5a5';
-                    const headerBg=isBest?'#f0fdf4':isWorst?'#fff5f5':co2==='g'?'#f0fdf4':co2==='a'?'#fffbeb':co2==='l'?'#fff7ed':'#fff5f5';
-                    const lucroColor=co2==='g'?'var(--success)':co2==='a'?'var(--warn)':co2==='l'?'var(--orange)':'var(--danger)';
-                    return`<div style="min-width:160px;flex:1;max-width:220px;border:2px solid ${borderColor};border-radius:var(--r-lg);overflow:hidden;background:var(--surface)">
-                      <div style="background:${headerBg};padding:8px 12px;border-bottom:1px solid ${borderColor};display:flex;align-items:center;justify-content:space-between">
-                        <span style="font-size:13px;font-weight:700;color:var(--text)">KIT ${k.qty}</span>
-                        <div style="display:flex;gap:4px;align-items:center">
-                          ${isBest?'<span style="font-size:9px;background:#4ade80;color:#14532d;padding:1px 6px;border-radius:20px;font-weight:700">⬆ MELHOR</span>':''}
-                          ${isWorst?'<span style="font-size:9px;background:#fca5a5;color:#7f1d1d;padding:1px 6px;border-radius:20px;font-weight:700">⬇ PIOR</span>':''}
-                          ${k.peso_kg>0?`<span style="font-size:9px;color:var(--text3)">${k.peso_kg}kg</span>`:''}
-                        </div>
-                      </div>
-                      <div style="padding:10px 12px;display:flex;flex-direction:column;gap:3px;font-size:11px">
-                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-                          <span style="color:var(--text2)">Preço Atual</span>
-                          <span style="font-family:var(--mono);font-weight:600">R$${r2.preco.toFixed(2)}</span>
-                        </div>
-                        ${(()=>{
-                          const ideal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c);
-                          if(!ideal)return'';
-                          const diff=r2.preco-ideal.preco;
-                          const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
-                          return`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-                            <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span></span>
-                            <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
-                          </div>`;
-                        })()}
-                        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-                          <span style="color:var(--text2)">Custo de Compra</span>
-                          <span style="font-family:var(--mono);font-weight:600;color:var(--danger)">R$${r2.custo.toFixed(2)}</span>
-                        </div>
-                        <div style="height:3px"></div>
-                        ${r2.percDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n} <span style="font-size:9px">(${d.v.toFixed(1)}%)</span></span><span style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
-                        ${r2.fixaDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n}</span><span style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
-                        <div style="border-top:2px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between">
-                          <span style="font-weight:700;color:var(--text)">Total de Taxas</span>
-                          <span style="font-family:var(--mono);font-weight:700;color:var(--danger)">R$${r2.tax.toFixed(2)}</span>
-                        </div>
-                        <div style="background:${headerBg};border-radius:6px;padding:8px;margin-top:4px">
-                          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                            <span style="font-weight:700;font-size:12px;color:${lucroColor}">LUCRO EM R$</span>
-                            <span style="font-family:var(--mono);font-weight:700;font-size:14px;color:${lucroColor}">R$${r2.lucro.toFixed(2)}</span>
-                          </div>
-                          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-                            <span style="font-weight:700;font-size:12px;color:${lucroColor}">LUCRO EM %</span>
-                            <span style="font-family:var(--mono);font-weight:700;font-size:14px;color:${lucroColor}">${r2.margem.toFixed(2)}%</span>
-                          </div>
-                          <div style="display:flex;justify-content:space-between">
-                            <span style="font-size:10px;color:${lucroColor};opacity:.8">R$ por peça</span>
-                            <span style="font-family:var(--mono);font-size:11px;color:${lucroColor};opacity:.8">R$${(r2.lucro/k.qty).toFixed(2)}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>`;
-                  }).join('')}
+                  ${kitsComDados.map(k=>renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro)).join('')}
                   ${!kitsComDados.length?`<div style="padding:12px;color:var(--text3);font-size:12px">Nenhum kit com dados cadastrados para esta plataforma</div>`:''}
                 </div>
               </div>`;
@@ -746,14 +753,17 @@ function renderConfig(c){
   const v3=t==='peca'?(c.regra_peca_t3??1.80):(c.regra_perc_t3??20);
   const u=t==='peca'?'R$/pç':'%';
   const fieldPrefix=t==='peca'?'regra_peca_':'regra_perc_';
-  const margemIdeal=c.margem_ideal_perc??20;
+  const margemPorPlat=c.margem_ideal_por_plat||{};
   return`<div style="max-width:500px">
     <div class="config-card" style="border-color:var(--accent);background:var(--accent-bg)">
-      <div class="config-title" style="color:var(--accent-text)">🎯 Margem Ideal desejada</div>
-      <div style="font-size:11px;color:var(--accent-text);margin-bottom:10px;opacity:.85">Define a margem que o cliente quer atingir. Usada para calcular automaticamente o "Preço Ideal" de cada produto — independente das faixas de cor abaixo.</div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <input class="taxa-input" style="width:90px;font-size:14px;font-weight:700" type="number" value="${margemIdeal}" step="1" min="0" onchange="updRegra('margem_ideal_perc',this.value)"/>
-        <span style="font-size:13px;font-weight:600;color:var(--accent-text)">% de margem sobre o preço de venda</span>
+      <div class="config-title" style="color:var(--accent-text)">🎯 Margem Ideal desejada (por plataforma)</div>
+      <div style="font-size:11px;color:var(--accent-text);margin-bottom:10px;opacity:.85">Define a margem que o cliente quer atingir em cada plataforma. Usada para calcular automaticamente o "Preço Ideal" de cada produto — independente das faixas de cor abaixo.</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${PLATS.map(pl=>`<div style="display:flex;align-items:center;gap:8px">
+          <span class="chip ${pl.cls}" style="width:90px;justify-content:center;flex-shrink:0">${pl.label}</span>
+          <input class="taxa-input" style="width:80px;font-size:13px;font-weight:700" type="number" value="${margemPorPlat[pl.id]??20}" step="1" min="0" onchange="updMargemPlat('${pl.id}',this.value)"/>
+          <span style="font-size:12px;color:var(--accent-text)">% de margem</span>
+        </div>`).join('')}
       </div>
     </div>
     <div class="config-card"><div class="config-title">Tipo de regra de margem (alertas de cor)</div>
@@ -993,7 +1003,7 @@ function openNewClient(){ST.modal={type:'nc'};render();}
 async function saveNewClient(){
   const name=document.getElementById('nc-n')?.value?.trim();if(!name)return;
   const color=COLORS[ST.clients.length%COLORS.length];
-  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),regra_tipo:'peca',regra_peca_t1:1.20,regra_peca_t2:1.50,regra_peca_t3:1.80,regra_perc_t1:10,regra_perc_t2:15,regra_perc_t3:20,margem_ideal_perc:20}).select().single();
+  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),regra_tipo:'peca',regra_peca_t1:1.20,regra_peca_t2:1.50,regra_peca_t3:1.80,regra_perc_t1:10,regra_perc_t2:15,regra_perc_t3:20,margem_ideal_por_plat:{shopee:20,shein:20,ml_classico:20,ml_premium:20,tiktok:20}}).select().single();
   if(error){toast('Erro ao criar cliente','error');return;}
   const nc={...data,produtos:[],taxas:data.taxas};ST.clients.push(nc);ST.activeId=nc.id;ST.modal=null;toast('Cliente criado!');render();
 }
@@ -1085,7 +1095,12 @@ function addTaxa(pl,tipo){const id=tipo==='perc'?`an-${pl}`:`af-${pl}`;const el=
 async function saveTaxas(){const c=gc();const{error}=await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);if(error){console.error('Erro ao salvar taxas:',error);toast('⚠️ ERRO ao salvar taxas: '+error.message,'error');return;}toast('✅ Taxas salvas no banco!');}
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
-async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3,margem_ideal_perc:c.margem_ideal_perc}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
+function updMargemPlat(plat,v){
+  const c=gc();
+  if(!c.margem_ideal_por_plat) c.margem_ideal_por_plat={};
+  c.margem_ideal_por_plat[plat]=parseFloat(v)||0;
+}
+async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3,margem_ideal_por_plat:c.margem_ideal_por_plat}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
 function closeModal(e){
   if(e&&e.target!==e.currentTarget)return;
   if(ST.modal&&ST.modal.type==='prod'){
@@ -1104,6 +1119,93 @@ async function handleFoto(input){
 function formatMoneyInput(el){
   const v=parseFloat(el.value);
   if(!isNaN(v)&&v>=0) el.value=v.toFixed(2);
+}
+// Edição inline do Preço Atual direto na aba Produtos, tipo Excel
+function startInlineEditPreco(span,pid,cid,plat,kitQty){
+  const cli=ST.clients.find(c=>String(c.id)===String(cid));
+  const p=cli?.produtos?.find(x=>String(x.id)===String(pid));
+  if(!p)return;
+  const k=p.kits.find(x=>x.qty===kitQty);
+  if(!k)return;
+  const valorAtual=k.precos?.[plat]||0;
+  const input=document.createElement('input');
+  input.type='number';input.step='0.01';input.className='preco-inline-input';input.value=valorAtual;
+  span.replaceWith(input);input.focus();input.select();
+
+  const cardEl=document.getElementById(`kitcard-${pid}-${plat}-${kitQty}`);
+
+  // Atualiza só os valores internos do card via IDs específicos — nunca recria o card nem o input
+  const atualizarCardAoVivo=()=>{
+    const novoValor=parseFloat(input.value);
+    if(!cardEl||isNaN(novoValor)||novoValor<=0) return;
+    const r2=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
+    if(!r2) return;
+    const co2=cor(r2,k.qty,cli);
+    const lucroColor=co2==='g'?'var(--success)':co2==='a'?'var(--warn)':co2==='l'?'var(--orange)':'var(--danger)';
+    const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
+    const setColor=(id,color)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.style.color=color;};
+    // Preço Ideal (comparação)
+    const ideal=calcPrecoIdeal(r2.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli);
+    if(ideal){
+      const diff=r2.preco-ideal.preco;
+      const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
+      setText('ideal-diff',`(${diff>=0?'+':''}${diff.toFixed(2)})`);
+      setColor('ideal-diff',diffColor);
+    }
+    // Taxas percentuais e fixas (na ordem em que aparecem)
+    cardEl.querySelectorAll('[data-perctax]').forEach((el,idx)=>{
+      const d=r2.percDetail[idx];if(d)el.textContent='R$'+d.val.toFixed(2);
+    });
+    cardEl.querySelectorAll('[data-fixtax]').forEach((el,idx)=>{
+      const d=r2.fixaDetail[idx];if(d)el.textContent='R$'+d.val.toFixed(2);
+    });
+    setText('total-taxas',`R$${r2.tax.toFixed(2)}`);
+    setText('lucro-rs',`R$${r2.lucro.toFixed(2)}`);
+    setText('lucro-pc',`${r2.margem.toFixed(2)}%`);
+    setText('lucro-peca',`R$${(r2.lucro/k.qty).toFixed(2)}`);
+    setColor('lucro-rs',lucroColor);
+    setColor('lucro-pc',lucroColor);
+    setColor('lucro-peca',lucroColor);
+    setColor('total-taxas','var(--danger)');
+    // Atualiza fundo do box de lucro
+    const lucroBox=cardEl.querySelector('[data-f="lucro-box"]');
+    if(lucroBox){
+      const bg=co2==='g'?'var(--success-bg)':co2==='a'?'var(--warn-bg)':co2==='l'?'var(--orange-bg)':'var(--danger-bg)';
+      lucroBox.style.background=bg;
+    }
+  };
+  input.addEventListener('input',atualizarCardAoVivo);
+
+  const finalizar=async(salvar)=>{
+    input.removeEventListener('input',atualizarCardAoVivo);
+    if(salvar){
+      const novoValor=parseFloat(input.value)||0;
+      await saveInlineEditPreco(pid,cid,plat,kitQty,novoValor);
+    }
+    renderTab();
+  };
+  input.addEventListener('blur',()=>finalizar(true));
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();input.blur();}
+    if(e.key==='Escape'){e.preventDefault();input.removeEventListener('blur',()=>finalizar(true));finalizar(false);}
+  });
+}
+async function saveInlineEditPreco(pid,cid,plat,kitQty,novoValor){
+  const cli=ST.clients.find(c=>String(c.id)===String(cid));
+  const p=cli?.produtos?.find(x=>String(x.id)===String(pid));
+  if(!p)return;
+  const k=p.kits.find(x=>x.qty===kitQty);
+  if(!k)return;
+  const produtoAntigo=JSON.parse(JSON.stringify(p));
+  if(!k.precos)k.precos={};
+  k.precos[plat]=novoValor||null;
+  try{
+    await saveProduct(p,cli.id,produtoAntigo);
+    toast('✅ Preço atualizado e salvo no banco!');
+  }catch(err){
+    console.error('Erro ao salvar preço inline:',err);
+    toast('⚠️ ERRO ao salvar: '+(err.message||'falha desconhecida'),'error');
+  }
 }
 function onKitInput(kitIdx, field, plat, val){
   if(!ST.modal?.p) return;
