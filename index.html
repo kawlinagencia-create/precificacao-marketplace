@@ -946,7 +946,12 @@ function renderModal(){
   return'';
 }
 function renderKitBlock(k,i,plats){
+  // Ordem SEMPRE fixa, independente da ordem de seleção
+  const platsOrdenadas=PLATS.filter(p=>plats.includes(p.id));
   const hasML=plats.some(pl=>pl==='ml_classico'||pl==='ml_premium');
+  // Cores dos chips por plataforma
+  const platColors={shopee:'#9d2a0a',shein:'#065f46',ml_classico:'#713f12',ml_premium:'#713f12',tiktok:'#334155'};
+  const platBgs={shopee:'#fee2d5',shein:'#d1fae5',ml_classico:'#fef9c3',ml_premium:'#fef9c3',tiktok:'#f1f5f9'};
   return`<div class="kit-block"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
     <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;flex-wrap:wrap">
       Kit <input type="number" class="form-input" style="width:65px" value="${k.qty||''}" min="1" placeholder="qtd" onchange="ST.modal.p.kits[${i}].qty=parseInt(this.value)||null"/> peças
@@ -954,19 +959,19 @@ function renderKitBlock(k,i,plats){
     </div>
     <button class="btn-icon danger" onclick="rmKit(${i})">🗑️</button>
   </div>
-  ${plats.length===0?`<div style="font-size:11px;color:var(--text3);text-align:center">Selecione plataformas primeiro</div>`:`
-    <div style="display:grid;grid-template-columns:70px repeat(${plats.length},1fr);gap:5px;align-items:center;font-size:11px">
-      <div></div>${plats.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<div style="text-align:center;color:var(--text3);font-weight:600">${po?.label||pl}</div>`;}).join('')}
-      <div style="color:var(--text3);font-weight:500">Preço Atual</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="precos" value="${k.precos?.[pl]||''}" oninput="onKitInput(${i},'precos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
-      <div style="color:var(--text3);font-weight:500" title="Calculado automaticamente com base na margem ideal configurada em Config">Preço Ideal</div>${plats.map(pl=>{
+  ${platsOrdenadas.length===0?`<div style="font-size:11px;color:var(--text3);text-align:center">Selecione plataformas primeiro</div>`:`
+    <div style="display:grid;grid-template-columns:70px repeat(${platsOrdenadas.length},1fr);gap:5px;align-items:center;font-size:11px">
+      <div></div>${platsOrdenadas.map(po=>`<div style="text-align:center;font-weight:700;font-size:10px;padding:3px 6px;border-radius:20px;background:${platBgs[po.id]||'var(--surface2)'};color:${platColors[po.id]||'var(--text2)'}">${po.label}</div>`).join('')}
+      <div style="color:var(--text3);font-weight:500">Preço Atual</div>${platsOrdenadas.map(po=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${po.id}" data-tipo="precos" value="${k.precos?.[po.id]||''}" oninput="onKitInput(${i},'precos','${po.id}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
+      <div style="color:var(--text3);font-weight:500" title="Calculado automaticamente com base na margem ideal configurada em Config">Preço Ideal</div>${platsOrdenadas.map(po=>{
         const c=gc();
-        const custo=k.custos?.[pl];
-        const ideal=(c&&custo)?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c):null;
-        return`<div id="ideal-${i}-${pl}" style="text-align:center;font-family:inherit;font-weight:400;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:5px;font-size:11px">${ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—'}</div>`;
+        const custo=k.custos?.[po.id];
+        const ideal=(c&&custo)?calcPrecoIdeal(custo,po.id,c.taxas,k.peso_kg||0,k.qty||1,c):null;
+        return`<div id="ideal-${i}-${po.id}" style="text-align:center;font-family:inherit;font-weight:400;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:5px;font-size:11px">${ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—'}</div>`;
       }).join('')}
-      <div style="color:var(--text3);font-weight:500">Custo</div>${plats.map(pl=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${pl}" data-tipo="custos" value="${k.custos?.[pl]||''}" oninput="onKitInput(${i},'custos','${pl}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
+      <div style="color:var(--text3);font-weight:500">Custo</div>${platsOrdenadas.map(po=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${po.id}" data-tipo="custos" value="${k.custos?.[po.id]||''}" oninput="onKitInput(${i},'custos','${po.id}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
     </div>
-    <div id="kit-preview-${i}">${renderLucroPreviewHTML(k,plats)}</div>`}
+    <div id="kit-preview-${i}">${renderLucroPreviewHTML(k,platsOrdenadas.map(p=>p.id))}</div>`}
   </div>`;
 }
 function renderLucroPreviewHTML(k,plats){
