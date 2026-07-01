@@ -337,20 +337,25 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   if(!preco||preco<=0||!custo||custo<=0)return null;
   const t=taxas[platId];if(!t)return null;
   let totalPerc=0;const percDetail=[];
-  for(const r of t.perc){let v=r.v;if(platId==='shopee'&&isComissaoShopee(r.n))v=shopeeComissao(preco)*100;totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100});}
+  for(const r of t.perc){
+    // Filtro por kit: se a taxa tem kits definidos e o kitQty não está na lista, pula
+    if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty))continue;
+    let v=r.v;if(platId==='shopee'&&isComissaoShopee(r.n))v=shopeeComissao(preco)*100;
+    totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100});
+  }
   let totalFixa=0;const fixaDetail=[];
   for(const r of t.fixas){
+    // Filtro por kit configurado manualmente na aba Taxas
+    if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty))continue;
     let v=r.v;
     if(platId==='shopee'&&isTaxaFixaShopee(r.n)) v=shopeeTaxaFixa(preco);
-    // Embalagem ou Frete por kit: usar só a taxa correspondente ao kit atual
+    // Embalagem ou Frete por kit: usar só a taxa correspondente ao kit atual (detecção por nome)
     const nL=r.n.toLowerCase();
     const isKitSpecific=nL.includes('embal')||nL.includes('frete');
     if(isKitSpecific&&kitQty){
-      // Detecta menções a kits, incluindo formatos compartilhados como "k3/5"
       const mencionaK3=/\bk3\b/.test(nL)||/k3\/5/.test(nL)||/\b3\/5\b/.test(nL);
       const mencionaK5=/\bk5\b/.test(nL)||/k3\/5/.test(nL)||/\b3\/5\b/.test(nL);
       const mencionaK10=/\bk10\b/.test(nL);
-      // Se não menciona nenhum kit específico, aplica sempre (ex: "Frete" genérico sem kit no nome)
       if(mencionaK3||mencionaK5||mencionaK10){
         const kitAlvo=kitQty<=3?'k3':kitQty<=5?'k5':'k10';
         const bateK3=kitAlvo==='k3'&&mencionaK3;
@@ -734,14 +739,35 @@ function renderAlertas(c){
   return`${renderFilterBar(c,'alerta')}${mk('r','red','⛔ Vermelho — prejuízo')+mk('l','orange','🟠 Laranja — abaixo do ideal')+mk('a','yellow','🟡 Amarelo — atenção')||`<div class="empty"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="font-size:13px;font-weight:500">Tudo no verde!</div></div>`}`;
 }
 
+function renderTaxaRow(pl,tipo,r,i,unidade){
+  const c=gc();
+  // Kits disponíveis nessa plataforma — pega de todos os produtos do cliente
+  const todosKits=[...new Set((c.produtos||[]).flatMap(p=>(p.kits||[]).map(k=>k.qty)))].sort((a,b)=>a-b);
+  const kitsAtivos=r.kits||[]; // [] = aplica em todos
+  const kitSelector=todosKits.length?`<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:3px">
+    <span style="font-size:9px;color:var(--text3);align-self:center">Kits:</span>
+    <span style="font-size:9px;padding:1px 5px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:${kitsAtivos.length===0?'var(--text)':'transparent'};color:${kitsAtivos.length===0?'#fff':'var(--text3)'}" onclick="updTaxaKits('${pl.id}','${tipo}',${i},[])">Todos</span>
+    ${todosKits.map(qty=>`<span style="font-size:9px;padding:1px 5px;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:${kitsAtivos.includes(qty)?'var(--text)':'transparent'};color:${kitsAtivos.includes(qty)?'#fff':'var(--text3)'}" onclick="updTaxaKits('${pl.id}','${tipo}',${i},${qty})">K${qty}</span>`).join('')}
+  </div>`:'';
+  return`<div style="border-bottom:1px solid var(--border);padding:5px 0">
+    <div class="taxa-row" style="border:none;padding:2px 0">
+      <input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','${tipo}',${i},this.value)" placeholder="Nome"/>
+      ${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px" title="${r.obs}">ℹ️</span>`:''}
+      <input class="taxa-input" type="number" value="${r.v}" step="${unidade==='%'?'0.1':'0.01'}" onchange="updTaxa('${pl.id}','${tipo}',${i},this.value)"/>
+      <span style="font-size:10px;color:var(--text3)">${unidade}</span>
+      <button class="btn-icon danger" onclick="rmTaxa('${pl.id}','${tipo}',${i})">✕</button>
+    </div>
+    ${kitSelector}
+  </div>`;
+}
 function renderTaxas(c){
   return`<div class="taxas-grid">${PLATS.map(pl=>{const t=c.taxas[pl.id];return`<div class="taxa-card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span class="chip ${pl.cls}">${pl.label}</span><button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="saveTaxas()">💾 Salvar</button></div>
     <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Percentuais (%)</div>
-    ${t.perc.map((r,i)=>`<div class="taxa-row"><input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','perc',${i},this.value)" placeholder="Nome"/>${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px" title="${r.obs}">ℹ️</span>`:''}<input class="taxa-input" type="number" value="${r.v}" step="0.1" onchange="updTaxa('${pl.id}','perc',${i},this.value)"/><span style="font-size:10px;color:var(--text3)">%</span><button class="btn-icon danger" onclick="rmTaxa('${pl.id}','perc',${i})">✕</button></div>`).join('')}
+    ${t.perc.map((r,i)=>renderTaxaRow(pl,'perc',r,i,'%')).join('')}
     <div class="taxa-add-row"><input class="taxa-add-input" id="an-${pl.id}" placeholder="Nova taxa %"/><button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="addTaxa('${pl.id}','perc')">+ Add</button></div>
     <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:10px 0 6px">Fixas (R$)</div>
-    ${t.fixas.map((r,i)=>`<div class="taxa-row"><input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','fixas',${i},this.value)" placeholder="Nome"/>${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px" title="${r.obs}">ℹ️</span>`:''}<input class="taxa-input" type="number" value="${r.v}" step="0.01" onchange="updTaxa('${pl.id}','fixas',${i},this.value)"/><span style="font-size:10px;color:var(--text3)">R$</span><button class="btn-icon danger" onclick="rmTaxa('${pl.id}','fixas',${i})">✕</button></div>`).join('')}
+    ${t.fixas.map((r,i)=>renderTaxaRow(pl,'fixas',r,i,'R$')).join('')}
     <div class="taxa-add-row"><input class="taxa-add-input" id="af-${pl.id}" placeholder="Nova taxa fixa R$"/><button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="addTaxa('${pl.id}','fixas')">+ Add</button></div>
   </div>`;}).join('')}</div>`;
 }
@@ -1096,7 +1122,19 @@ async function saveProduto(){
 function updTaxa(pl,tipo,i,v){gc().taxas[pl][tipo][i].v=parseFloat(v)||0;}
 function updTaxaNome(pl,tipo,i,v){gc().taxas[pl][tipo][i].n=v;}
 function rmTaxa(pl,tipo,i){gc().taxas[pl][tipo].splice(i,1);renderTab();}
-function addTaxa(pl,tipo){const id=tipo==='perc'?`an-${pl}`:`af-${pl}`;const el=document.getElementById(id);const name=el?.value?.trim();if(!name)return;gc().taxas[pl][tipo].push({n:name,v:0});el.value='';renderTab();}
+function addTaxa(pl,tipo){const id=tipo==='perc'?`an-${pl}`:`af-${pl}`;const el=document.getElementById(id);const name=el?.value?.trim();if(!name)return;gc().taxas[pl][tipo].push({n:name,v:0,kits:[]});el.value='';renderTab();}
+function updTaxaKits(pl,tipo,i,qtyOrAll){
+  const c=gc();const taxa=c.taxas[pl][tipo][i];
+  if(!taxa) return;
+  if(qtyOrAll===[]||Array.isArray(qtyOrAll)){taxa.kits=[];} // "Todos"
+  else{
+    if(!taxa.kits)taxa.kits=[];
+    const qty=parseInt(qtyOrAll);
+    const idx=taxa.kits.indexOf(qty);
+    if(idx>=0)taxa.kits.splice(idx,1);else taxa.kits.push(qty);
+  }
+  renderTab();
+}
 async function saveTaxas(){const c=gc();const{error}=await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);if(error){console.error('Erro ao salvar taxas:',error);toast('⚠️ ERRO ao salvar taxas: '+error.message,'error');return;}toast('✅ Taxas salvas no banco!');}
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
@@ -1271,3 +1309,4 @@ document.addEventListener('click',function(e){
 </script>
 </body>
 </html>
+
