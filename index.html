@@ -681,15 +681,16 @@ function renderProdutos(c){
             }
             const bestLucro=allRows.length?Math.max(...allRows.map(x=>x.r2.lucro)):-Infinity;
             const worstLucro=allRows.length&&allRows.some(x=>x.r2.lucro<0)?Math.min(...allRows.filter(x=>x.r2.lucro<0).map(x=>x.r2.lucro)):Infinity;
-            const platAtiva=ST.open['platfilt_'+p.id]||'';
+            // Filtro de cima tem prioridade; se não tiver, usa o mini filtro interno
+            const platAtiva=ST.filter.plat||ST.open['platfilt_'+p.id]||'';
             const platsDisponiveis=p.plataformas||[];
             const platsVisiveis=platAtiva?[platAtiva]:platsDisponiveis;
 
-            // Mini filtro de plataforma dentro do produto
-            const filtroHtml=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+            // Mini filtro interno só aparece se o filtro de cima não estiver ativo
+            const filtroHtml=ST.filter.plat?'':`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
               <span style="font-size:11px;font-weight:600;color:var(--text3)">Ver:</span>
-              <button onclick="ST.open['platfilt_${p.id}']=null;renderTab()" style="padding:3px 10px;font-size:11px;border-radius:20px;border:1px solid ${!platAtiva?'var(--text)':'var(--border)'};background:${!platAtiva?'var(--text)':'transparent'};color:${!platAtiva?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">Todas</button>
-              ${platsDisponiveis.map(pl=>{const po=PLATS.find(x=>x.id===pl);return`<button onclick="ST.open['platfilt_${p.id}']='${pl}';renderTab()" style="padding:3px 10px;font-size:11px;border-radius:20px;border:1px solid ${platAtiva===pl?'var(--text)':'var(--border)'};background:${platAtiva===pl?'var(--text)':'transparent'};color:${platAtiva===pl?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">${po?.label||pl}</button>`;}).join('')}
+              <button onclick="ST.open['platfilt_${p.id}']=null;renderTab()" style="padding:3px 10px;font-size:11px;border-radius:20px;border:1px solid ${!ST.open['platfilt_'+p.id]?'var(--text)':'var(--border)'};background:${!ST.open['platfilt_'+p.id]?'var(--text)':'transparent'};color:${!ST.open['platfilt_'+p.id]?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">Todas</button>
+              ${platsDisponiveis.map(pl=>{const po=PLATS.find(x=>x.id===pl);const isActive=ST.open['platfilt_'+p.id]===pl;return`<button onclick="ST.open['platfilt_${p.id}']='${pl}';renderTab()" style="padding:3px 10px;font-size:11px;border-radius:20px;border:1px solid ${isActive?'var(--text)':'var(--border)'};background:${isActive?'var(--text)':'transparent'};color:${isActive?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">${po?.label||pl}</button>`;}).join('')}
             </div>`;
 
             return filtroHtml + platsVisiveis.map(pl=>{
@@ -1309,4 +1310,3 @@ document.addEventListener('click',function(e){
 </script>
 </body>
 </html>
-
