@@ -1429,8 +1429,8 @@ function renderCurvaABC(){
   const fatC=CABC.dados.filter(d=>d.curva==='C').reduce((s,d)=>s+d.faturamento,0);
   const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c'};
   const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2'};
-  const anoAtual=new Date().getFullYear();
-  const anos=Array.from({length:5},(_,i)=>anoAtual-i);
+  const anoAtual=2026;
+  const anos=[2026];
   return`<div style="max-width:960px">
     <div class="sec-head"><div class="sec-title">Curva ABC — Análise de Vendas</div><div class="sec-line"></div></div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:12px">
@@ -1551,8 +1551,8 @@ async function processarCurvaABC(input){
     });
     await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma',plat);
     for(let i=0;i<registros.length;i+=100){const{error}=await sb.from('prec_curva_abc').insert(registros.slice(i,i+100));if(error)throw error;}
-    toast('✅ '+registros.length+' produtos importados — '+MESES[mes-1]+'/'+ano);
-    CABC.ano=ano;CABC.mes=mes;CABC.plat=plat;
+    toast('✅ '+registros.length+' produtos importados — '+MESES[mes-1]+'/'+ano+' · Consultando todos os meses...');
+    CABC.ano=ano;CABC.mes=0;CABC.plat=plat; // mes=0 = todos os meses do ano
     await consultarCurvaABC();
   }catch(e){console.error(e);toast('⚠️ Erro: '+e.message,'error');}
   CABC.uploading=false;renderTab();
