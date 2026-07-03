@@ -371,16 +371,33 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   const tax=preco*totalPerc+totalFixa;const lucro=preco-custo-tax;
   return{lucro,margem:preco>0?lucro/preco*100:0,tax,preco,custo,percDetail,fixaDetail,freteML};
 }
-function cor(r,qty,c){
+function getRegras(c,platId){
+  const tipoGlobal=c.regra_tipo||'peca';
+  const porPlat=c.regra_por_plat?.[platId]||{};
+  const tipo=porPlat.tipo||tipoGlobal;
+  const defPeca={t1:1.20,t2:1.50,t3:1.80};
+  const defPerc={t1:10,t2:15,t3:20};
+  const def=tipo==='peca'?defPeca:defPerc;
+  return{
+    tipo,
+    t1:getRegraVal(porPlat,'t1',tipo)??def.t1,
+    t2:getRegraVal(porPlat,'t2',tipo)??def.t2,
+    t3:getRegraVal(porPlat,'t3',tipo)??def.t3,
+  };
+}
+function getRegraVal(reg,field,tipo){
+  const key=tipo==='peca'?`peca_${field}`:`perc_${field}`;
+  if(reg[key]!=null) return reg[key];
+  if(reg[field]!=null) return reg[field];
+  return null;
+}
+function cor(r,qty,c,platId){
   if(!r)return null;
-  const tipo=c.regra_tipo||'peca';
+  const{tipo,t1,t2,t3}=getRegras(c,platId||'');
   const val=tipo==='peca'?(qty>0?r.lucro/qty:r.lucro):r.margem;
-  const t1=tipo==='peca'?(c.regra_peca_t1??1.20):(c.regra_perc_t1??10);
-  const t2=tipo==='peca'?(c.regra_peca_t2??1.50):(c.regra_perc_t2??15);
-  const t3=tipo==='peca'?(c.regra_peca_t3??1.80):(c.regra_perc_t3??20);
   if(val<=t1)return 'r';if(val<=t2)return 'l';if(val<=t3)return 'a';return 'g';
 }
-function allRes(c){const out=[];for(const p of c.produtos)for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c)});}return out;}
+function allRes(c){const out=[];for(const p of c.produtos)for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c,pl)});}return out;}
 // allPlats: todas as plataformas onde pelo menos 1 produto está cadastrado (mesmo sem dados)
 function allPlats(c){const s=new Set();for(const p of c.produtos)for(const pl of(p.plataformas||[]))s.add(pl);return[...s];}
 function applyFilter(arr){
@@ -432,7 +449,7 @@ function onFilterInput(v,prefix){
     }
   } else {renderTab();setTimeout(()=>{const el=document.getElementById('filter-sku-'+prefix);if(el){el.focus();el.setSelectionRange(v.length,v.length);}},0);}
 }
-function bestR(p,c){let best=null,bc=null;const pri={g:4,a:3,l:2,r:1};for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
+function bestR(p,c){let best=null,bc=null;const pri={g:4,a:3,l:2,r:1};for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c,pl);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
 function hlMark(str,q){if(!q||!str)return String(str||'');return String(str).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
 function toast(msg,type='success'){const w=document.getElementById('toasts');const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=msg;w.appendChild(e);setTimeout(()=>e.remove(),3000);}
 
@@ -506,7 +523,7 @@ function updateSearch(){
     const pH=(p.plataformas||[]).map(pl=>{const po=PLATS.find(x=>x.id===pl);return po?`<span class="chip ${po.cls}">${po.label}</span>`:''}).join('');
     const kH=(p.kits||[]).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('');
     const lk=p.links&&Object.keys(p.links).filter(k=>p.links[k]).length?'<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">'+Object.entries(p.links).filter(([,v])=>v).map(([pl,url])=>{const po=PLATS.find(x=>x.id===pl);return`<a href="${url}" target="_blank" class="link-chip" onclick="event.stopPropagation()">🔗 ${po?.label||pl}</a>`;}).join('')+'</div>':'';
-    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
+    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli,pl);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
     return`<div class="prod-card"><div class="prod-card-head" onclick="togOpen('s_${p.id}')">
       <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0">
         ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
@@ -586,7 +603,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const precoUsado=precoOverride!=null?precoOverride:k.precos?.[pl];
   const r2=calcR(precoUsado,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
   if(!r2) return`<div id="kitcard-${p.id}-${pl}-${k.qty}" style="min-width:160px;flex:1;max-width:220px;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:14px;color:var(--text3);font-size:11px;text-align:center">Sem dados válidos</div>`;
-  const co2=cor(r2,k.qty,c);
+  const co2=cor(r2,k.qty,c,pl);
   const isBest=precoOverride==null&&r2.lucro===bestLucro;
   const isWorst=precoOverride==null&&r2.lucro<0&&r2.lucro===worstLucro;
   const borderColor=isBest?'#4ade80':isWorst?'#fca5a5':co2==='g'?'#86efac':co2==='a'?'#fcd34d':co2==='l'?'#fdba74':'#fca5a5';
@@ -774,17 +791,13 @@ function renderTaxas(c){
 }
 
 function renderConfig(c){
-  const t=c.regra_tipo||'peca';
-  const v1=t==='peca'?(c.regra_peca_t1??1.20):(c.regra_perc_t1??10);
-  const v2=t==='peca'?(c.regra_peca_t2??1.50):(c.regra_perc_t2??15);
-  const v3=t==='peca'?(c.regra_peca_t3??1.80):(c.regra_perc_t3??20);
-  const u=t==='peca'?'R$/pç':'%';
-  const fieldPrefix=t==='peca'?'regra_peca_':'regra_perc_';
+  const tipoGlobal=c.regra_tipo||'peca';
   const margemPorPlat=c.margem_ideal_por_plat||{};
-  return`<div style="max-width:500px">
+  const regraPorPlat=c.regra_por_plat||{};
+  return`<div style="max-width:580px">
     <div class="config-card" style="border-color:var(--accent);background:var(--accent-bg)">
-      <div class="config-title" style="color:var(--accent-text)">🎯 Margem Ideal desejada (por plataforma)</div>
-      <div style="font-size:11px;color:var(--accent-text);margin-bottom:10px;opacity:.85">Define a margem que o cliente quer atingir em cada plataforma. Usada para calcular automaticamente o "Preço Ideal" de cada produto — independente das faixas de cor abaixo.</div>
+      <div class="config-title" style="color:var(--accent-text)">Margem Ideal desejada (por plataforma)</div>
+      <div style="font-size:11px;color:var(--accent-text);margin-bottom:10px;opacity:.85">Define a margem que o cliente quer atingir em cada plataforma. Usada para calcular o "Preço Ideal" de cada produto.</div>
       <div style="display:flex;flex-direction:column;gap:8px">
         ${PLATS.map(pl=>`<div style="display:flex;align-items:center;gap:8px">
           <span class="chip ${pl.cls}" style="width:90px;justify-content:center;flex-shrink:0">${pl.label}</span>
@@ -793,21 +806,55 @@ function renderConfig(c){
         </div>`).join('')}
       </div>
     </div>
-    <div class="config-card"><div class="config-title">Tipo de regra de margem (alertas de cor)</div>
-      <div class="tgl-group"><button class="tgl-btn ${t==='peca'?'on':''}" onclick="setRegraTipo('peca')">R$ por peça</button><button class="tgl-btn ${t==='perc'?'on':''}" onclick="setRegraTipo('perc')">% de margem</button></div>
-      <div style="font-size:11px;color:var(--text3);margin-top:8px">Cada modo guarda seus próprios valores — trocar de modo não altera os valores do outro. Isso é só para as cores dos alertas, não afeta o Preço Ideal acima.</div>
+    <div class="config-card">
+      <div class="config-title">Faixas de alerta por plataforma</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Cada plataforma tem seu próprio tipo de regra e faixas. O toggle alterna qual conjunto está ativo — os valores de ambos ficam salvos.</div>
+      ${PLATS.map(pl=>{
+        const reg=regraPorPlat[pl.id]||{};
+        const tipo=reg.tipo||tipoGlobal;
+        // Valores do conjunto ativo
+        const defPeca={t1:1.20,t2:1.50,t3:1.80};
+        const defPerc={t1:10,t2:15,t3:20};
+        const vp1=reg.peca_t1??defPeca.t1,vp2=reg.peca_t2??defPeca.t2,vp3=reg.peca_t3??defPeca.t3;
+        const vr1=reg.perc_t1??defPerc.t1,vr2=reg.perc_t2??defPerc.t2,vr3=reg.perc_t3??defPerc.t3;
+        const ativo=tipo==='peca';
+        return`<div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <span class="chip ${pl.cls}">${pl.label}</span>
+            <div class="tgl-group" style="transform:scale(.9);transform-origin:left">
+              <button class="tgl-btn ${ativo?'on':''}" onclick="updRegraPlat('${pl.id}','tipo','peca')">R$/peça</button>
+              <button class="tgl-btn ${!ativo?'on':''}" onclick="updRegraPlat('${pl.id}','tipo','perc')">%</button>
+            </div>
+            <span style="font-size:10px;color:var(--text3)">Ativo: ${ativo?'R$/peça':'% margem'}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <div style="opacity:${ativo?1:0.45}">
+              <div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase">R$ por peça ${ativo?'✓ ativo':''}</div>
+              ${[['#fee2e2','#b91c1c','Vermelho','peca_t1',vp1],['#ffedd5','#9a3412','Laranja','peca_t2',vp2],['#fef9c3','#713f12','Amarelo','peca_t3',vp3]].map(([bg,fg,lb,field,val])=>`
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:11px">
+                <div style="width:8px;height:8px;border-radius:50%;background:${bg};border:1px solid ${fg};flex-shrink:0"></div>
+                <span style="color:var(--text2);width:55px">${lb} até</span>
+                <input class="taxa-input" style="width:65px" type="number" value="${val}" step="0.01" onchange="updRegraPlat('${pl.id}','${field}',this.value)"/>
+                <span style="font-size:10px;color:var(--text3)">R$/pç</span>
+              </div>`).join('')}
+              <div style="font-size:10px;color:var(--text3)">Verde > R$${vp3.toFixed(2)}/pç</div>
+            </div>
+            <div style="opacity:${!ativo?1:0.45}">
+              <div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase">% de margem ${!ativo?'✓ ativo':''}</div>
+              ${[['#fee2e2','#b91c1c','Vermelho','perc_t1',vr1],['#ffedd5','#9a3412','Laranja','perc_t2',vr2],['#fef9c3','#713f12','Amarelo','perc_t3',vr3]].map(([bg,fg,lb,field,val])=>`
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:11px">
+                <div style="width:8px;height:8px;border-radius:50%;background:${bg};border:1px solid ${fg};flex-shrink:0"></div>
+                <span style="color:var(--text2);width:55px">${lb} até</span>
+                <input class="taxa-input" style="width:65px" type="number" value="${val}" step="1" onchange="updRegraPlat('${pl.id}','${field}',this.value)"/>
+                <span style="font-size:10px;color:var(--text3)">%</span>
+              </div>`).join('')}
+              <div style="font-size:10px;color:var(--text3)">Verde > ${vr3}%</div>
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
     </div>
-    <div class="config-card"><div class="config-title">Faixas de alerta (${t==='peca'?'R$ por peça':'% de margem'})</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Define as cores vermelho/laranja/amarelo/verde mostradas nos produtos.</div>
-      ${[['#fee2e2','#b91c1c','Vermelho — de 0 até','t1',v1],['#ffedd5','#9a3412','Laranja — até','t2',v2],['#fef9c3','#713f12','Amarelo — até','t3',v3]].map(([bg,fg,lb,suffix,val])=>`<div style="display:grid;grid-template-columns:20px 1fr 90px 30px;gap:8px;align-items:center;margin-bottom:8px;font-size:12px"><div style="width:12px;height:12px;border-radius:50%;background:${bg};border:2px solid ${fg}"></div><span style="color:var(--text2)">${lb}</span><input class="taxa-input" style="width:80px" type="number" value="${val}" step="${t==='peca'?'0.01':'1'}" onchange="updRegra('${fieldPrefix}${suffix}',this.value)"/><span style="font-size:11px;color:var(--text3)">${u}</span></div>`).join('')}
-      <div style="font-size:11px;color:var(--text3)">Verde — acima de ${v3}${u}</div>
-    </div>
-    <div style="background:var(--surface2);border-radius:var(--r);padding:12px;border:1px solid var(--border)">
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Prévia</div>
-      ${t==='peca'?`<div style="display:flex;gap:10px;flex-wrap:wrap">${[3,5,10].map(qty=>`<div><div style="font-size:10px;color:var(--text3);margin-bottom:5px">Kit ${qty}</div><div style="display:flex;flex-direction:column;gap:3px"><span class="lv lv-r">0–R$${(v1*qty).toFixed(2)}</span><span class="lv lv-l">–R$${(v2*qty).toFixed(2)}</span><span class="lv lv-a">–R$${(v3*qty).toFixed(2)}</span><span class="lv lv-g">>R$${(v3*qty).toFixed(2)}</span></div></div>`).join('')}</div>`:
-      `<div style="display:flex;flex-direction:column;gap:4px"><span class="lv lv-r">0–${v1}%</span><span class="lv lv-l">–${v2}%</span><span class="lv lv-a">–${v3}%</span><span class="lv lv-g">>  ${v3}%</span></div>`}
-    </div>
-    <button class="btn btn-primary" style="margin-top:14px" onclick="saveConfig()">Salvar configurações</button>
+    <button class="btn btn-primary" onclick="saveConfig()">Salvar configurações</button>
   </div>`;
 }
 
@@ -1144,7 +1191,28 @@ function updMargemPlat(plat,v){
   if(!c.margem_ideal_por_plat) c.margem_ideal_por_plat={};
   c.margem_ideal_por_plat[plat]=parseFloat(v)||0;
 }
-async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3,margem_ideal_por_plat:c.margem_ideal_por_plat}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
+function updRegraPlat(plat,field,v){
+  const c=gc();
+  if(!c.regra_por_plat) c.regra_por_plat={};
+  if(!c.regra_por_plat[plat]) c.regra_por_plat[plat]={};
+  if(field==='tipo'){
+    // Só o toggle re-renderiza (muda a aparência visual)
+    c.regra_por_plat[plat].tipo=v;
+    renderTab();
+  }else{
+    // Campos de valor: só salva no estado, SEM re-renderizar (não perde foco)
+    c.regra_por_plat[plat][field]=parseFloat(v)||0;
+  }
+}
+function getRegraVal(reg,field,tipo){
+  // Lê o valor do conjunto correto (peca ou perc)
+  const key=tipo==='peca'?`peca_${field}`:`perc_${field}`;
+  if(reg[key]!=null) return reg[key];
+  // Fallback para campo legado sem prefixo
+  if(reg[field]!=null) return reg[field];
+  return null;
+}
+async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_por_plat:c.regra_por_plat,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3,margem_ideal_por_plat:c.margem_ideal_por_plat}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
 function closeModal(e){
   if(e&&e.target!==e.currentTarget)return;
   if(ST.modal&&ST.modal.type==='prod'){
