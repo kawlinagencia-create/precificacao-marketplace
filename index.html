@@ -545,28 +545,51 @@ function renderDash(c){
   const allFull=allRes(c);
   if(!allFull.length)return`<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px">📊</div><div style="font-size:13px;font-weight:500;color:var(--text2)">Sem dados</div></div>`;
   const all=applyFilter(allFull);
-  const total=allFull.length,verm=allFull.filter(x=>x.cor==='r').length,grn=allFull.filter(x=>x.cor==='g').length;
-  const avgM=allFull.reduce((s,x)=>s+x.r.margem,0)/allFull.length;
-  const prej=allFull.filter(x=>x.r.lucro<0);
-  // Agrupar prejuízos por produto
+  // KPIs baseados no filtro ativo
+  const base=all.length?all:allFull;
+  const total=base.length,verm=base.filter(x=>x.cor==='r').length,grn=base.filter(x=>x.cor==='g').length;
+  const avgM=base.reduce((s,x)=>s+x.r.margem,0)/base.length;
+  const prej=base.filter(x=>x.r.lucro<0);
   const prejPorProd={};for(const x of prej){const id=x.p.id;if(!prejPorProd[id])prejPorProd[id]={p:x.p,items:[]};prejPorProd[id].items.push(x);}
+  // ML unificado: agrupar ml_classico e ml_premium como "Mercado Livre" com coluna extra
+  const hasMLFilter=ST.filter.plat==='ml_classico'||ST.filter.plat==='ml_premium';
+  const showMLTipo=!ST.filter.plat||hasMLFilter; // mostrar coluna tipo ML quando não filtrado ou filtrado em ML
+  const platLabel=(pl)=>pl==='ml_classico'||pl==='ml_premium'?'Mercado Livre':PLATS.find(p=>p.id===pl)?.label||pl;
+  const platCls=(pl)=>pl==='ml_classico'||pl==='ml_premium'?'chip-ml':PLATS.find(p=>p.id===pl)?.cls||'';
+  const mlTipo=(pl)=>pl==='ml_classico'?'Clássico':pl==='ml_premium'?'Premium':null;
+  const isML=(pl)=>pl==='ml_classico'||pl==='ml_premium';
+  const filterLabel=ST.filter.plat?` — ${platLabel(ST.filter.plat)}`:'';
   return`${renderFilterBar(c,'dash')}
   <div class="kpi-grid">
-    <div class="kpi ${verm>0?'danger':'success'}"><div class="kpi-label">Combinações em prejuízo</div><div class="kpi-val">${verm}</div><div class="kpi-sub">de ${total} combinações</div></div>
-    <div class="kpi ${avgM<5?'warn':avgM>=10?'success':''}"><div class="kpi-label">Margem média</div><div class="kpi-val">${avgM.toFixed(1)}%</div><div class="kpi-sub">sobre preço de venda</div></div>
-    <div class="kpi ${grn<total/2?'warn':'success'}"><div class="kpi-label">No verde</div><div class="kpi-val">${grn}</div><div class="kpi-sub">${Math.round(grn/total*100)}% do total</div></div>
-    <div class="kpi"><div class="kpi-label">Produtos</div><div class="kpi-val">${c.produtos.length}</div><div class="kpi-sub">${[...new Set(allFull.map(x=>x.pl))].length} plataformas</div></div>
+    <div class="kpi ${verm>0?'danger':'success'}"><div class="kpi-label">Combinações em prejuízo${filterLabel}</div><div class="kpi-val">${verm}</div><div class="kpi-sub">de ${total} combinações</div></div>
+    <div class="kpi ${avgM<5?'warn':avgM>=10?'success':''}"><div class="kpi-label">Margem média${filterLabel}</div><div class="kpi-val">${avgM.toFixed(1)}%</div><div class="kpi-sub">sobre preço de venda</div></div>
+    <div class="kpi ${grn<total/2?'warn':'success'}"><div class="kpi-label">No verde${filterLabel}</div><div class="kpi-val">${grn}</div><div class="kpi-sub">${Math.round(grn/total*100)}% do total</div></div>
+    <div class="kpi"><div class="kpi-label">Produtos</div><div class="kpi-val">${c.produtos.length}</div><div class="kpi-sub">${[...new Set(all.map(x=>x.pl))].length} plataformas</div></div>
   </div>
   <div class="sec"><div class="sec-head"><div class="sec-title">Todos os produtos ${all.length!==allFull.length?`<span class="badge badge-gray" style="margin-left:6px">${all.length} filtrados</span>`:''}</div><div class="sec-line"></div></div>
     <div class="table-scroll"><table class="data-table">
-      <thead><tr><th></th><th>SKU</th><th>Produto</th><th>Plataforma</th><th>Kit</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Lucro R$</th><th>R$/peça</th><th>Margem %</th></tr></thead>
-      <tbody>${all.map(x=>{const po=PLATS.find(p=>p.id===x.pl);
+      <thead><tr><th></th><th>SKU</th><th>Produto</th><th>Plataforma</th>${showMLTipo?'<th>Tipo ML</th>':''}<th>Kit</th><th>Preço</th><th>Custo</th><th>Total Taxas</th><th>Lucro R$</th><th>R$/peça</th><th>Margem %</th></tr></thead>
+      <tbody>${all.map(x=>{
         const tipContent=x.r.percDetail&&x.r.fixaDetail?
           [...x.r.percDetail,...x.r.fixaDetail].filter(d=>d.val>0).map(d=>{
             const isPerc=x.r.percDetail.includes(d);
             return`<div class="tip-row"><span>${d.n} ${isPerc?`(${d.v.toFixed(1)}%)`:''}</span><span>R$${d.val.toFixed(2)}</span></div>`;
           }).join('')+`<div class="tip-row"><span>Total</span><span>R$${x.r.tax.toFixed(2)}</span></div>`:'';
-        return`<tr><td>${x.p.foto_url?`<img src="${x.p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}</td><td class="mono" style="color:var(--text3)">${x.p.sku||'—'}</td><td style="font-weight:600">${x.p.nome}</td><td><span class="chip ${po?.cls}">${po?.label||x.pl}</span></td><td class="mono">K${x.k.qty}</td><td class="mono">R$${x.r.preco.toFixed(2)}</td><td class="mono">R$${x.r.custo.toFixed(2)}</td><td><div class="tip-wrap" onmouseenter="positionTip(event)"><span class="mono" style="color:var(--text3);border-bottom:1px dashed var(--text3)">R$${x.r.tax.toFixed(2)}</span><div class="tip">${tipContent}</div></div></td><td><span class="lv lv-${x.cor}">R$${x.r.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(x.r.lucro/x.k.qty).toFixed(2)}</td><td><span class="lv lv-${x.cor}">${x.r.margem.toFixed(1)}%</span></td></tr>`;
+        const tipoML=mlTipo(x.pl);
+        return`<tr>
+          <td>${x.p.foto_url?`<img src="${x.p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}</td>
+          <td class="mono" style="color:var(--text3)">${x.p.sku||'—'}</td>
+          <td style="font-weight:600">${x.p.nome}</td>
+          <td><span class="chip ${platCls(x.pl)}">${platLabel(x.pl)}</span></td>
+          ${showMLTipo?`<td>${tipoML?`<span style="font-size:10px;padding:2px 7px;border-radius:20px;background:${x.pl==='ml_classico'?'#fef9c3':'#fef3c7'};color:#713f12;font-weight:500">${tipoML}</span>`:'<span style="color:var(--text3)">—</span>'}</td>`:''}
+          <td class="mono">K${x.k.qty}</td>
+          <td class="mono">R$${x.r.preco.toFixed(2)}</td>
+          <td class="mono">R$${x.r.custo.toFixed(2)}</td>
+          <td><div class="tip-wrap" onmouseenter="positionTip(event)"><span class="mono" style="color:var(--text3);border-bottom:1px dashed var(--text3)">R$${x.r.tax.toFixed(2)}</span><div class="tip">${tipContent}</div></div></td>
+          <td><span class="lv lv-${x.cor}">R$${x.r.lucro.toFixed(2)}</span></td>
+          <td class="mono" style="color:var(--text3)">R$${(x.r.lucro/x.k.qty).toFixed(2)}</td>
+          <td><span class="lv lv-${x.cor}">${x.r.margem.toFixed(1)}%</span></td>
+        </tr>`;
       }).join('')}</tbody>
     </table></div>
   </div>
@@ -582,8 +605,8 @@ function renderDash(c){
               <div style="font-size:11px;color:#b91c1c;margin-top:2px">SKU ${p.sku||'—'} · ${items.length} combinação${items.length>1?'ões':''} em prejuízo</div>
             </div>
           </div>
-          ${items.map(x=>{const po=PLATS.find(pl=>pl.id===x.pl);return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:#fee2e2;border-radius:6px;margin-bottom:4px;font-size:11px">
-            <div><span class="chip chip-${x.pl.includes('shopee')?'shopee':x.pl.includes('ml')?'ml':x.pl.includes('shein')?'shein':'tiktok'}" style="font-size:10px">${po?.label||x.pl}</span> K${x.k.qty}</div>
+          ${items.map(x=>{return`<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:#fee2e2;border-radius:6px;margin-bottom:4px;font-size:11px">
+            <div><span class="chip ${platCls(x.pl)}" style="font-size:10px">${platLabel(x.pl)}${mlTipo(x.pl)?' ('+mlTipo(x.pl)+')':''}</span> K${x.k.qty}</div>
             <div style="display:flex;gap:8px;align-items:center">
               <span style="color:var(--text3)">R$${x.r.preco.toFixed(2)}</span>
               <span style="font-weight:700;color:#b91c1c">−R$${Math.abs(x.r.lucro).toFixed(2)}</span>
