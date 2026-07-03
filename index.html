@@ -480,7 +480,7 @@ function render(){
   app.innerHTML=`<div class="sidebar">
     <div class="sb-logo"><div class="sb-logo-title">Precificação</div><div class="sb-logo-sub">Gestão de marketplace</div></div>
     <div class="sb-section">Clientes</div>
-    <div class="sb-list">${ST.clients.map(cl=>`<div class="sb-item ${cl.id===ST.activeId?'active':''}" onclick="selC(${cl.id})" onmouseenter="this.querySelector('.sb-acts').style.display='flex'" onmouseleave="this.querySelector('.sb-acts').style.display='none'"><div class="sb-dot" style="background:${cl.color}"></div><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cl.name}</span><span class="sb-count">${(cl.produtos||[]).length}</span><span class="sb-acts" style="display:none;gap:2px;margin-left:4px" onclick="event.stopPropagation()"><button class="btn-icon" style="width:20px;height:20px;font-size:10px;padding:0" title="Editar nome" onclick="openEditCliente(${cl.id})">✏️</button><button class="btn-icon" style="width:20px;height:20px;font-size:10px;padding:0" title="Duplicar" onclick="duplicarCliente(${cl.id})">📋</button></span></div>`).join('')}</div>
+    <div class="sb-list">${ST.clients.map(cl=>`<div class="sb-item ${cl.id===ST.activeId?'active':''}" onclick="selC(${cl.id})" onmouseenter="this.querySelector('.sb-acts').style.display='flex'" onmouseleave="this.querySelector('.sb-acts').style.display='none'"><div class="sb-dot" style="background:${cl.color}"></div><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cl.name}</span><span class="sb-count">${(cl.produtos||[]).length}</span><span class="sb-acts" style="display:none;gap:2px;margin-left:4px" onclick="event.stopPropagation()"><button class="btn-icon" style="width:20px;height:20px;font-size:10px;padding:0" title="Editar nome" onclick="openEditCliente(${cl.id})">✏️</button><button class="btn-icon" style="width:20px;height:20px;font-size:10px;padding:0" title="Duplicar" onclick="duplicarCliente(${cl.id})">📋</button><button class="btn-icon danger" style="width:20px;height:20px;font-size:10px;padding:0" title="Excluir loja" onclick="excluirCliente(${cl.id})">🗑️</button></span></div>`).join('')}</div>
     <div class="sb-footer"><button class="sb-add-btn" onclick="openNewClient()">+ Novo cliente</button></div>
   </div>
   <div class="main">
@@ -1167,6 +1167,22 @@ async function duplicarCliente(id){
   ST.activeId=novoCliente.id;ST.tab='dashboard';
   toast(`✅ "${novoNome}" criado com ${prods.length} produtos!`);render();
 }
+async function excluirCliente(id){
+  const cl=ST.clients.find(c=>c.id===id);if(!cl)return;
+  if(!confirm(`⚠️ Excluir "${cl.name}" permanentemente?\n\nIsso vai apagar:\n• ${(cl.produtos||[]).length} produtos\n• Todas as taxas e configurações\n• Todos os extratos de curva ABC\n\nEssa ação não pode ser desfeita!`))return;
+  if(!confirm(`Tem certeza? Digite OK para confirmar a exclusão de "${cl.name}".`))return;
+  toast('Excluindo...');
+  // Excluir produtos, histórico, curva ABC e o cliente
+  await sb.from('prec_historico').delete().eq('client_id',id);
+  await sb.from('prec_curva_abc').delete().eq('client_id',id);
+  await sb.from('prec_products').delete().eq('client_id',id);
+  const{error}=await sb.from('prec_clients').delete().eq('id',id);
+  if(error){toast('Erro ao excluir: '+error.message,'error');return;}
+  ST.clients=ST.clients.filter(c=>c.id!==id);
+  ST.activeId=ST.clients[0]?.id||null;
+  ST.tab='dashboard';
+  toast('✅ Loja excluída com sucesso.');render();
+}
 async function saveNewClient(){
   const name=document.getElementById('nc-n')?.value?.trim();if(!name)return;
   const color=COLORS[ST.clients.length%COLORS.length];
@@ -1487,6 +1503,15 @@ function renderCurvaABC(){
       </div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="toggleExtratosABC()">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em">📁 Extratos salvos</div>
+        <span id="abc-extratos-toggle" style="font-size:11px;color:var(--text3);padding:3px 10px;border:1px solid var(--border);border-radius:20px">▼ Expandir</span>
+      </div>
+      <div id="abc-extratos-body" style="display:none;margin-top:12px">
+        <div id="abc-extratos-lista" style="font-size:12px;color:var(--text3)">Carregando...</div>
+      </div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:16px">
       <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">🔍 Consultar período</div>
       <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
         <div><div class="form-label">Ano</div><select class="calc-select" style="width:90px" onchange="CABC.ano=parseInt(this.value)">${anos.map(a=>`<option value="${a}" ${a===CABC.ano?'selected':''}>${a}</option>`).join('')}</select></div>
@@ -1557,6 +1582,70 @@ function atualizarTabelaABC(){
     <td class="mono" style="color:var(--text3)">${(d.pct_faturamento||0).toFixed(1)}%</td>
     <td><div style="background:var(--border);border-radius:3px;height:7px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px"><div style="width:${Math.min(100,d.pct_acumulado||0)}%;height:100%;background:${corCurva[d.curva]}"></div></div><span class="mono" style="font-size:10px;color:var(--text3)">${(d.pct_acumulado||0).toFixed(1)}%</span></td>
   </tr>`).join('');
+}
+
+async function toggleExtratosABC(){
+  const body=document.getElementById('abc-extratos-body');
+  const btn=document.getElementById('abc-extratos-toggle');
+  if(!body||!btn)return;
+  const aberto=body.style.display!=='none';
+  if(aberto){
+    body.style.display='none';
+    btn.textContent='▼ Expandir';
+  }else{
+    body.style.display='block';
+    btn.textContent='▲ Recolher';
+    await carregarExtratosABC();
+  }
+}
+async function carregarExtratosABC(){
+  const c=gc();if(!c)return;
+  const el=document.getElementById('abc-extratos-lista');
+  if(!el)return;
+  el.innerHTML='<span style="color:var(--text3)">Carregando...</span>';
+  // Busca períodos únicos salvos (agrupa por ano/mes/plataforma)
+  const{data,error}=await sb.from('prec_curva_abc')
+    .select('ano,mes,plataforma,created_at')
+    .eq('client_id',c.id)
+    .order('ano',{ascending:false})
+    .order('mes',{ascending:false});
+  if(error||!data?.length){el.innerHTML='<span style="color:var(--text3)">Nenhum extrato salvo ainda.</span>';return;}
+  // Agrupar por ano+mes+plataforma
+  const grupos={};
+  for(const d of data){
+    const key=`${d.ano}-${d.mes}-${d.plataforma}`;
+    if(!grupos[key])grupos[key]={ano:d.ano,mes:d.mes,plataforma:d.plataforma,created_at:d.created_at,count:0};
+    grupos[key].count++;
+  }
+  const lista=Object.values(grupos).sort((a,b)=>b.ano-a.ano||b.mes-a.mes);
+  const platLabel={todos:'Todas',shopee:'Shopee',shein:'Shein',ml:'Mercado Livre',tiktok:'TikTok'};
+  el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+    ${lista.map(g=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-weight:600;font-family:var(--mono);font-size:12px">${MESES[g.mes-1]}/${g.ano}</span>
+        <span class="chip chip-${g.plataforma==='shopee'?'shopee':g.plataforma==='shein'?'shein':g.plataforma==='tiktok'?'tiktok':'ml'}" style="font-size:10px">${platLabel[g.plataforma]||g.plataforma}</span>
+        <span style="font-size:11px;color:var(--text3)">${g.count} produtos</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline" style="font-size:11px;padding:3px 10px" onclick="CABC.ano=${g.ano};CABC.mes=${g.mes};CABC.plat='${g.plataforma}';consultarCurvaABC()">Ver</button>
+        <button class="btn-icon danger" style="font-size:11px" onclick="excluirExtratoABC(${g.ano},${g.mes},'${g.plataforma}')" title="Excluir este extrato">🗑️</button>
+      </div>
+    </div>`).join('')}
+  </div>`;
+}
+
+async function excluirExtratoABC(ano,mes,plataforma){
+  const c=gc();if(!c)return;
+  const platLabel={todos:'Todas',shopee:'Shopee',shein:'Shein',ml:'Mercado Livre',tiktok:'TikTok'};
+  if(!confirm(`Excluir extrato de ${MESES[mes-1]}/${ano} — ${platLabel[plataforma]||plataforma}?\n\nEssa ação não pode ser desfeita.`))return;
+  const{error}=await sb.from('prec_curva_abc').delete()
+    .eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma',plataforma);
+  if(error){toast('Erro ao excluir: '+error.message,'error');return;}
+  toast('✅ Extrato excluído!');
+  // Se era o período consultado atualmente, limpar
+  if(CABC.ano===ano&&CABC.mes===mes&&CABC.plat===plataforma){CABC.dados=[];}
+  carregarExtratosABC();
+  renderTab();
 }
 
 async function consultarCurvaABC(){
