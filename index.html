@@ -1408,104 +1408,155 @@ function onCalcKit(qty){
   renderTab();
 }
 
+// Estado da Curva ABC
+let CABC={ano:new Date().getFullYear(),mes:new Date().getMonth()+1,plat:'todos',filtroSku:'',filtroCurva:'',dados:[],loading:false,uploading:false};
+const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const PLAT_ABC=[{id:'todos',label:'Todas'},{id:'shopee',label:'Shopee'},{id:'shein',label:'Shein'},{id:'ml',label:'Mercado Livre'},{id:'tiktok',label:'TikTok'}];
+
 function renderCurvaABC(){
-  return`<div style="max-width:900px">
+  const dadosFilt=CABC.dados.filter(d=>{
+    if(CABC.filtroCurva&&d.curva!==CABC.filtroCurva) return false;
+    if(CABC.filtroSku&&!d.sku?.toLowerCase().includes(CABC.filtroSku.toLowerCase())&&!d.nome_produto?.toLowerCase().includes(CABC.filtroSku.toLowerCase())) return false;
+    return true;
+  });
+  const totalFat=CABC.dados.reduce((s,d)=>s+d.faturamento,0);
+  const totalUnid=CABC.dados.reduce((s,d)=>s+d.unidades,0);
+  const countA=CABC.dados.filter(d=>d.curva==='A').length;
+  const countB=CABC.dados.filter(d=>d.curva==='B').length;
+  const countC=CABC.dados.filter(d=>d.curva==='C').length;
+  const fatA=CABC.dados.filter(d=>d.curva==='A').reduce((s,d)=>s+d.faturamento,0);
+  const fatB=CABC.dados.filter(d=>d.curva==='B').reduce((s,d)=>s+d.faturamento,0);
+  const fatC=CABC.dados.filter(d=>d.curva==='C').reduce((s,d)=>s+d.faturamento,0);
+  const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c'};
+  const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2'};
+  const anoAtual=new Date().getFullYear();
+  const anos=Array.from({length:5},(_,i)=>anoAtual-i);
+  return`<div style="max-width:960px">
     <div class="sec-head"><div class="sec-title">Curva ABC — Análise de Vendas</div><div class="sec-line"></div></div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Faça upload do extrato de vendas do UpSeller (Excel) para identificar seus produtos de maior impacto.</div>
-    <div style="background:var(--surface);border:2px dashed var(--border2);border-radius:var(--r-lg);padding:24px;text-align:center;margin-bottom:16px" id="abc-drop-zone">
-      <div style="font-size:28px;margin-bottom:8px">📊</div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:4px">Arraste o arquivo Excel aqui</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Extrato "Vendas por Produtos" exportado do UpSeller (.xlsx)</div>
-      <input type="file" id="abc-file-input" accept=".xlsx,.xls" style="display:none" onchange="processarCurvaABC(this)"/>
-      <button class="btn btn-primary" onclick="document.getElementById('abc-file-input').click()">Selecionar arquivo</button>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">📤 Importar extrato de vendas</div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div><div class="form-label">Ano</div><select class="calc-select" style="width:90px" id="abc-upload-ano">${anos.map(a=>`<option value="${a}" ${a===anoAtual?'selected':''}>${a}</option>`).join('')}</select></div>
+        <div><div class="form-label">Mês</div><select class="calc-select" style="width:100px" id="abc-upload-mes">${MESES.map((m,i)=>`<option value="${i+1}" ${i+1===CABC.mes?'selected':''}>${m}</option>`).join('')}</select></div>
+        <div><div class="form-label">Plataforma</div><select class="calc-select" style="width:130px" id="abc-upload-plat">${PLAT_ABC.map(p=>`<option value="${p.id}">${p.label}</option>`).join('')}</select></div>
+        <div><input type="file" id="abc-file-input" accept=".xlsx,.xls" style="display:none" onchange="processarCurvaABC(this)"/><button class="btn btn-primary" onclick="document.getElementById('abc-file-input').click()" ${CABC.uploading?'disabled':''}>${CABC.uploading?'Salvando...':'📊 Selecionar Excel'}</button></div>
+      </div>
     </div>
-    <div id="abc-resultado"></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">🔍 Consultar período</div>
+      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+        <div><div class="form-label">Ano</div><select class="calc-select" style="width:90px" onchange="CABC.ano=parseInt(this.value)">${anos.map(a=>`<option value="${a}" ${a===CABC.ano?'selected':''}>${a}</option>`).join('')}</select></div>
+        <div><div class="form-label">Mês</div><select class="calc-select" style="width:110px" onchange="CABC.mes=parseInt(this.value)"><option value="0" ${CABC.mes===0?'selected':''}>Todos os meses</option>${MESES.map((m,i)=>`<option value="${i+1}" ${i+1===CABC.mes?'selected':''}>${m}</option>`).join('')}</select></div>
+        <div><div class="form-label">Plataforma</div><select class="calc-select" style="width:130px" onchange="CABC.plat=this.value">${PLAT_ABC.map(p=>`<option value="${p.id}" ${p.id===CABC.plat?'selected':''}>${p.label}</option>`).join('')}</select></div>
+        <button class="btn btn-primary" onclick="consultarCurvaABC()">${CABC.loading?'Carregando...':'Consultar'}</button>
+      </div>
+    </div>
+    ${CABC.loading?`<div class="loading"><div class="spinner"></div> Carregando...</div>`:
+    !CABC.dados.length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📊</div><div style="font-size:13px;font-weight:500">Nenhum dado para este período</div><div style="font-size:11px;color:var(--text3);margin-top:4px">Importe um extrato acima ou ajuste o período</div></div>`:`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+      ${['A','B','C'].map(cv=>{const n=cv==='A'?countA:cv==='B'?countB:countC;const f=cv==='A'?fatA:cv==='B'?fatB:fatC;const pct=totalFat>0?f/totalFat*100:0;return`<div style="background:${bgCurva[cv]};border-radius:var(--r-lg);padding:14px;cursor:pointer;border:2px solid ${CABC.filtroCurva===cv?corCurva[cv]:'transparent'}" onclick="CABC.filtroCurva=CABC.filtroCurva==='${cv}'?'':'${cv}';renderTab()">
+        <div style="font-size:17px;font-weight:900;color:${corCurva[cv]};margin-bottom:4px">Curva ${cv}</div>
+        <div style="font-size:20px;font-weight:700;font-family:var(--mono);color:${corCurva[cv]}">${n} produtos</div>
+        <div style="font-size:11px;color:${corCurva[cv]};margin-top:3px">R$${f.toLocaleString('pt-BR',{minimumFractionDigits:2})} · ${pct.toFixed(1)}%</div>
+        <div style="font-size:10px;color:${corCurva[cv]};opacity:.8;margin-top:2px">${cv==='A'?'Top 80% faturamento':cv==='B'?'80–95% faturamento':'95–100%'}</div>
+      </div>`;}).join('')}
+    </div>
+    <div class="filter-bar" style="margin-bottom:10px">
+      <span style="font-size:11px;font-weight:600;color:var(--text3)">Filtrar:</span>
+      <input class="filter-input" placeholder="SKU ou nome do produto" value="${CABC.filtroSku}" oninput="CABC.filtroSku=this.value;renderTab()" style="width:200px"/>
+      <div style="display:flex;gap:4px">
+        ${['','A','B','C'].map(cv=>`<button onclick="CABC.filtroCurva='${cv}';renderTab()" style="padding:4px 10px;font-size:11px;border-radius:20px;border:1px solid ${CABC.filtroCurva===cv?'var(--text)':'var(--border)'};background:${CABC.filtroCurva===cv?'var(--text)':'transparent'};color:${CABC.filtroCurva===cv?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">${cv||'Todas'}</button>`).join('')}
+      </div>
+      <span style="margin-left:auto;font-size:11px;color:var(--text3)">${dadosFilt.length} de ${CABC.dados.length} produtos</span>
+    </div>
+    <div class="table-scroll"><table class="data-table">
+      <thead><tr><th>#</th><th>Curva</th><th>SKU</th><th>Produto</th><th>Lojas</th><th>Pedidos</th><th>Unidades</th><th>Faturamento</th><th>% Fat.</th><th>% Acum.</th></tr></thead>
+      <tbody>${dadosFilt.map((d,i)=>`<tr>
+        <td class="mono" style="color:var(--text3)">${i+1}</td>
+        <td><span style="font-weight:800;font-size:12px;color:${corCurva[d.curva]};background:${bgCurva[d.curva]};padding:2px 8px;border-radius:20px">${d.curva}</span></td>
+        <td class="mono" style="color:var(--text3);font-size:11px">${d.sku||'—'}</td>
+        <td style="font-size:12px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${d.nome_produto}">${d.nome_produto}</td>
+        <td style="font-size:10px;color:var(--text3)">${d.lojas||'—'}</td>
+        <td class="mono">${(d.pedidos||0).toLocaleString('pt-BR')}</td>
+        <td class="mono">${(d.unidades||0).toLocaleString('pt-BR')}</td>
+        <td class="mono" style="font-weight:600">R$${(d.faturamento||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+        <td class="mono" style="color:var(--text3)">${(d.pct_faturamento||0).toFixed(1)}%</td>
+        <td><div style="background:var(--border);border-radius:3px;height:7px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px"><div style="width:${Math.min(100,d.pct_acumulado||0)}%;height:100%;background:${corCurva[d.curva]}"></div></div><span class="mono" style="font-size:10px;color:var(--text3)">${(d.pct_acumulado||0).toFixed(1)}%</span></td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+    <div style="margin-top:8px;font-size:11px;color:var(--text3)">Total: ${CABC.dados.length} produtos · R$${totalFat.toLocaleString('pt-BR',{minimumFractionDigits:2})} · ${totalUnid.toLocaleString('pt-BR')} unidades</div>`}
   </div>`;
+}
+
+async function consultarCurvaABC(){
+  const c=gc();if(!c)return;
+  CABC.loading=true;CABC.dados=[];renderTab();
+  let q=sb.from('prec_curva_abc').select('*').eq('client_id',c.id).eq('ano',CABC.ano).order('pct_acumulado');
+  if(CABC.mes>0) q=q.eq('mes',CABC.mes);
+  if(CABC.plat&&CABC.plat!=='todos') q=q.eq('plataforma',CABC.plat);
+  const{data,error}=await q;
+  if(error){toast('Erro ao consultar dados','error');console.error(error);}
+  else if(CABC.mes===0&&data?.length){
+    const map={};
+    for(const d of data){const k=(d.sku||d.nome_produto);if(!map[k]){map[k]={...d,pedidos:0,unidades:0,faturamento:0};}map[k].pedidos+=d.pedidos;map[k].unidades+=d.unidades;map[k].faturamento+=d.faturamento;}
+    let prods=Object.values(map).sort((a,b)=>b.faturamento-a.faturamento);
+    const tot=prods.reduce((s,p)=>s+p.faturamento,0);let acum=0;
+    CABC.dados=prods.map(p=>{acum+=p.faturamento;const pct=tot>0?p.faturamento/tot*100:0;const pctA=tot>0?acum/tot*100:0;return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:pctA<=80?'A':pctA<=95?'B':'C'};});
+  }else{CABC.dados=data||[];}
+  CABC.loading=false;renderTab();
 }
 
 async function processarCurvaABC(input){
   const file=input.files[0];if(!file)return;
-  const el=document.getElementById('abc-resultado');
-  el.innerHTML=`<div class="loading"><div class="spinner"></div> Analisando vendas...</div>`;
+  const c=gc();if(!c)return;
+  const ano=parseInt(document.getElementById('abc-upload-ano')?.value)||new Date().getFullYear();
+  const mes=parseInt(document.getElementById('abc-upload-mes')?.value)||new Date().getMonth()+1;
+  const plat=document.getElementById('abc-upload-plat')?.value||'todos';
+  CABC.uploading=true;renderTab();
   try{
     const data=await file.arrayBuffer();
     const wb=XLSX.read(data,{type:'array'});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1});
-    // Detectar cabeçalho
     const header=rows[0];
     const iCol=header.findIndex(h=>String(h||'').toLowerCase().includes('produto'));
     const lojaCol=header.findIndex(h=>String(h||'').toLowerCase().includes('loja'));
     const skuCol=header.findIndex(h=>String(h||'').toLowerCase().includes('sku'));
     const unidCol=header.findIndex(h=>String(h||'').toLowerCase().includes('unidade'));
-    const fatCol=header.findIndex(h=>String(h||'').toLowerCase().includes('pagamento')||String(h||'').toLowerCase().includes('faturamento')||String(h||'').toLowerCase().includes('receita'));
+    const fatCol=header.findIndex(h=>String(h||'').toLowerCase().includes('pagamento')||String(h||'').toLowerCase().includes('faturamento'));
     const pedCol=header.findIndex(h=>String(h||'').toLowerCase().includes('pedido'));
-    if(iCol<0||unidCol<0){el.innerHTML=`<div class="empty" style="color:var(--danger)">❌ Formato não reconhecido. Verifique se é o extrato correto do UpSeller.</div>`;return;}
-    // Agrupar por SKU Principal
+    const precoCol=header.findIndex(h=>String(h||'').toLowerCase().includes('médio')||String(h||'').toLowerCase().includes('medio'));
+    if(iCol<0){CABC.uploading=false;toast('Formato não reconhecido','error');renderTab();return;}
     const map={};
     for(let i=1;i<rows.length;i++){
       const row=rows[i];if(!row||!row[iCol]) continue;
-      const sku=(row[skuCol]||'').toString().trim()||row[iCol].toString().substring(0,30);
+      const sku=(row[skuCol]||'').toString().trim();
       const nome=(row[iCol]||'').toString().trim();
-      const loja=(row[lojaCol]||'').toString().trim();
+      const loja=(row[lojaCol]||'').toString().replace(/\[.*?\]/g,'').trim();
       const unid=parseFloat(row[unidCol])||0;
       const fat=parseFloat(row[fatCol])||0;
       const ped=parseFloat(row[pedCol])||0;
+      const preco=parseFloat(row[precoCol])||0;
       const key=sku||nome;
-      if(!map[key]){map[key]={sku,nome,lojas:new Set(),unid:0,fat:0,ped:0};}
-      map[key].unid+=unid;map[key].fat+=fat;map[key].ped+=ped;
-      if(loja)map[key].lojas.add(loja.replace(/\[.*?\]/g,'').trim());
+      if(!map[key]){map[key]={sku,nome,lojas:new Set(),unid:0,fat:0,ped:0,preco:0,n:0};}
+      map[key].unid+=unid;map[key].fat+=fat;map[key].ped+=ped;map[key].preco+=preco;map[key].n++;
+      if(loja)map[key].lojas.add(loja);
     }
     let prods=Object.values(map).sort((a,b)=>b.fat-a.fat);
     const totalFat=prods.reduce((s,p)=>s+p.fat,0);
-    const totalUnid=prods.reduce((s,p)=>s+p.unid,0);
-    // Calcular % acumulado e classificar A/B/C
     let acum=0;
-    prods=prods.map(p=>{
-      acum+=p.fat;
-      const pct=totalFat>0?p.fat/totalFat*100:0;
-      const pctAcum=totalFat>0?acum/totalFat*100:0;
-      const curva=pctAcum<=80?'A':pctAcum<=95?'B':'C';
-      return{...p,pct,pctAcum,curva};
+    const registros=prods.map(p=>{
+      acum+=p.fat;const pct=totalFat>0?p.fat/totalFat*100:0;const pctA=totalFat>0?acum/totalFat*100:0;
+      return{client_id:c.id,ano,mes,plataforma:plat,sku:p.sku||null,nome_produto:p.nome,lojas:[...p.lojas].join(', '),pedidos:p.ped,unidades:p.unid,faturamento:p.fat,preco_medio:p.n>0?p.preco/p.n:0,curva:pctA<=80?'A':pctA<=95?'B':'C',pct_faturamento:pct,pct_acumulado:pctA};
     });
-    const countA=prods.filter(p=>p.curva==='A').length;
-    const countB=prods.filter(p=>p.curva==='B').length;
-    const countC=prods.filter(p=>p.curva==='C').length;
-    const fatA=prods.filter(p=>p.curva==='A').reduce((s,p)=>s+p.fat,0);
-    const fatB=prods.filter(p=>p.curva==='B').reduce((s,p)=>s+p.fat,0);
-    const fatC=prods.filter(p=>p.curva==='C').reduce((s,p)=>s+p.fat,0);
-    const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c'};
-    const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2'};
-    el.innerHTML=`
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
-        ${['A','B','C'].map(cv=>{const n=cv==='A'?countA:cv==='B'?countB:countC;const f=cv==='A'?fatA:cv==='B'?fatB:fatC;const pct=totalFat>0?f/totalFat*100:0;return`<div style="background:${bgCurva[cv]};border-radius:var(--r-lg);padding:14px;border:1px solid ${bgCurva[cv]}">
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-            <span style="font-size:20px;font-weight:900;color:${corCurva[cv]}">Curva ${cv}</span>
-          </div>
-          <div style="font-size:22px;font-weight:700;font-family:var(--mono);color:${corCurva[cv]}">${n} produtos</div>
-          <div style="font-size:12px;color:${corCurva[cv]};margin-top:4px">R$${f.toLocaleString('pt-BR',{minimumFractionDigits:2})} · ${pct.toFixed(1)}% do faturamento</div>
-          <div style="font-size:11px;color:${corCurva[cv]};opacity:.8;margin-top:2px">${cv==='A'?'Foco máximo — top 80% do faturamento':cv==='B'?'Atenção — 80–95% do faturamento':'Baixo impacto — 95–100%'}</div>
-        </div>`;}).join('')}
-      </div>
-      <div class="table-scroll"><table class="data-table">
-        <thead><tr><th>#</th><th>Curva</th><th>SKU</th><th>Produto</th><th>Lojas</th><th>Pedidos</th><th>Unidades</th><th>Faturamento</th><th>% Fat.</th><th>% Acum.</th></tr></thead>
-        <tbody>${prods.map((p,i)=>`<tr>
-          <td class="mono" style="color:var(--text3)">${i+1}</td>
-          <td><span style="font-weight:800;font-size:13px;color:${corCurva[p.curva]};background:${bgCurva[p.curva]};padding:2px 8px;border-radius:20px">${p.curva}</span></td>
-          <td class="mono" style="color:var(--text3);font-size:11px">${p.sku||'—'}</td>
-          <td style="font-size:12px;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.nome}">${p.nome}</td>
-          <td style="font-size:10px;color:var(--text3)">${[...p.lojas].join(', ')}</td>
-          <td class="mono">${p.ped.toLocaleString('pt-BR')}</td>
-          <td class="mono">${p.unid.toLocaleString('pt-BR')}</td>
-          <td class="mono" style="font-weight:600">R$${p.fat.toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
-          <td class="mono" style="color:var(--text3)">${p.pct.toFixed(1)}%</td>
-          <td><div style="background:var(--border);border-radius:3px;height:8px;width:80px;overflow:hidden"><div style="width:${Math.min(100,p.pctAcum)}%;height:100%;background:${p.curva==='A'?'#166534':p.curva==='B'?'#d97706':'#b91c1c'}"></div></div><span class="mono" style="font-size:10px;color:var(--text3)">${p.pctAcum.toFixed(1)}%</span></td>
-        </tr>`).join('')}</tbody>
-      </table></div>
-      <div style="margin-top:10px;font-size:11px;color:var(--text3)">Total: ${prods.length} produtos · R$${totalFat.toLocaleString('pt-BR',{minimumFractionDigits:2})} faturados · ${totalUnid.toLocaleString('pt-BR')} unidades vendidas</div>`;
-  }catch(e){el.innerHTML=`<div class="empty" style="color:var(--danger)">❌ Erro ao processar arquivo: ${e.message}</div>`;console.error(e);}
+    await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma',plat);
+    for(let i=0;i<registros.length;i+=100){const{error}=await sb.from('prec_curva_abc').insert(registros.slice(i,i+100));if(error)throw error;}
+    toast('✅ '+registros.length+' produtos importados — '+MESES[mes-1]+'/'+ano);
+    CABC.ano=ano;CABC.mes=mes;CABC.plat=plat;
+    await consultarCurvaABC();
+  }catch(e){console.error(e);toast('⚠️ Erro: '+e.message,'error');}
+  CABC.uploading=false;renderTab();
 }
-
 loadAll();
 
 // Seleção de linha ao clicar — igual Excel
