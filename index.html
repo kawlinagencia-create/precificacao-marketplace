@@ -209,7 +209,7 @@ function shopeeComissao(p){return p<=79.99?0.20:0.14;}
 function shopeeTaxaFixa(p){if(p<=79.99)return 4;if(p<=99.99)return 16;if(p<=199.99)return 20;return 26;}
 function mkTaxas(){const t={};for(const k of Object.keys(TAXA_D))t[k]={perc:TAXA_D[k].map(r=>({...r})),fixas:TF_D[k].map(r=>({...r}))};return t;}
 
-let ST={clients:[],activeId:null,tab:'busca',open:{},search:{q:'',scope:'todos'},modal:null,loading:true,calc:{plat:'shopee',prodId:null,kit:null,preco:'',custo:'',margem:'',peso:''},filter:{sku:'',plat:'',loja:''}};
+let ST={clients:[],activeId:null,tab:'dashboard',open:{},search:{q:'',scope:'todos'},modal:null,loading:true,calc:{plat:'shopee',prodId:null,kit:null,preco:'',custo:'',margem:'',peso:''},filter:{sku:'',plat:'',loja:''}};
 function gc(){return ST.clients.find(c=>c.id===ST.activeId)||ST.clients[0]||null;}
 
 async function loadAll(){
@@ -480,13 +480,13 @@ function render(){
   app.innerHTML=`<div class="sidebar">
     <div class="sb-logo"><div class="sb-logo-title">Precificação</div><div class="sb-logo-sub">Gestão de marketplace</div></div>
     <div class="sb-section">Clientes</div>
-    <div class="sb-list">${ST.clients.map(cl=>`<div class="sb-item ${cl.id===ST.activeId?'active':''}" onclick="selC(${cl.id})"><div class="sb-dot" style="background:${cl.color}"></div><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cl.name}</span><span class="sb-count">${(cl.produtos||[]).length}</span></div>`).join('')}</div>
+    <div class="sb-list">${ST.clients.map(cl=>`<div class="sb-item ${cl.id===ST.activeId?'active':''}" onclick="selC(${cl.id})" onmouseenter="this.querySelector('.sb-acts').style.display='flex'" onmouseleave="this.querySelector('.sb-acts').style.display='none'"><div class="sb-dot" style="background:${cl.color}"></div><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cl.name}</span><span class="sb-count">${(cl.produtos||[]).length}</span><span class="sb-acts" style="display:none;gap:2px;margin-left:4px" onclick="event.stopPropagation()"><button class="btn-icon" style="width:20px;height:20px;font-size:10px;padding:0" title="Editar nome" onclick="openEditCliente(${cl.id})">✏️</button><button class="btn-icon" style="width:20px;height:20px;font-size:10px;padding:0" title="Duplicar" onclick="duplicarCliente(${cl.id})">📋</button></span></div>`).join('')}</div>
     <div class="sb-footer"><button class="sb-add-btn" onclick="openNewClient()">+ Novo cliente</button></div>
   </div>
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">${c?`<div class="sb-dot" style="background:${c.color};width:10px;height:10px;border-radius:50%"></div><div class="topbar-title">${c.name}</div><span class="badge badge-gray">${(c.produtos||[]).length} produtos</span>`:'<div class="topbar-title">Nenhum cliente</div>'}</div>
-      ${c?`<div class="tabs">${[['busca','Pesquisa'],['dashboard','Dashboard'],['produtos','Produtos'],['plataformas','Plataformas'],['alertas','Alertas'],['curva_abc','Curva ABC'],['taxas','Taxas'],['config','Config'],['calculadora','Calculadora']].map(([id,lb])=>`<button class="tab-btn ${ST.tab===id?'active':''}" onclick="setTab('${id}')">${lb}</button>`).join('')}</div>`:''}
+      ${c?`<div class="tabs">${[['dashboard','Dashboard'],['produtos','Produtos'],['plataformas','Plataformas'],['alertas','Alertas'],['curva_abc','Curva ABC'],['taxas','Taxas'],['config','Config'],['calculadora','Calculadora']].map(([id,lb])=>`<button class="tab-btn ${ST.tab===id?'active':''}" onclick="setTab('${id}')">${lb}</button>`).join('')}</div>`:''}
     </div>
     <div class="content" id="content">${!c?'<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px">📊</div><div style="font-size:13px;font-weight:500;color:var(--text2)">Nenhum cliente</div></div>':''}</div>
   </div>
@@ -1001,6 +1001,7 @@ function updateCalc(){
 function renderModal(){
   const m=ST.modal;
   if(m.type==='nc')return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><div class="modal-title">Novo cliente</div><button class="btn-icon" onclick="closeModal()">✕</button></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="nc-n" placeholder="ex: Maria Moda"/></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveNewClient()">Criar</button></div></div></div>`;
+  if(m.type==='edit_cliente')return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><div class="modal-title">Editar nome do cliente</div><button class="btn-icon" onclick="closeModal()">✕</button></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="ec-name" value="${m.name||''}" placeholder="Nome do cliente"/></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveEditCliente()">Salvar</button></div></div></div>`;
   if(m.type==='historico'){
     const regs=m.registros||[];
     return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" style="width:780px" onclick="event.stopPropagation()">
@@ -1115,7 +1116,7 @@ function renderLucroPreviewHTML(k,plats){
   </div>`:'';
 }
 
-function selC(id){ST.activeId=id;ST.tab='busca';ST.open={};ST.search={q:'',scope:'todos'};render();}
+function selC(id){ST.activeId=id;ST.tab='dashboard';ST.open={};ST.search={q:'',scope:'todos'};render();}
 function setTab(t){ST.tab=t;render();}
 function togOpen(id){ST.open[id]=!ST.open[id];
   const el=document.getElementById('search-results');
@@ -1123,6 +1124,49 @@ function togOpen(id){ST.open[id]=!ST.open[id];
   renderTab();
 }
 function openNewClient(){ST.modal={type:'nc'};render();}
+function openEditCliente(id){
+  const cl=ST.clients.find(c=>c.id===id);if(!cl)return;
+  ST.modal={type:'edit_cliente',id,name:cl.name,color:cl.color};render();
+}
+async function saveEditCliente(){
+  const m=ST.modal;if(!m)return;
+  const name=document.getElementById('ec-name')?.value?.trim();
+  if(!name){toast('Informe o nome','error');return;}
+  const{error}=await sb.from('prec_clients').update({name}).eq('id',m.id);
+  if(error){toast('Erro ao salvar','error');return;}
+  const cl=ST.clients.find(c=>c.id===m.id);if(cl)cl.name=name;
+  ST.modal=null;toast('✅ Nome atualizado!');render();
+}
+async function duplicarCliente(id){
+  const cl=ST.clients.find(c=>c.id===id);if(!cl)return;
+  if(!confirm(`Duplicar "${cl.name}" com todos os produtos e configurações?`))return;
+  toast('Duplicando...');
+  const novoNome=cl.name+' (cópia)';
+  const color=COLORS[(ST.clients.length)%COLORS.length];
+  // Criar novo cliente com mesmas configs
+  const{data:novoCliente,error:e1}=await sb.from('prec_clients').insert({
+    name:novoNome,color,taxas:cl.taxas,
+    regra_tipo:cl.regra_tipo,regra_peca_t1:cl.regra_peca_t1,regra_peca_t2:cl.regra_peca_t2,regra_peca_t3:cl.regra_peca_t3,
+    regra_perc_t1:cl.regra_perc_t1,regra_perc_t2:cl.regra_perc_t2,regra_perc_t3:cl.regra_perc_t3,
+    margem_ideal_por_plat:cl.margem_ideal_por_plat,regra_por_plat:cl.regra_por_plat
+  }).select().single();
+  if(e1){toast('Erro ao duplicar cliente','error');return;}
+  // Duplicar todos os produtos
+  const prods=(cl.produtos||[]).map(p=>({
+    client_id:novoCliente.id,sku:p.sku,nome:p.nome,fabricacao:p.fabricacao||false,
+    plataformas:p.plataformas,kits:p.kits,foto_url:p.foto_url||null,links:p.links||{}
+  }));
+  if(prods.length){
+    for(let i=0;i<prods.length;i+=50){
+      const{error:e2}=await sb.from('prec_products').insert(prods.slice(i,i+50));
+      if(e2){toast('Erro ao duplicar produtos','error');return;}
+    }
+  }
+  // Recarregar dados
+  await loadAll();
+  ST.activeId=novoCliente.id;ST.tab='dashboard';
+  toast(`✅ "${novoNome}" criado com ${prods.length} produtos!`);render();
+}
 async function saveNewClient(){
   const name=document.getElementById('nc-n')?.value?.trim();if(!name)return;
   const color=COLORS[ST.clients.length%COLORS.length];
@@ -1463,13 +1507,13 @@ function renderCurvaABC(){
     </div>
     <div class="filter-bar" style="margin-bottom:10px">
       <span style="font-size:11px;font-weight:600;color:var(--text3)">Filtrar:</span>
-      <input class="filter-input" placeholder="SKU ou nome do produto" value="${CABC.filtroSku}" oninput="CABC.filtroSku=this.value;renderTab()" style="width:200px"/>
+      <input class="filter-input" placeholder="SKU ou nome do produto" value="${CABC.filtroSku}" oninput="CABC.filtroSku=this.value;atualizarTabelaABC()" style="width:200px"/>
       <div style="display:flex;gap:4px">
-        ${['','A','B','C'].map(cv=>`<button onclick="CABC.filtroCurva='${cv}';renderTab()" style="padding:4px 10px;font-size:11px;border-radius:20px;border:1px solid ${CABC.filtroCurva===cv?'var(--text)':'var(--border)'};background:${CABC.filtroCurva===cv?'var(--text)':'transparent'};color:${CABC.filtroCurva===cv?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">${cv||'Todas'}</button>`).join('')}
+        ${['','A','B','C'].map(cv=>`<button onclick="CABC.filtroCurva='${cv}';atualizarTabelaABC()" style="padding:4px 10px;font-size:11px;border-radius:20px;border:1px solid ${CABC.filtroCurva===cv?'var(--text)':'var(--border)'};background:${CABC.filtroCurva===cv?'var(--text)':'transparent'};color:${CABC.filtroCurva===cv?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">${cv||'Todas'}</button>`).join('')}
       </div>
-      <span style="margin-left:auto;font-size:11px;color:var(--text3)">${dadosFilt.length} de ${CABC.dados.length} produtos</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--text3)" id="abc-count">${dadosFilt.length} de ${CABC.dados.length} produtos</span>
     </div>
-    <div class="table-scroll"><table class="data-table">
+    <div class="table-scroll" id="abc-resultado"><table class="data-table">
       <thead><tr><th>#</th><th>Curva</th><th>SKU</th><th>Produto</th><th>Lojas</th><th>Pedidos</th><th>Unidades</th><th>Faturamento</th><th>% Fat.</th><th>% Acum.</th></tr></thead>
       <tbody>${dadosFilt.map((d,i)=>`<tr>
         <td class="mono" style="color:var(--text3)">${i+1}</td>
@@ -1486,6 +1530,33 @@ function renderCurvaABC(){
     </table></div>
     <div style="margin-top:8px;font-size:11px;color:var(--text3)">Total: ${CABC.dados.length} produtos · R$${totalFat.toLocaleString('pt-BR',{minimumFractionDigits:2})} · ${totalUnid.toLocaleString('pt-BR')} unidades</div>`}
   </div>`;
+}
+
+function atualizarTabelaABC(){
+  // Atualiza só a contagem e a tabela sem recriar o input (evita perda de foco)
+  const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c'};
+  const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2'};
+  const dadosFilt=CABC.dados.filter(d=>{
+    if(CABC.filtroCurva&&d.curva!==CABC.filtroCurva) return false;
+    if(CABC.filtroSku&&!d.sku?.toLowerCase().includes(CABC.filtroSku.toLowerCase())&&!d.nome_produto?.toLowerCase().includes(CABC.filtroSku.toLowerCase())) return false;
+    return true;
+  });
+  const tbody=document.querySelector('#abc-resultado table tbody');
+  const countEl=document.getElementById('abc-count');
+  if(countEl)countEl.textContent=`${dadosFilt.length} de ${CABC.dados.length} produtos`;
+  if(!tbody)return;
+  tbody.innerHTML=dadosFilt.map((d,i)=>`<tr>
+    <td class="mono" style="color:var(--text3)">${i+1}</td>
+    <td><span style="font-weight:800;font-size:12px;color:${corCurva[d.curva]};background:${bgCurva[d.curva]};padding:2px 8px;border-radius:20px">${d.curva}</span></td>
+    <td class="mono" style="color:var(--text3);font-size:11px">${d.sku||'—'}</td>
+    <td style="font-size:12px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${d.nome_produto}">${d.nome_produto}</td>
+    <td style="font-size:10px;color:var(--text3)">${d.lojas||'—'}</td>
+    <td class="mono">${(d.pedidos||0).toLocaleString('pt-BR')}</td>
+    <td class="mono">${(d.unidades||0).toLocaleString('pt-BR')}</td>
+    <td class="mono" style="font-weight:600">R$${(d.faturamento||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+    <td class="mono" style="color:var(--text3)">${(d.pct_faturamento||0).toFixed(1)}%</td>
+    <td><div style="background:var(--border);border-radius:3px;height:7px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px"><div style="width:${Math.min(100,d.pct_acumulado||0)}%;height:100%;background:${corCurva[d.curva]}"></div></div><span class="mono" style="font-size:10px;color:var(--text3)">${(d.pct_acumulado||0).toFixed(1)}%</span></td>
+  </tr>`).join('');
 }
 
 async function consultarCurvaABC(){
