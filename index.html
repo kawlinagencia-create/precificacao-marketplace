@@ -1747,75 +1747,91 @@ async function processarCurvaABC(input){
     const wb=XLSX.read(data,{type:'array'});
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1});
-    const header=rows[0];
-    // Colunas do UpSeller (Sales by Variant)
-    const iCol=header.findIndex(h=>String(h||'').toLowerCase().includes('produto'));
-    const lojaCol=header.findIndex(h=>String(h||'').toLowerCase().includes('loja'));
-    // Coluna C: SKU da variante (ex: 5KIT073-M) — tem kit + código + tamanho
-    const skuVarianteCol=header.findIndex(h=>String(h||'').toLowerCase()==='sku'||String(h||'').toLowerCase()==='skus');
-    // Coluna F: SKU Principal (ex: KIT073) — agrupador
-    const skuPrincipalCol=header.findIndex(h=>String(h||'').toLowerCase().includes('sku principal'));
-    // Coluna G: ID do Anúncio
-    const idAnuncioCol=header.findIndex(h=>String(h||'').toLowerCase().includes('id do anúncio')||String(h||'').toLowerCase().includes('id do anuncio')||String(h||'').toLowerCase().includes('id anúncio')||String(h||'').toLowerCase().includes('id anuncio'));
-    const unidCol=header.findIndex(h=>String(h||'').toLowerCase().includes('unidade'));
-    const fatCol=header.findIndex(h=>String(h||'').toLowerCase().includes('pagamento')||String(h||'').toLowerCase().includes('faturamento'));
-    const pedCol=header.findIndex(h=>String(h||'').toLowerCase().includes('pedido'));
-    const precoCol=header.findIndex(h=>String(h||'').toLowerCase().includes('médio')||String(h||'').toLowerCase().includes('medio'));
-    if(iCol<0){CABC.uploading=false;toast('Formato não reconhecido — verifique se é o extrato "Sales by Variant" do UpSeller','error');renderTab();return;}
+    const header=rows[0].map(h=>String(h||'').toLowerCase().trim());
+    // Detectar colunas pelo nome — formato UpSeller "Vendas por Produtos"
+    const iCol=header.findIndex(h=>h.includes('produto'));
+    const lojaCol=header.findIndex(h=>h.includes('loja'));
+    const skuPrincipalCol=header.findIndex(h=>h.includes('sku principal'));
+    const idAnuncioCol=header.findIndex(h=>h.includes('id do anún')||h.includes('id anún')||h.includes('id do anuncio')||h.includes('id anuncio'));
+    const pedCol=header.findIndex(h=>h.includes('pedido'));
+    const unidCol=header.findIndex(h=>h.includes('unidade'));
+    const fatCol=header.findIndex(h=>h.includes('pagamento')||h.includes('faturamento')||h.includes('receita'));
+    const precoCol=header.findIndex(h=>h.includes('médio')||h.includes('medio'));
+    if(iCol<0||skuPrincipalCol<0){
+      CABC.uploading=false;
+      toast('Formato não reconhecido. Use o extrato "Vendas por Produtos" do UpSeller.','error');
+      renderTab();return;
+    }
+    // Agrupar por SKU Principal — somando todos os anúncios/lojas do mesmo SKU
     const map={};
     for(let i=1;i<rows.length;i++){
-      const row=rows[i];if(!row||!row[iCol]) continue;
+      const row=rows[i];
+      if(!row||!row[iCol])continue;
       const nome=(row[iCol]||'').toString().trim();
       const loja=(row[lojaCol]||'').toString().replace(/\[.*?\]/g,'').trim();
-      // SKU da variante: "5KIT073-M", "3KIT073-P" — contém kit e tamanho
-      const skuVar=(skuVarianteCol>=0?(row[skuVarianteCol]||''):'').toString().trim();
-      // SKU Principal: "KIT073" — extrai código do produto
-      const skuPrincipal=(skuPrincipalCol>=0?(row[skuPrincipalCol]||''):'').toString().trim();
-      // ID do anúncio
+      const skuPrincipal=(row[skuPrincipalCol]||'').toString().trim();
       const idAnuncio=(idAnuncioCol>=0?(row[idAnuncioCol]||''):'').toString().trim();
+      const ped=parseFloat(row[pedCol])||0;
       const unid=parseFloat(row[unidCol])||0;
       const fat=parseFloat(row[fatCol])||0;
-      const ped=parseFloat(row[pedCol])||0;
       const preco=parseFloat(row[precoCol])||0;
-      // Extrair SKU base do SKU Principal (KIT073 -> 073)
-      let skuBase='';
-      const spMatch=skuPrincipal.match(/^KIT(\d+)$/i);
-      if(spMatch){skuBase=spMatch[1];}
-      else if(skuPrincipal){skuBase=skuPrincipal;}
-      // Extrair kit qty do SKU da variante (5KIT073-M -> 5)
+      // Extrair código limpo do SKU Principal — sempre pega os números finais após KIT
+      // KIT029 -> 029 | 5KIT302 -> 302 | 10KIT028 -> 028
+      let skuBase=skuPrincipal;
+      const m1=skuPrincipal.match(/KIT(\d+)/i);
+      if(m1)skuBase=m1[1];
+      // Detectar kit qty do prefixo numérico (5KIT302 -> kit 5)
       let kitQty=null;
-      const svMatch=skuVar.match(/^(\d+)KIT/i);
-      if(svMatch)kitQty=parseInt(svMatch[1]);
-      // Fallback: usar SKU da variante para extrair skuBase se não tiver principal
-      if(!skuBase&&skuVar){
-        const svBase=skuVar.match(/^\d+KIT(\d+)(?:-\w+)?$/i);
-        if(svBase)skuBase=svBase[1];
-        else skuBase=skuVar.replace(/-[A-Z]{1,3}$/i,'');
-      }
-      const nomeLimpo=nome.trim();
-      const key=skuBase||nomeLimpo;
-      if(!map[key]){map[key]={sku:skuBase,nome:nomeLimpo,lojas:new Set(),anuncios:new Set(),unid:0,fat:0,ped:0,preco:0,n:0,kits:{}};}
-      map[key].unid+=unid;map[key].fat+=fat;map[key].ped+=ped;map[key].preco+=preco;map[key].n++;
+      const m2=skuPrincipal.match(/^(\d+)KIT/i);
+      if(m2)kitQty=parseInt(m2[1]);
+      const key=skuBase||nome;
+      if(!map[key]){map[key]={sku:skuBase,nome,lojas:new Set(),anuncios:new Set(),ped:0,unid:0,fat:0,preco:0,n:0,kits:{}};}
+      // Somar pedidos, unidades e faturamento de todos os anúncios do mesmo SKU
+      map[key].ped+=ped;
+      map[key].unid+=unid;
+      map[key].fat+=fat;
+      map[key].preco+=preco;
+      map[key].n++;
       if(loja)map[key].lojas.add(loja);
       if(idAnuncio)map[key].anuncios.add(idAnuncio);
       // Acumular por kit
       if(kitQty){
-        if(!map[key].kits[kitQty])map[key].kits[kitQty]={qty:kitQty,unid:0,fat:0,ped:0};
-        map[key].kits[kitQty].unid+=unid;map[key].kits[kitQty].fat+=fat;map[key].kits[kitQty].ped+=ped;
+        if(!map[key].kits[kitQty])map[key].kits[kitQty]={qty:kitQty,ped:0,unid:0,fat:0};
+        map[key].kits[kitQty].ped+=ped;
+        map[key].kits[kitQty].unid+=unid;
+        map[key].kits[kitQty].fat+=fat;
       }
     }
     let prods=Object.values(map).sort((a,b)=>b.fat-a.fat);
     const totalFat=prods.reduce((s,p)=>s+p.fat,0);
     let acum=0;
     const registros=prods.map(p=>{
-      acum+=p.fat;const pct=totalFat>0?p.fat/totalFat*100:0;const pctA=totalFat>0?acum/totalFat*100:0;
+      acum+=p.fat;
+      const pct=totalFat>0?p.fat/totalFat*100:0;
+      const pctA=totalFat>0?acum/totalFat*100:0;
       const kitsArr=Object.values(p.kits).sort((a,b)=>b.fat-a.fat);
-      return{client_id:c.id,ano,mes,plataforma:plat,sku:p.sku||null,nome_produto:p.nome,lojas:[...p.lojas].join(', '),pedidos:p.ped,unidades:p.unid,faturamento:p.fat,preco_medio:p.n>0?p.preco/p.n:0,curva:pctA<=80?'A':pctA<=95?'B':'C',pct_faturamento:pct,pct_acumulado:pctA,kits_json:kitsArr.length?JSON.stringify(kitsArr):null,lojas:[...p.lojas].join(', ')};
+      return{
+        client_id:c.id,ano,mes,plataforma:plat,
+        sku:p.sku||null,
+        nome_produto:p.nome,
+        lojas:[...p.lojas].join(', '),
+        pedidos:p.ped,
+        unidades:p.unid,
+        faturamento:p.fat,
+        preco_medio:p.n>0?p.preco/p.n:0,
+        curva:pctA<=80?'A':pctA<=95?'B':'C',
+        pct_faturamento:pct,
+        pct_acumulado:pctA,
+        kits_json:kitsArr.length?JSON.stringify(kitsArr):null
+      };
     });
     await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma',plat);
-    for(let i=0;i<registros.length;i+=100){const{error}=await sb.from('prec_curva_abc').insert(registros.slice(i,i+100));if(error)throw error;}
-    toast('✅ '+registros.length+' produtos importados — '+MESES[mes-1]+'/'+ano+' · Consultando todos os meses...');
-    CABC.ano=ano;CABC.mes=0;CABC.plat=plat; // mes=0 = todos os meses do ano
+    for(let i=0;i<registros.length;i+=100){
+      const{error}=await sb.from('prec_curva_abc').insert(registros.slice(i,i+100));
+      if(error)throw error;
+    }
+    toast('✅ '+registros.length+' produtos importados — '+MESES[mes-1]+'/'+ano);
+    CABC.ano=ano;CABC.mes=mes;CABC.plat=plat;
     await consultarCurvaABC();
   }catch(e){console.error(e);toast('⚠️ Erro: '+e.message,'error');}
   CABC.uploading=false;renderTab();
