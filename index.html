@@ -1755,15 +1755,27 @@ async function processarCurvaABC(input){
     const map={};
     for(let i=1;i<rows.length;i++){
       const row=rows[i];if(!row||!row[iCol]) continue;
-      const sku=(row[skuCol]||'').toString().trim();
+      const skuRaw=(row[skuCol]||'').toString().trim();
       const nome=(row[iCol]||'').toString().trim();
       const loja=(row[lojaCol]||'').toString().replace(/\[.*?\]/g,'').trim();
       const unid=parseFloat(row[unidCol])||0;
       const fat=parseFloat(row[fatCol])||0;
       const ped=parseFloat(row[pedCol])||0;
       const preco=parseFloat(row[precoCol])||0;
-      const key=sku||nome;
-      if(!map[key]){map[key]={sku,nome,lojas:new Set(),unid:0,fat:0,ped:0,preco:0,n:0};}
+      // Extrair SKU base: remove prefixo de kit (ex: "5KIT014-P" -> "014", "3KIT028-GG" -> "028")
+      // Padrão UpSeller: {QTY}KIT{CODIGO}-{TAMANHO} ou {QTY}KIT{CODIGO}
+      let skuBase=skuRaw;
+      const kitMatch=skuRaw.match(/^\d+KIT(\d+)(?:-\w+)?$/i);
+      if(kitMatch){
+        skuBase=kitMatch[1]; // pega só o número do produto (ex: "014", "028")
+      }else{
+        // Tentar remover só o sufixo de tamanho (ex: "SKU014-P" -> "SKU014")
+        skuBase=skuRaw.replace(/-[A-Z]{1,3}$/i,'');
+      }
+      // Usar nome limpo do produto (sem variação de tamanho se vier no nome)
+      const nomeLimpo=nome.replace(/\s*(tamanho|size|cor|color|tam\.?)\s*:?\s*\w+/gi,'').trim();
+      const key=skuBase||nomeLimpo;
+      if(!map[key]){map[key]={sku:skuBase,skuOriginal:skuRaw,nome:nomeLimpo||nome,lojas:new Set(),unid:0,fat:0,ped:0,preco:0,n:0};}
       map[key].unid+=unid;map[key].fat+=fat;map[key].ped+=ped;map[key].preco+=preco;map[key].n++;
       if(loja)map[key].lojas.add(loja);
     }
