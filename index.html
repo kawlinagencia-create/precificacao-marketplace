@@ -1833,7 +1833,9 @@ async function atualizarPrecosPorExtrato(input){
     // Detectar colunas
     const skuPrincipalCol=header.findIndex(h=>h.includes('sku principal'));
     const skuVarianteCol=header.findIndex(h=>h==='sku'||h==='sku da variante'||h==='skus');
-    const precoCol=header.findIndex(h=>(h==='preço'||h==='preco'||(h.includes('preço')&&!h.includes('desconto'))));
+    // Priorizar "Preço com Desconto" — é o preço real praticado
+    let precoCol=header.findIndex(h=>h.includes('desconto'));
+    if(precoCol<0) precoCol=header.findIndex(h=>h==='preço'||h==='preco'||(h.includes('preço')&&!h.includes('desconto')));
 
     if(precoCol<0){toast('Coluna de Preço não encontrada no extrato.','error');return;}
 
