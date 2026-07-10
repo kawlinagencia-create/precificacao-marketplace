@@ -223,7 +223,10 @@ async function loadAll(){
   }
   ST.clients=clients||[];
   if(!ST.activeId&&ST.clients.length)ST.activeId=ST.clients[0].id;
-  ST.loading=false;render();
+  ST.loading=false;
+  // Pré-carregar dados da curva ABC para o cliente ativo
+  await carregarCurvaParaProdutos();
+  render();
 }
 async function saveProduct(p,clientId,produtoAntigo){
   const pay={client_id:clientId,sku:p.sku,nome:p.nome,fabricacao:p.fabricacao||false,plataformas:p.plataformas,kits:p.kits,foto_url:p.foto_url||null,links:p.links||{}};
@@ -686,7 +689,13 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const headerBg=isBest?'#f0fdf4':isWorst?'#fff5f5':co2==='g'?'#f0fdf4':co2==='a'?'#fffbeb':co2==='l'?'#fff7ed':'#fff5f5';
   const lucroColor=co2==='g'?'var(--success)':co2==='a'?'var(--warn)':co2==='l'?'var(--orange)':'var(--danger)';
   // Buscar curva ABC deste SKU no último período consultado
-  const curvaData=CABC.dados.find(d=>d.sku&&p.sku&&d.sku.trim().toUpperCase()===p.sku.trim().toUpperCase());
+  const skuNorm=(p.sku||'').trim().toUpperCase();
+  const nomeNorm=(p.nome||'').trim().toUpperCase();
+  const curvaData=CABC.dados.find(d=>{
+    if(skuNorm&&d.sku&&d.sku.trim().toUpperCase()===skuNorm) return true;
+    if(nomeNorm&&d.nome_produto&&d.nome_produto.trim().toUpperCase().includes(nomeNorm.substring(0,15))) return true;
+    return false;
+  });
   const curva=curvaData?.curva||null;
   const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c',N:'#1e40af'};
   const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2',N:'#dbeafe'};
@@ -1166,7 +1175,13 @@ function renderLucroPreviewHTML(k,plats){
 }
 
 function selC(id){ST.activeId=id;ST.tab='dashboard';ST.open={};ST.search={q:'',scope:'todos'};CABC.dados=[];render();}
-function setTab(t){ST.tab=t;render();if(t==='produtos')carregarCurvaParaProdutos();}
+async function setTab(t){
+  ST.tab=t;
+  if(t==='produtos'){
+    await carregarCurvaParaProdutos();
+  }
+  render();
+}
 function togOpen(id){ST.open[id]=!ST.open[id];
   const el=document.getElementById('search-results');
   if(el&&ST.tab==='busca'){updateSearch();return;}
@@ -1769,32 +1784,36 @@ async function processarCurvaABC(input){
 }
 
 async function carregarCurvaParaProdutos(){
-  // Carrega automaticamente o período mais recente da curva ABC para mostrar badges nos produtos
-  const c=gc();if(!c||CABC.dados.length>0)return; // já tem dados em memória, não recarrega
-  // Buscar o período mais recente disponível
+  const c=gc();if(!c)return;
+  // Buscar o período mais recente disponível no banco
   const{data:periodos}=await sb.from('prec_curva_abc')
-    .select('ano,mes,plataforma')
+    .select('ano,mes')
     .eq('client_id',c.id)
     .order('ano',{ascending:false})
     .order('mes',{ascending:false})
     .limit(1);
-  if(!periodos?.length)return;
-  const{ano,mes,plataforma}=periodos[0];
-  // Carregar todos os dados do período mais recente (todos plataformas do mesmo mês)
+  if(!periodos?.length){CABC.dados=[];return;}
+  const{ano,mes}=periodos[0];
+  // Se já temos os dados desse período em memória, não recarrega
+  if(CABC.dados.length>0&&CABC.ano===ano&&CABC.mes===mes)return;
+  // Carregar todos os SKUs do período mais recente (todas plataformas consolidadas)
   const{data}=await sb.from('prec_curva_abc')
-    .select('sku,nome_produto,curva,faturamento,pct_acumulado,pct_faturamento')
+    .select('sku,nome_produto,curva,faturamento,pct_acumulado,pct_faturamento,plataforma')
     .eq('client_id',c.id)
     .eq('ano',ano)
     .eq('mes',mes)
     .order('pct_acumulado');
   if(data?.length){
-    CABC.dados=data;
-    CABC.ano=ano;CABC.mes=mes;
-    // Re-renderizar só a aba produtos para mostrar os badges
-    if(ST.tab==='produtos'){
-      const el=document.getElementById('tab-content');
-      if(el)el.innerHTML=renderProdutos(c);
+    // Consolidar por SKU (se veio de múltiplas plataformas, usa o maior faturamento)
+    const mapa={};
+    for(const d of data){
+      const key=(d.sku||d.nome_produto||'').trim().toUpperCase();
+      if(!mapa[key]||d.faturamento>mapa[key].faturamento) mapa[key]=d;
     }
+    CABC.dados=Object.values(mapa);
+    CABC.ano=ano;CABC.mes=mes;
+  }else{
+    CABC.dados=[];
   }
 }
 
