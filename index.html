@@ -1604,17 +1604,17 @@ function renderCurvaABC(){
       <span style="margin-left:auto;font-size:11px;color:var(--text3)" id="abc-count">${dadosFilt.length} de ${CABC.dados.length} produtos</span>
     </div>
     <div class="table-scroll" id="abc-resultado"><table class="data-table">
-      <thead><tr><th>#</th><th>Curva</th><th>SKU</th><th>Produto</th><th>Lojas</th><th>Kits</th><th>Pedidos</th><th>Unidades</th><th>Faturamento</th><th>% Fat.</th><th>% Acum.</th></tr></thead>
+      <thead><tr><th>#</th><th>Curva</th><th>SKU</th><th>Produto</th><th>Lojas</th><th>ID Anúncio</th><th>Pedidos</th><th>Unidades</th><th>Faturamento</th><th>% Fat.</th><th>% Acum.</th></tr></thead>
       <tbody>${dadosFilt.map((d,i)=>{
         const kits=d.kits_json?(typeof d.kits_json==='string'?JSON.parse(d.kits_json):d.kits_json):[];
-        const kitsHTML=kits.length?kits.map(k=>`<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);white-space:nowrap">K${k.qty} <span style="font-family:var(--mono)">${k.unid}</span></span>`).join(' '):'—';
+        const anunciosHTML=d.ids_anuncios?d.ids_anuncios.split(',').map(id=>`<span style="font-size:9px;font-family:var(--mono);color:var(--text3)">${id.trim()}</span>`).join('<br>'):'—';
         return`<tr>
         <td class="mono" style="color:var(--text3)">${i+1}</td>
         <td><span style="font-weight:800;font-size:12px;color:${corCurva[d.curva]};background:${bgCurva[d.curva]};padding:2px 8px;border-radius:20px">${d.curva}</span></td>
         <td class="mono" style="color:var(--text3);font-size:11px">${d.sku||'—'}</td>
         <td style="font-size:12px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${d.nome_produto}">${d.nome_produto}</td>
         <td style="font-size:10px;color:var(--text3)">${d.lojas||'—'}</td>
-        <td style="font-size:11px">${kitsHTML}</td>
+        <td style="font-size:10px;color:var(--text3);max-width:120px">${anunciosHTML}</td>
         <td class="mono">${(d.pedidos||0).toLocaleString('pt-BR')}</td>
         <td class="mono">${(d.unidades||0).toLocaleString('pt-BR')}</td>
         <td class="mono" style="font-weight:600">R$${(d.faturamento||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
@@ -1815,6 +1815,7 @@ async function processarCurvaABC(input){
         sku:p.sku||null,
         nome_produto:p.nome,
         lojas:[...p.lojas].join(', '),
+        ids_anuncios:[...p.anuncios].join(', '),
         pedidos:p.ped,
         unidades:p.unid,
         faturamento:p.fat,
