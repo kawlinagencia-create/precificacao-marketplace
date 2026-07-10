@@ -1604,19 +1604,23 @@ function renderCurvaABC(){
       <span style="margin-left:auto;font-size:11px;color:var(--text3)" id="abc-count">${dadosFilt.length} de ${CABC.dados.length} produtos</span>
     </div>
     <div class="table-scroll" id="abc-resultado"><table class="data-table">
-      <thead><tr><th>#</th><th>Curva</th><th>SKU</th><th>Produto</th><th>Lojas</th><th>Pedidos</th><th>Unidades</th><th>Faturamento</th><th>% Fat.</th><th>% Acum.</th></tr></thead>
-      <tbody>${dadosFilt.map((d,i)=>`<tr>
+      <thead><tr><th>#</th><th>Curva</th><th>SKU</th><th>Produto</th><th>Lojas</th><th>Kits</th><th>Pedidos</th><th>Unidades</th><th>Faturamento</th><th>% Fat.</th><th>% Acum.</th></tr></thead>
+      <tbody>${dadosFilt.map((d,i)=>{
+        const kits=d.kits_json?(typeof d.kits_json==='string'?JSON.parse(d.kits_json):d.kits_json):[];
+        const kitsHTML=kits.length?kits.map(k=>`<span style="font-size:10px;padding:1px 5px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);white-space:nowrap">K${k.qty} <span style="font-family:var(--mono)">${k.unid}</span></span>`).join(' '):'—';
+        return`<tr>
         <td class="mono" style="color:var(--text3)">${i+1}</td>
         <td><span style="font-weight:800;font-size:12px;color:${corCurva[d.curva]};background:${bgCurva[d.curva]};padding:2px 8px;border-radius:20px">${d.curva}</span></td>
         <td class="mono" style="color:var(--text3);font-size:11px">${d.sku||'—'}</td>
         <td style="font-size:12px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${d.nome_produto}">${d.nome_produto}</td>
         <td style="font-size:10px;color:var(--text3)">${d.lojas||'—'}</td>
+        <td style="font-size:11px">${kitsHTML}</td>
         <td class="mono">${(d.pedidos||0).toLocaleString('pt-BR')}</td>
         <td class="mono">${(d.unidades||0).toLocaleString('pt-BR')}</td>
         <td class="mono" style="font-weight:600">R$${(d.faturamento||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
         <td class="mono" style="color:var(--text3)">${(d.pct_faturamento||0).toFixed(1)}%</td>
         <td><div style="background:var(--border);border-radius:3px;height:7px;width:70px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:5px"><div style="width:${Math.min(100,d.pct_acumulado||0)}%;height:100%;background:${corCurva[d.curva]}"></div></div><span class="mono" style="font-size:10px;color:var(--text3)">${(d.pct_acumulado||0).toFixed(1)}%</span></td>
-      </tr>`).join('')}</tbody>
+      </tr>`;}).join('')}</tbody>
     </table></div>
     <div style="margin-top:8px;font-size:11px;color:var(--text3)">Total: ${CABC.dados.length} produtos · R$${totalFat.toLocaleString('pt-BR',{minimumFractionDigits:2})} · ${totalUnid.toLocaleString('pt-BR')} unidades</div>`}
   </div>`;
@@ -1744,47 +1748,69 @@ async function processarCurvaABC(input){
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1});
     const header=rows[0];
+    // Colunas do UpSeller (Sales by Variant)
     const iCol=header.findIndex(h=>String(h||'').toLowerCase().includes('produto'));
     const lojaCol=header.findIndex(h=>String(h||'').toLowerCase().includes('loja'));
-    const skuCol=header.findIndex(h=>String(h||'').toLowerCase().includes('sku'));
+    // Coluna C: SKU da variante (ex: 5KIT073-M) — tem kit + código + tamanho
+    const skuVarianteCol=header.findIndex(h=>String(h||'').toLowerCase()==='sku'||String(h||'').toLowerCase()==='skus');
+    // Coluna F: SKU Principal (ex: KIT073) — agrupador
+    const skuPrincipalCol=header.findIndex(h=>String(h||'').toLowerCase().includes('sku principal'));
+    // Coluna G: ID do Anúncio
+    const idAnuncioCol=header.findIndex(h=>String(h||'').toLowerCase().includes('id do anúncio')||String(h||'').toLowerCase().includes('id do anuncio')||String(h||'').toLowerCase().includes('id anúncio')||String(h||'').toLowerCase().includes('id anuncio'));
     const unidCol=header.findIndex(h=>String(h||'').toLowerCase().includes('unidade'));
     const fatCol=header.findIndex(h=>String(h||'').toLowerCase().includes('pagamento')||String(h||'').toLowerCase().includes('faturamento'));
     const pedCol=header.findIndex(h=>String(h||'').toLowerCase().includes('pedido'));
     const precoCol=header.findIndex(h=>String(h||'').toLowerCase().includes('médio')||String(h||'').toLowerCase().includes('medio'));
-    if(iCol<0){CABC.uploading=false;toast('Formato não reconhecido','error');renderTab();return;}
+    if(iCol<0){CABC.uploading=false;toast('Formato não reconhecido — verifique se é o extrato "Sales by Variant" do UpSeller','error');renderTab();return;}
     const map={};
     for(let i=1;i<rows.length;i++){
       const row=rows[i];if(!row||!row[iCol]) continue;
-      const skuRaw=(row[skuCol]||'').toString().trim();
       const nome=(row[iCol]||'').toString().trim();
       const loja=(row[lojaCol]||'').toString().replace(/\[.*?\]/g,'').trim();
+      // SKU da variante: "5KIT073-M", "3KIT073-P" — contém kit e tamanho
+      const skuVar=(skuVarianteCol>=0?(row[skuVarianteCol]||''):'').toString().trim();
+      // SKU Principal: "KIT073" — extrai código do produto
+      const skuPrincipal=(skuPrincipalCol>=0?(row[skuPrincipalCol]||''):'').toString().trim();
+      // ID do anúncio
+      const idAnuncio=(idAnuncioCol>=0?(row[idAnuncioCol]||''):'').toString().trim();
       const unid=parseFloat(row[unidCol])||0;
       const fat=parseFloat(row[fatCol])||0;
       const ped=parseFloat(row[pedCol])||0;
       const preco=parseFloat(row[precoCol])||0;
-      // Extrair SKU base: remove prefixo de kit (ex: "5KIT014-P" -> "014", "3KIT028-GG" -> "028")
-      // Padrão UpSeller: {QTY}KIT{CODIGO}-{TAMANHO} ou {QTY}KIT{CODIGO}
-      let skuBase=skuRaw;
-      const kitMatch=skuRaw.match(/^\d+KIT(\d+)(?:-\w+)?$/i);
-      if(kitMatch){
-        skuBase=kitMatch[1]; // pega só o número do produto (ex: "014", "028")
-      }else{
-        // Tentar remover só o sufixo de tamanho (ex: "SKU014-P" -> "SKU014")
-        skuBase=skuRaw.replace(/-[A-Z]{1,3}$/i,'');
+      // Extrair SKU base do SKU Principal (KIT073 -> 073)
+      let skuBase='';
+      const spMatch=skuPrincipal.match(/^KIT(\d+)$/i);
+      if(spMatch){skuBase=spMatch[1];}
+      else if(skuPrincipal){skuBase=skuPrincipal;}
+      // Extrair kit qty do SKU da variante (5KIT073-M -> 5)
+      let kitQty=null;
+      const svMatch=skuVar.match(/^(\d+)KIT/i);
+      if(svMatch)kitQty=parseInt(svMatch[1]);
+      // Fallback: usar SKU da variante para extrair skuBase se não tiver principal
+      if(!skuBase&&skuVar){
+        const svBase=skuVar.match(/^\d+KIT(\d+)(?:-\w+)?$/i);
+        if(svBase)skuBase=svBase[1];
+        else skuBase=skuVar.replace(/-[A-Z]{1,3}$/i,'');
       }
-      // Usar nome limpo do produto (sem variação de tamanho se vier no nome)
-      const nomeLimpo=nome.replace(/\s*(tamanho|size|cor|color|tam\.?)\s*:?\s*\w+/gi,'').trim();
+      const nomeLimpo=nome.trim();
       const key=skuBase||nomeLimpo;
-      if(!map[key]){map[key]={sku:skuBase,skuOriginal:skuRaw,nome:nomeLimpo||nome,lojas:new Set(),unid:0,fat:0,ped:0,preco:0,n:0};}
+      if(!map[key]){map[key]={sku:skuBase,nome:nomeLimpo,lojas:new Set(),anuncios:new Set(),unid:0,fat:0,ped:0,preco:0,n:0,kits:{}};}
       map[key].unid+=unid;map[key].fat+=fat;map[key].ped+=ped;map[key].preco+=preco;map[key].n++;
       if(loja)map[key].lojas.add(loja);
+      if(idAnuncio)map[key].anuncios.add(idAnuncio);
+      // Acumular por kit
+      if(kitQty){
+        if(!map[key].kits[kitQty])map[key].kits[kitQty]={qty:kitQty,unid:0,fat:0,ped:0};
+        map[key].kits[kitQty].unid+=unid;map[key].kits[kitQty].fat+=fat;map[key].kits[kitQty].ped+=ped;
+      }
     }
     let prods=Object.values(map).sort((a,b)=>b.fat-a.fat);
     const totalFat=prods.reduce((s,p)=>s+p.fat,0);
     let acum=0;
     const registros=prods.map(p=>{
       acum+=p.fat;const pct=totalFat>0?p.fat/totalFat*100:0;const pctA=totalFat>0?acum/totalFat*100:0;
-      return{client_id:c.id,ano,mes,plataforma:plat,sku:p.sku||null,nome_produto:p.nome,lojas:[...p.lojas].join(', '),pedidos:p.ped,unidades:p.unid,faturamento:p.fat,preco_medio:p.n>0?p.preco/p.n:0,curva:pctA<=80?'A':pctA<=95?'B':'C',pct_faturamento:pct,pct_acumulado:pctA};
+      const kitsArr=Object.values(p.kits).sort((a,b)=>b.fat-a.fat);
+      return{client_id:c.id,ano,mes,plataforma:plat,sku:p.sku||null,nome_produto:p.nome,lojas:[...p.lojas].join(', '),pedidos:p.ped,unidades:p.unid,faturamento:p.fat,preco_medio:p.n>0?p.preco/p.n:0,curva:pctA<=80?'A':pctA<=95?'B':'C',pct_faturamento:pct,pct_acumulado:pctA,kits_json:kitsArr.length?JSON.stringify(kitsArr):null,lojas:[...p.lojas].join(', ')};
     });
     await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma',plat);
     for(let i=0;i<registros.length;i+=100){const{error}=await sb.from('prec_curva_abc').insert(registros.slice(i,i+100));if(error)throw error;}
