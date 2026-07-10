@@ -290,12 +290,41 @@ function isComissaoShopee(nome){
   const n=(nome||'').toLowerCase().trim();
   return n==='comissão'||n==='comissao'||n==='taxa shopee'||n==='comissão shopee';
 }
-function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente){
+function getMargemPorCurva(cliente,platId,curva){
+  // Regra de margem por curva ABC, tipo de loja e status
+  const tipo=cliente.loja_tipo||'fabricacao'; // 'fabricacao' ou 'revendedor'
+  const validada=cliente.loja_validada!==false; // default: validada
+  const regras={
+    fabricacao:{validada:{A:18,B:15,C:13,N:8},nova:{A:12,B:10,C:8,N:5}},
+    revendedor:{validada:{A:12,B:9,C:7,N:5},nova:{A:9,B:7,C:5,N:4}}
+  };
+  const grupo=regras[tipo]?.[validada?'validada':'nova'];
+  const cv=curva||'N';
+  return grupo?.[cv]??grupo?.['N']??8;
+}
+
+function arredondarPara99(preco){
+  // Arredonda para o ,99 mais próximo
+  const baixo=Math.floor(preco)+0.99;
+  const alto=Math.floor(preco)+1.99;
+  // Se o preço já é ,99 retorna ele mesmo
+  if(Math.abs(preco-baixo)<0.001) return baixo;
+  if(Math.abs(preco-alto)<0.001) return alto;
+  // Escolhe o mais próximo
+  return Math.abs(preco-baixo)<=Math.abs(preco-alto)?baixo:alto;
+}
+
+function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva){
   if(!custo||custo<=0) return null;
   const t=taxas[platId];if(!t) return null;
-  // Margem Ideal: agora configurável por plataforma (objeto {shopee:20, shein:15, ...})
-  const margens=cliente.margem_ideal_por_plat||{};
-  const metaPerc=(margens[platId]??20)/100;
+  // Margem: se tem curva ABC usa regra por curva, senão usa margem_ideal_por_plat
+  let metaPerc;
+  if(curva){
+    metaPerc=getMargemPorCurva(cliente,platId,curva)/100;
+  }else{
+    const margens=cliente.margem_ideal_por_plat||{};
+    metaPerc=(margens[platId]??20)/100;
+  }
   let p=custo*2;
   for(let i=0;i<100;i++){
     // Soma TODAS as taxas percentuais, usando a comissão automática da Shopee quando aplicável
@@ -331,7 +360,10 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente){
     if(Math.abs(p2-p)<0.005) {p=p2;break;}
     p=p2;
   }
-  return{preco:Math.max(0,p),margemPerc:metaPerc*100};
+  const precoArredondado=arredondarPara99(Math.max(0,p));
+  // Recalcular a margem real com o preço arredondado
+  const r=calcR(precoArredondado,custo,platId,taxas,pesoKg,kitQty);
+  return{preco:precoArredondado,margemPerc:r?r.margem:metaPerc*100,curvaUsada:curva||null};
 }
 function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   if(!preco||preco<=0||!custo||custo<=0)return null;
@@ -653,13 +685,19 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const borderColor=isBest?'#4ade80':isWorst?'#fca5a5':co2==='g'?'#86efac':co2==='a'?'#fcd34d':co2==='l'?'#fdba74':'#fca5a5';
   const headerBg=isBest?'#f0fdf4':isWorst?'#fff5f5':co2==='g'?'#f0fdf4':co2==='a'?'#fffbeb':co2==='l'?'#fff7ed':'#fff5f5';
   const lucroColor=co2==='g'?'var(--success)':co2==='a'?'var(--warn)':co2==='l'?'var(--orange)':'var(--danger)';
-  const ideal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c);
+  // Buscar curva ABC deste SKU no último período consultado
+  const curvaData=CABC.dados.find(d=>d.sku&&p.sku&&d.sku.trim().toUpperCase()===p.sku.trim().toUpperCase());
+  const curva=curvaData?.curva||null;
+  const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c',N:'#1e40af'};
+  const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2',N:'#dbeafe'};
+  const ideal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c,curva);
   let idealHTML='';
   if(ideal){
     const diff=r2.preco-ideal.preco;
     const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
+    const margemLabel=curva?`Curva ${curva} · ${ideal.margemPerc.toFixed(0)}%`:`${ideal.margemPerc.toFixed(0)}%`;
     idealHTML=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-      <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span></span>
+      <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${margemLabel})</span></span>
       <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
     </div>`;
   }
@@ -667,6 +705,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
     <div style="background:${headerBg};padding:8px 12px;border-bottom:1px solid ${borderColor};display:flex;align-items:center;justify-content:space-between">
       <span style="font-size:13px;font-weight:700;color:var(--text)">KIT ${k.qty}</span>
       <div style="display:flex;gap:4px;align-items:center">
+        ${curva?`<span style="font-size:10px;background:${bgCurva[curva]};color:${corCurva[curva]};padding:1px 7px;border-radius:20px;font-weight:800">Curva ${curva}</span>`:''}
         ${isBest?'<span style="font-size:9px;background:#4ade80;color:#14532d;padding:1px 6px;border-radius:20px;font-weight:700">⬆ MELHOR</span>':''}
         ${isWorst?'<span style="font-size:9px;background:#fca5a5;color:#7f1d1d;padding:1px 6px;border-radius:20px;font-weight:700">⬇ PIOR</span>':''}
         ${k.peso_kg>0?`<span style="font-size:9px;color:var(--text3)">${k.peso_kg}kg</span>`:''}
@@ -708,9 +747,16 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
 }
 function renderProdutos(c){
   return`<div class="sec" style="margin-bottom:0">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div class="sec-title">Produtos cadastrados</div>
-      <button class="btn btn-primary" onclick="openNewProd()">+ Novo produto</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="file" id="preco-upload-input" accept=".xlsx,.xls" style="display:none" onchange="atualizarPrecosPorExtrato(this)"/>
+        <button class="btn btn-outline" onclick="document.getElementById('preco-upload-input').click()" title="Importar extrato da plataforma para atualizar preços automaticamente por SKU">📥 Atualizar preços</button>
+        <select id="preco-upload-plat" class="calc-select" style="width:110px">
+          ${PLATS.map(pl=>`<option value="${pl.id}">${pl.label}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary" onclick="openNewProd()">+ Novo produto</button>
+      </div>
     </div>
     ${renderFilterBar(c,'prod')}
     ${!applyFilter(c.produtos.map(p=>({p,pl:'',k:{},r:null,cor:null}))).length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📦</div><div style="font-size:13px;font-weight:500">Nenhum produto encontrado</div></div>`
@@ -836,18 +882,21 @@ function renderTaxas(c){
 
 function renderConfig(c){
   const tipoGlobal=c.regra_tipo||'peca';
-  const margemPorPlat=c.margem_ideal_por_plat||{};
   const regraPorPlat=c.regra_por_plat||{};
+  const lojaValidada=c.loja_validada!==false;
+  const lojaTipo=c.loja_tipo||'fabricacao';
+  const regrasABC={fabricacao:{validada:{A:18,B:15,C:13,N:8},nova:{A:12,B:10,C:8,N:5}},revendedor:{validada:{A:12,B:9,C:7,N:5},nova:{A:9,B:7,C:5,N:4}}};
+  const margensABC=regrasABC[lojaTipo]?.[lojaValidada?'validada':'nova'];
   return`<div style="max-width:580px">
-    <div class="config-card" style="border-color:var(--accent);background:var(--accent-bg)">
-      <div class="config-title" style="color:var(--accent-text)">Margem Ideal desejada (por plataforma)</div>
-      <div style="font-size:11px;color:var(--accent-text);margin-bottom:10px;opacity:.85">Define a margem que o cliente quer atingir em cada plataforma. Usada para calcular o "Preço Ideal" de cada produto.</div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        ${PLATS.map(pl=>`<div style="display:flex;align-items:center;gap:8px">
-          <span class="chip ${pl.cls}" style="width:90px;justify-content:center;flex-shrink:0">${pl.label}</span>
-          <input class="taxa-input" style="width:80px;font-size:13px;font-weight:700" type="number" value="${margemPorPlat[pl.id]??20}" step="1" min="0" onchange="updMargemPlat('${pl.id}',this.value)"/>
-          <span style="font-size:12px;color:var(--accent-text)">% de margem</span>
-        </div>`).join('')}
+    <div class="config-card">
+      <div class="config-title">Status da loja</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+        <div><div class="form-label" style="margin-bottom:6px">Tipo</div><div class="tgl-group"><button class="tgl-btn ${lojaTipo==='fabricacao'?'on':''}" onclick="updLojaStatus('loja_tipo','fabricacao')">Fabricação</button><button class="tgl-btn ${lojaTipo==='revendedor'?'on':''}" onclick="updLojaStatus('loja_tipo','revendedor')">Revendedor</button></div></div>
+        <div><div class="form-label" style="margin-bottom:6px">Status</div><div class="tgl-group"><button class="tgl-btn ${lojaValidada?'on':''}" onclick="updLojaStatus('loja_validada',true)">✅ Validada</button><button class="tgl-btn ${!lojaValidada?'on':''}" onclick="updLojaStatus('loja_validada',false)">🆕 Nova</button></div></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Margem automática do Preço Ideal por curva ABC:</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        ${['A','B','C','N'].map(cv=>{const cor={A:'#166534',B:'#713f12',C:'#b91c1c',N:'#1e40af'}[cv];const bg={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2',N:'#dbeafe'}[cv];return`<div style="background:${bg};border-radius:8px;padding:8px;text-align:center"><div style="font-weight:800;color:${cor};font-size:12px">Curva ${cv}</div><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:${cor}">${margensABC?.[cv]}%</div></div>`;}).join('')}
       </div>
     </div>
     <div class="config-card">
@@ -1290,6 +1339,7 @@ function updTaxaKits(pl,tipo,i,qtyOrAll){
 async function saveTaxas(){const c=gc();const{error}=await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);if(error){console.error('Erro ao salvar taxas:',error);toast('⚠️ ERRO ao salvar taxas: '+error.message,'error');return;}toast('✅ Taxas salvas no banco!');}
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
+function updLojaStatus(field,v){const c=gc();if(!c)return;c[field]=v;renderTab();}
 function updMargemPlat(plat,v){
   const c=gc();
   if(!c.margem_ideal_por_plat) c.margem_ideal_por_plat={};
@@ -1316,7 +1366,7 @@ function getRegraVal(reg,field,tipo){
   if(reg[field]!=null) return reg[field];
   return null;
 }
-async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_por_plat:c.regra_por_plat,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3,margem_ideal_por_plat:c.margem_ideal_por_plat}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
+async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_por_plat:c.regra_por_plat,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3,margem_ideal_por_plat:c.margem_ideal_por_plat,loja_validada:c.loja_validada!==false,loja_tipo:c.loja_tipo||'fabricacao'}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
 function closeModal(e){
   if(e&&e.target!==e.currentTarget)return;
   if(ST.modal&&ST.modal.type==='prod'){
@@ -1717,6 +1767,64 @@ async function processarCurvaABC(input){
   }catch(e){console.error(e);toast('⚠️ Erro: '+e.message,'error');}
   CABC.uploading=false;renderTab();
 }
+
+async function atualizarPrecosPorExtrato(input){
+  const file=input.files[0];if(!file)return;
+  const c=gc();if(!c)return;
+  const platId=document.getElementById('preco-upload-plat')?.value||'shopee';
+  const platLabel=PLATS.find(p=>p.id===platId)?.label||platId;
+  toast(`Lendo extrato da ${platLabel}...`);
+  try{
+    const data=await file.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+    const header=rows[0].map(h=>String(h||'').toLowerCase().trim());
+    const skuCol=header.findIndex(h=>h.includes('sku principal')||h==='sku');
+    const varKit2Col=header.findIndex(h=>h.includes('opção por variante2')||h.includes('opcao por variante2'));
+    const varKit1Col=header.findIndex(h=>h.includes('opção por variante1')||h.includes('opcao por variante1'));
+    const precoCol=header.findIndex(h=>h==='preço'||h==='preco'||(h.includes('preço')&&!h.includes('desconto')));
+    if(skuCol<0||precoCol<0){toast('Formato não reconhecido. Use o extrato de Anúncios da plataforma.','error');return;}
+    const mapaPrecos={};
+    let skuAtual='';
+    for(let i=1;i<rows.length;i++){
+      const row=rows[i];if(!row||row.every(v=>v==null||v===''))continue;
+      const sku=row[skuCol]?String(row[skuCol]).trim():'';
+      if(sku) skuAtual=sku;
+      const varVal=varKit2Col>=0?String(row[varKit2Col]||''):varKit1Col>=0?String(row[varKit1Col]||''):'';
+      const kitMatch=varVal.match(/(\d+)\s*kit/i);
+      const qty=kitMatch?parseInt(kitMatch[1]):null;
+      const preco=parseFloat(row[precoCol]);
+      if(!skuAtual||!qty||isNaN(preco)||preco<=0)continue;
+      if(!mapaPrecos[skuAtual])mapaPrecos[skuAtual]={};
+      if(!mapaPrecos[skuAtual][qty])mapaPrecos[skuAtual][qty]=preco;
+    }
+    if(!Object.keys(mapaPrecos).length){toast('Nenhum preço com kit encontrado no extrato.','error');return;}
+    let atualizados=0,naoEncontrados=[];
+    for(const [sku,kitPrecos] of Object.entries(mapaPrecos)){
+      const prod=c.produtos.find(p=>p.sku&&p.sku.trim().toUpperCase()===sku.toUpperCase());
+      if(!prod){naoEncontrados.push(sku);continue;}
+      let mudou=false;
+      for(const kit of(prod.kits||[])){
+        if(kitPrecos[kit.qty]!==undefined){
+          if(!kit.precos)kit.precos={};
+          const snap=JSON.parse(JSON.stringify(prod));
+          kit.precos[platId]=kitPrecos[kit.qty];
+          mudou=true;
+        }
+      }
+      if(mudou){
+        try{await saveProduct(prod,c.id);atualizados++;}
+        catch(e){console.error('Erro ao salvar',sku,e);}
+      }
+    }
+    input.value='';
+    let msg=`✅ ${atualizados} produto(s) com preços atualizados na ${platLabel}!`;
+    if(naoEncontrados.length>0)msg+=` · ${naoEncontrados.length} SKUs não encontrados`;
+    toast(msg);renderTab();
+  }catch(e){console.error(e);toast('Erro: '+e.message,'error');}
+}
+
 loadAll();
 
 // Seleção de linha ao clicar — igual Excel
