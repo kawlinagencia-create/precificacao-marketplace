@@ -695,7 +695,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   if(ideal){
     const diff=r2.preco-ideal.preco;
     const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
-    const margemLabel=curva?`Curva ${curva} · ${ideal.margemPerc.toFixed(0)}%`:`${ideal.margemPerc.toFixed(0)}%`;
+    const margemLabel=curva?`Curva ${curva} · ${ideal.margemPerc.toFixed(1)}%`:`${ideal.margemPerc.toFixed(1)}%`;
     idealHTML=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
       <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${margemLabel})</span></span>
       <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
@@ -1165,8 +1165,8 @@ function renderLucroPreviewHTML(k,plats){
   </div>`:'';
 }
 
-function selC(id){ST.activeId=id;ST.tab='dashboard';ST.open={};ST.search={q:'',scope:'todos'};render();}
-function setTab(t){ST.tab=t;render();}
+function selC(id){ST.activeId=id;ST.tab='dashboard';ST.open={};ST.search={q:'',scope:'todos'};CABC.dados=[];render();}
+function setTab(t){ST.tab=t;render();if(t==='produtos')carregarCurvaParaProdutos();}
 function togOpen(id){ST.open[id]=!ST.open[id];
   const el=document.getElementById('search-results');
   if(el&&ST.tab==='busca'){updateSearch();return;}
@@ -1766,6 +1766,36 @@ async function processarCurvaABC(input){
     await consultarCurvaABC();
   }catch(e){console.error(e);toast('⚠️ Erro: '+e.message,'error');}
   CABC.uploading=false;renderTab();
+}
+
+async function carregarCurvaParaProdutos(){
+  // Carrega automaticamente o período mais recente da curva ABC para mostrar badges nos produtos
+  const c=gc();if(!c||CABC.dados.length>0)return; // já tem dados em memória, não recarrega
+  // Buscar o período mais recente disponível
+  const{data:periodos}=await sb.from('prec_curva_abc')
+    .select('ano,mes,plataforma')
+    .eq('client_id',c.id)
+    .order('ano',{ascending:false})
+    .order('mes',{ascending:false})
+    .limit(1);
+  if(!periodos?.length)return;
+  const{ano,mes,plataforma}=periodos[0];
+  // Carregar todos os dados do período mais recente (todos plataformas do mesmo mês)
+  const{data}=await sb.from('prec_curva_abc')
+    .select('sku,nome_produto,curva,faturamento,pct_acumulado,pct_faturamento')
+    .eq('client_id',c.id)
+    .eq('ano',ano)
+    .eq('mes',mes)
+    .order('pct_acumulado');
+  if(data?.length){
+    CABC.dados=data;
+    CABC.ano=ano;CABC.mes=mes;
+    // Re-renderizar só a aba produtos para mostrar os badges
+    if(ST.tab==='produtos'){
+      const el=document.getElementById('tab-content');
+      if(el)el.innerHTML=renderProdutos(c);
+    }
+  }
 }
 
 async function atualizarPrecosPorExtrato(input){
