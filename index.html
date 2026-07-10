@@ -1829,49 +1829,104 @@ async function atualizarPrecosPorExtrato(input){
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1});
     const header=rows[0].map(h=>String(h||'').toLowerCase().trim());
-    const skuCol=header.findIndex(h=>h.includes('sku principal')||h==='sku');
-    const varKit2Col=header.findIndex(h=>h.includes('opção por variante2')||h.includes('opcao por variante2'));
-    const varKit1Col=header.findIndex(h=>h.includes('opção por variante1')||h.includes('opcao por variante1'));
-    const precoCol=header.findIndex(h=>h==='preço'||h==='preco'||(h.includes('preço')&&!h.includes('desconto')));
-    if(skuCol<0||precoCol<0){toast('Formato não reconhecido. Use o extrato de Anúncios da plataforma.','error');return;}
+
+    // Detectar colunas
+    const skuPrincipalCol=header.findIndex(h=>h.includes('sku principal'));
+    const skuVarianteCol=header.findIndex(h=>h==='sku'||h==='sku da variante'||h==='skus');
+    const precoCol=header.findIndex(h=>(h==='preço'||h==='preco'||(h.includes('preço')&&!h.includes('desconto'))));
+
+    if(precoCol<0){toast('Coluna de Preço não encontrada no extrato.','error');return;}
+
+    // mapaPrecos: { SKU_PRODUTO: { qty: preco } }
     const mapaPrecos={};
-    let skuAtual='';
+    let skuProdutoAtual='';
+
     for(let i=1;i<rows.length;i++){
-      const row=rows[i];if(!row||row.every(v=>v==null||v===''))continue;
-      const sku=row[skuCol]?String(row[skuCol]).trim():'';
-      if(sku) skuAtual=sku;
-      const varVal=varKit2Col>=0?String(row[varKit2Col]||''):varKit1Col>=0?String(row[varKit1Col]||''):'';
-      const kitMatch=varVal.match(/(\d+)\s*kit/i);
-      const qty=kitMatch?parseInt(kitMatch[1]):null;
+      const row=rows[i];
+      if(!row||row.every(v=>v==null||v===''))continue;
+
+      // SKU Principal — só presente na primeira linha do anúncio
+      const skuPrincipal=skuPrincipalCol>=0&&row[skuPrincipalCol]?String(row[skuPrincipalCol]).trim():'';
+      if(skuPrincipal) skuProdutoAtual=skuPrincipal;
+      if(!skuProdutoAtual)continue;
+
       const preco=parseFloat(row[precoCol]);
-      if(!skuAtual||!qty||isNaN(preco)||preco<=0)continue;
-      if(!mapaPrecos[skuAtual])mapaPrecos[skuAtual]={};
-      if(!mapaPrecos[skuAtual][qty])mapaPrecos[skuAtual][qty]=preco;
+      if(isNaN(preco)||preco<=0)continue;
+
+      // Detectar kit a partir do SKU da variante (ex: "10KIT028-P" -> kit 10)
+      // Formato: {QTY}KIT{CODIGO}-{TAMANHO}
+      let qty=null;
+      if(skuVarianteCol>=0&&row[skuVarianteCol]){
+        const skuVar=String(row[skuVarianteCol]).trim();
+        // Padrão: começa com número seguido de KIT (ex: 10KIT028, 5KIT032, 3KIT028)
+        const m=skuVar.match(/^(\d+)KIT/i);
+        if(m) qty=parseInt(m[1]);
+      }
+
+      // Fallback: tentar extrair kit do SKU principal (ex: "KIT028" não tem kit no nome, mas variante sim)
+      if(!qty&&skuProdutoAtual){
+        const m=skuProdutoAtual.match(/^(\d+)KIT/i);
+        if(m) qty=parseInt(m[1]);
+      }
+
+      if(!qty)continue;
+
+      // Normalizar o SKU do produto: remover o prefixo de quantidade se existir
+      // Ex: "KIT028" é o SKU cadastrado; o SKU Principal no extrato também é "KIT028"
+      const skuNorm=skuProdutoAtual.toUpperCase();
+      if(!mapaPrecos[skuNorm])mapaPrecos[skuNorm]={};
+      if(!mapaPrecos[skuNorm][qty])mapaPrecos[skuNorm][qty]=preco; // usa primeiro preço do kit
     }
-    if(!Object.keys(mapaPrecos).length){toast('Nenhum preço com kit encontrado no extrato.','error');return;}
+
+    if(!Object.keys(mapaPrecos).length){
+      toast('Nenhum kit encontrado no extrato. Verifique se os SKUs das variantes seguem o padrão (ex: 10KIT028-P).','error');
+      return;
+    }
+
     let atualizados=0,naoEncontrados=[];
-    for(const [sku,kitPrecos] of Object.entries(mapaPrecos)){
-      const prod=c.produtos.find(p=>p.sku&&p.sku.trim().toUpperCase()===sku.toUpperCase());
-      if(!prod){naoEncontrados.push(sku);continue;}
+    for(const [skuExtrato,kitPrecos] of Object.entries(mapaPrecos)){
+      // Buscar produto pelo SKU — comparação flexível
+      const prod=c.produtos.find(p=>{
+        if(!p.sku)return false;
+        const skuProd=p.sku.trim().toUpperCase().replace(/^0+/,''); // remove zeros à esquerda
+        const skuExt=skuExtrato.toUpperCase();
+        const skuExtSemKit=skuExt.replace(/^KIT0*/,''); // KIT028 -> 28, KIT002 -> 2
+        const skuProdSemZero=skuProd.replace(/^0+/,''); // 028 -> 28, 002 -> 2
+        // Bate direto
+        if(skuProd===skuExt)return true;
+        // Extrato tem KIT prefixo (KIT028 -> 028 -> bate com produto "028" ou "28")
+        if(skuExtSemKit===skuProdSemZero)return true;
+        if(skuExtSemKit===skuProd)return true;
+        // Produto tem KIT prefixo
+        if('KIT'+skuProd===skuExt)return true;
+        return false;
+      });
+      if(!prod){naoEncontrados.push(skuExtrato);continue;}
+
+      const snapAntigo=JSON.parse(JSON.stringify(prod));
       let mudou=false;
       for(const kit of(prod.kits||[])){
         if(kitPrecos[kit.qty]!==undefined){
           if(!kit.precos)kit.precos={};
-          const snap=JSON.parse(JSON.stringify(prod));
           kit.precos[platId]=kitPrecos[kit.qty];
           mudou=true;
         }
       }
       if(mudou){
-        try{await saveProduct(prod,c.id);atualizados++;}
-        catch(e){console.error('Erro ao salvar',sku,e);}
+        try{
+          await saveProduct(prod,c.id,snapAntigo);
+          atualizados++;
+        }catch(e){console.error('Erro ao salvar',skuExtrato,e);}
       }
     }
+
     input.value='';
-    let msg=`✅ ${atualizados} produto(s) com preços atualizados na ${platLabel}!`;
-    if(naoEncontrados.length>0)msg+=` · ${naoEncontrados.length} SKUs não encontrados`;
-    toast(msg);renderTab();
-  }catch(e){console.error(e);toast('Erro: '+e.message,'error');}
+    const totalSkus=Object.keys(mapaPrecos).length;
+    let msg=`✅ ${atualizados} de ${totalSkus} produto(s) atualizados na ${platLabel}!`;
+    if(naoEncontrados.length>0) msg+=` · Não encontrados: ${naoEncontrados.slice(0,8).join(', ')}`;
+    toast(msg);
+    renderTab();
+  }catch(e){console.error(e);toast('Erro ao processar extrato: '+e.message,'error');}
 }
 
 loadAll();
