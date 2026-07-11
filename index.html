@@ -1775,12 +1775,12 @@ async function processarCurvaABC(input){
       const unid=parseFloat(row[unidCol])||0;
       const fat=parseFloat(row[fatCol])||0;
       const preco=parseFloat(row[precoCol])||0;
-      // Extrair código limpo do SKU Principal — sempre pega os números finais após KIT
-      // KIT029 -> 029 | 5KIT302 -> 302 | 10KIT028 -> 028
+      // Extrair código limpo do SKU Principal
+      // KIT029 -> 029 | 5KIT302 -> 302 | KIT-008 -> 008 | 3KIT-025 -> 025
       let skuBase=skuPrincipal;
-      const m1=skuPrincipal.match(/KIT(\d+)/i);
+      const m1=skuPrincipal.match(/KIT-?(\d+)/i);
       if(m1)skuBase=m1[1];
-      // Detectar kit qty do prefixo numérico (5KIT302 -> kit 5)
+      // Detectar kit qty do prefixo numérico (5KIT302 -> kit 5, 3KIT-025 -> kit 3)
       let kitQty=null;
       const m2=skuPrincipal.match(/^(\d+)KIT/i);
       if(m2)kitQty=parseInt(m2[1]);
@@ -1945,17 +1945,18 @@ async function atualizarPrecosPorExtrato(input){
       // Buscar produto pelo SKU — comparação flexível
       const prod=c.produtos.find(p=>{
         if(!p.sku)return false;
-        const skuProd=p.sku.trim().toUpperCase().replace(/^0+/,''); // remove zeros à esquerda
+        const skuProd=p.sku.trim().toUpperCase();
+        const skuProdSemZero=skuProd.replace(/^0+/,'');
         const skuExt=skuExtrato.toUpperCase();
-        const skuExtSemKit=skuExt.replace(/^KIT0*/,''); // KIT028 -> 28, KIT002 -> 2
-        const skuProdSemZero=skuProd.replace(/^0+/,''); // 028 -> 28, 002 -> 2
+        // Extrair só os números do SKU do extrato: KIT028->028, KIT-008->008, 5KIT302->302
+        const mExt=skuExt.match(/KIT-?(\d+)/i);
+        const skuExtNum=mExt?mExt[1]:skuExt;
+        const skuExtNumSemZero=skuExtNum.replace(/^0+/,'');
         // Bate direto
         if(skuProd===skuExt)return true;
-        // Extrato tem KIT prefixo (KIT028 -> 028 -> bate com produto "028" ou "28")
-        if(skuExtSemKit===skuProdSemZero)return true;
-        if(skuExtSemKit===skuProd)return true;
-        // Produto tem KIT prefixo
-        if('KIT'+skuProd===skuExt)return true;
+        // Compara números sem zeros à esquerda
+        if(skuExtNumSemZero===skuProdSemZero)return true;
+        if(skuExtNum===skuProd)return true;
         return false;
       });
       if(!prod){naoEncontrados.push(skuExtrato);continue;}
