@@ -2018,32 +2018,54 @@ function getDashRows(){
   });
 }
 
+function getDashKPIs(){
+  const c=gc();if(!c)return null;
+  const all=applyFilter(allRes(c));
+  const base=all.length?all:allRes(c);
+  const total=base.length;
+  const verm=base.filter(x=>x.cor==='r').length;
+  const grn=base.filter(x=>x.cor==='g').length;
+  const avgM=base.length?base.reduce((s,x)=>s+x.r.margem,0)/base.length:0;
+  const prej=base.filter(x=>x.r.lucro<0).length;
+  const totalFat=base.reduce((s,x)=>s+x.r.preco,0);
+  return{total,verm,grn,avgM,prej,produtos:c.produtos.length};
+}
+
 function exportDashExcel(){
   const c=gc();if(!c)return;
   const rows=getDashRows();
+  const kpis=getDashKPIs();
   if(!rows.length){toast('Nenhum dado para exportar','error');return;}
+  const wb=XLSX.utils.book_new();
+  // Aba Resumo
+  const resumoData=[
+    ['Relatório de Precificação — '+c.name],
+    ['Gerado em: '+new Date().toLocaleDateString('pt-BR')],
+    [],
+    ['RESUMO'],
+    ['Margem Média',kpis.avgM.toFixed(1)+'%'],
+    ['No Verde',kpis.grn+' combinações'],
+    ['Em Prejuízo',kpis.verm+' combinações'],
+    ['Total Combinações',kpis.total],
+    ['Total Produtos',kpis.produtos],
+  ];
+  const wsResumo=XLSX.utils.aoa_to_sheet(resumoData);
+  wsResumo['!cols']=[{wch:22},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,wsResumo,'Resumo');
+  // Aba Detalhado
   const ws=XLSX.utils.json_to_sheet(rows);
   ws['!cols']=[{wch:8},{wch:32},{wch:18},{wch:5},{wch:12},{wch:13},{wch:13},{wch:8},{wch:10},{wch:12},{wch:10},{wch:10},{wch:10},{wch:12}];
-  // Formatação de células numéricas
-  const fmt='#,##0.00';
-  const range=XLSX.utils.decode_range(ws['!ref']);
-  for(let R=1;R<=range.e.r;R++){
-    ['F','G','I','J','K','L','M'].forEach(col=>{
-      const ref=col+(R+1);
-      if(ws[ref]&&typeof ws[ref].v==='number') ws[ref].z=fmt;
-    });
-  }
-  const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Relatório');
+  XLSX.utils.book_append_sheet(wb,ws,'Detalhado');
   const nome=c.name.replace(/[^a-z0-9]/gi,'_');
   const data=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
   XLSX.writeFile(wb,`Relatorio_${nome}_${data}.xlsx`);
-  toast('✅ Excel exportado!');
+  toast('✅ Excel exportado com 2 abas: Resumo e Detalhado!');
 }
 
 function exportDashPDF(){
   const c=gc();if(!c)return;
   const rows=getDashRows();
+  const kpis=getDashKPIs();
   if(!rows.length){toast('Nenhum dado para exportar','error');return;}
   const data=new Date().toLocaleDateString('pt-BR');
   const corStatus=(s)=>s==='Verde'?'#166534':s==='Amarelo'?'#713f12':s==='Laranja'?'#9a3412':'#b91c1c';
@@ -2054,7 +2076,14 @@ function exportDashPDF(){
     *{box-sizing:border-box;margin:0;padding:0;}
     body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a1a;padding:20px;}
     h1{font-size:16px;font-weight:700;margin-bottom:4px;}
+    h2{font-size:12px;font-weight:700;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.06em;color:#444;}
     .sub{font-size:10px;color:#666;margin-bottom:16px;}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;}
+    .kpi{border:1px solid #e5e5e5;border-radius:8px;padding:10px 14px;}
+    .kpi-label{font-size:9px;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+    .kpi-val{font-size:20px;font-weight:700;}
+    .kpi-sub{font-size:9px;color:#888;margin-top:2px;}
+    .green{color:#166534;}.red{color:#b91c1c;}.amber{color:#713f12;}
     table{width:100%;border-collapse:collapse;margin-bottom:20px;}
     th{background:#111;color:#fff;padding:5px 7px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
     td{padding:4px 7px;border-bottom:1px solid #eee;font-size:9px;vertical-align:middle;}
@@ -2069,6 +2098,32 @@ function exportDashPDF(){
   </style></head><body>
   <h1>${c.name} — Relatório de Precificação</h1>
   <div class="sub">Gerado em ${data} · ${rows.length} combinações produto/plataforma/kit</div>
+
+  <h2>Resumo</h2>
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-label">Margem Média</div>
+      <div class="kpi-val ${kpis.avgM>=15?'green':kpis.avgM>=8?'amber':'red'}">${kpis.avgM.toFixed(1)}%</div>
+      <div class="kpi-sub">sobre preço de venda</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">No Verde</div>
+      <div class="kpi-val green">${kpis.grn}</div>
+      <div class="kpi-sub">${Math.round(kpis.grn/kpis.total*100)}% do total</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Em Prejuízo</div>
+      <div class="kpi-val ${kpis.verm>0?'red':'green'}">${kpis.verm}</div>
+      <div class="kpi-sub">de ${kpis.total} combinações</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Produtos</div>
+      <div class="kpi-val">${kpis.produtos}</div>
+      <div class="kpi-sub">${rows.length} combinações</div>
+    </div>
+  </div>
+
+  <h2>Detalhamento por produto</h2>
   <table>
     <thead><tr>
       <th>SKU</th><th>Produto</th><th>Plataforma</th><th>Kit</th><th>Tipo</th>
@@ -2078,7 +2133,7 @@ function exportDashPDF(){
       <th>Status</th>
     </tr></thead>
     <tbody>${rows.map(r=>`<tr>
-      <td style="font-family:monospace;color:#666;font-size:9px">${r['SKU']}</td>
+      <td style="font-family:monospace;color:#666">${r['SKU']}</td>
       <td>${r['Produto']}</td>
       <td>${r['Plataforma']}</td>
       <td style="text-align:center;font-weight:600">K${r['Kit']}</td>
