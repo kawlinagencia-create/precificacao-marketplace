@@ -2013,7 +2013,7 @@ function getDashRows(){
       'Lucro R$':x.r.lucro,
       'Lucro %':parseFloat(x.r.margem.toFixed(2)),
       'R$/Peça':parseFloat((x.r.lucro/x.k.qty).toFixed(2)),
-      'Status':x.cor==='g'?'Verde':x.cor==='a'?'Amarelo':x.cor==='l'?'Laranja':'Prejuízo',
+      'Status':x.cor==='g'?'Verde':x.cor==='a'?'Amarelo':x.cor==='l'?'Laranja':'Oportunidade de ajuste',
     };
   });
 }
@@ -2045,7 +2045,7 @@ function exportDashExcel(){
     ['RESUMO'],
     ['Margem Média',kpis.avgM.toFixed(1)+'%'],
     ['No Verde',kpis.grn+' combinações'],
-    ['Em Prejuízo',kpis.verm+' combinações'],
+    ['Oportunidades de ajuste',kpis.verm+' combinações'],
     ['Total Combinações',kpis.total],
     ['Total Produtos',kpis.produtos],
   ];
@@ -2112,7 +2112,7 @@ function exportDashPDF(){
       <div class="kpi-sub">${Math.round(kpis.grn/kpis.total*100)}% do total</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Em Prejuízo</div>
+      <div class="kpi-label">Oportunidades de ajuste</div>
       <div class="kpi-val ${kpis.verm>0?'red':'green'}">${kpis.verm}</div>
       <div class="kpi-sub">de ${kpis.total} combinações</div>
     </div>
