@@ -616,6 +616,10 @@ function renderDash(c){
   const isML=(pl)=>pl==='ml_classico'||pl==='ml_premium';
   const filterLabel=ST.filter.plat?` — ${platLabel(ST.filter.plat)}`:'';
   return`${renderFilterBar(c,'dash')}
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:12px">
+    <button class="btn btn-outline" onclick="exportDashExcel()" title="Exportar relatório em Excel">📊 Excel</button>
+    <button class="btn btn-outline" onclick="exportDashPDF()" title="Exportar relatório em PDF">📄 PDF</button>
+  </div>
   <div class="kpi-grid">
     <div class="kpi ${verm>0?'danger':'success'}"><div class="kpi-label">Combinações em prejuízo${filterLabel}</div><div class="kpi-val">${verm}</div><div class="kpi-sub">de ${total} combinações</div></div>
     <div class="kpi ${avgM<5?'warn':avgM>=10?'success':''}"><div class="kpi-label">Margem média${filterLabel}</div><div class="kpi-val">${avgM.toFixed(1)}%</div><div class="kpi-sub">sobre preço de venda</div></div>
@@ -1985,6 +1989,118 @@ async function atualizarPrecosPorExtrato(input){
     toast(msg);
     renderTab();
   }catch(e){console.error(e);toast('Erro ao processar extrato: '+e.message,'error');}
+}
+
+function getDashRows(){
+  const c=gc();if(!c)return[];
+  const all=applyFilter(allRes(c));
+  const platLabel=(pl)=>pl==='ml_classico'||pl==='ml_premium'?'Mercado Livre':PLATS.find(p=>p.id===pl)?.label||pl;
+  const mlTipo=(pl)=>pl==='ml_classico'?'Clássico':pl==='ml_premium'?'Premium':null;
+  return all.map(x=>{
+    const ideal=calcPrecoIdeal(x.r.custo,x.pl,c.taxas,x.k.peso_kg||0,x.k.qty,c,x.curva||null);
+    const tipo=mlTipo(x.pl);
+    return{
+      'SKU':x.p.sku||'—',
+      'Produto':x.p.nome,
+      'Plataforma':platLabel(x.pl)+(tipo?' ('+tipo+')':''),
+      'Kit':x.k.qty,
+      'Tipo':x.p.fabricacao?'Fabricação':'Revenda',
+      'Preço Atual':x.r.preco,
+      'Preço Ideal':ideal?ideal.preco:null,
+      '% Ideal':ideal?parseFloat(ideal.margemPerc.toFixed(1)):null,
+      'Custo':x.r.custo,
+      'Total Taxas':x.r.tax,
+      'Lucro R$':x.r.lucro,
+      'Lucro %':parseFloat(x.r.margem.toFixed(2)),
+      'R$/Peça':parseFloat((x.r.lucro/x.k.qty).toFixed(2)),
+      'Status':x.cor==='g'?'Verde':x.cor==='a'?'Amarelo':x.cor==='l'?'Laranja':'Prejuízo',
+    };
+  });
+}
+
+function exportDashExcel(){
+  const c=gc();if(!c)return;
+  const rows=getDashRows();
+  if(!rows.length){toast('Nenhum dado para exportar','error');return;}
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:8},{wch:32},{wch:18},{wch:5},{wch:12},{wch:13},{wch:13},{wch:8},{wch:10},{wch:12},{wch:10},{wch:10},{wch:10},{wch:12}];
+  // Formatação de células numéricas
+  const fmt='#,##0.00';
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  for(let R=1;R<=range.e.r;R++){
+    ['F','G','I','J','K','L','M'].forEach(col=>{
+      const ref=col+(R+1);
+      if(ws[ref]&&typeof ws[ref].v==='number') ws[ref].z=fmt;
+    });
+  }
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Relatório');
+  const nome=c.name.replace(/[^a-z0-9]/gi,'_');
+  const data=new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  XLSX.writeFile(wb,`Relatorio_${nome}_${data}.xlsx`);
+  toast('✅ Excel exportado!');
+}
+
+function exportDashPDF(){
+  const c=gc();if(!c)return;
+  const rows=getDashRows();
+  if(!rows.length){toast('Nenhum dado para exportar','error');return;}
+  const data=new Date().toLocaleDateString('pt-BR');
+  const corStatus=(s)=>s==='Verde'?'#166534':s==='Amarelo'?'#713f12':s==='Laranja'?'#9a3412':'#b91c1c';
+  const bgStatus=(s)=>s==='Verde'?'#dcfce7':s==='Amarelo'?'#fef9c3':s==='Laranja'?'#ffedd5':'#fee2e2';
+  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>
+  <title>Relatório — ${c.name}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Arial,sans-serif;font-size:10px;color:#1a1a1a;padding:20px;}
+    h1{font-size:16px;font-weight:700;margin-bottom:4px;}
+    .sub{font-size:10px;color:#666;margin-bottom:16px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+    th{background:#111;color:#fff;padding:5px 7px;text-align:left;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+    td{padding:4px 7px;border-bottom:1px solid #eee;font-size:9px;vertical-align:middle;}
+    tr:nth-child(even) td{background:#f9f9f9;}
+    .num{text-align:right;font-family:monospace;}
+    .neg{color:#b91c1c;font-weight:700;}
+    .pos{color:#166534;font-weight:700;}
+    .badge{display:inline-block;padding:1px 7px;border-radius:20px;font-size:8px;font-weight:700;}
+    .footer{font-size:8px;color:#999;text-align:center;margin-top:16px;border-top:1px solid #eee;padding-top:8px;}
+    @page{margin:12mm;size:A4 landscape;}
+    @media print{body{padding:0;}}
+  </style></head><body>
+  <h1>${c.name} — Relatório de Precificação</h1>
+  <div class="sub">Gerado em ${data} · ${rows.length} combinações produto/plataforma/kit</div>
+  <table>
+    <thead><tr>
+      <th>SKU</th><th>Produto</th><th>Plataforma</th><th>Kit</th><th>Tipo</th>
+      <th class="num">Preço Atual</th><th class="num">Preço Ideal</th>
+      <th class="num">Custo</th><th class="num">Total Taxas</th>
+      <th class="num">Lucro R$</th><th class="num">Lucro %</th><th class="num">R$/Peça</th>
+      <th>Status</th>
+    </tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td style="font-family:monospace;color:#666;font-size:9px">${r['SKU']}</td>
+      <td>${r['Produto']}</td>
+      <td>${r['Plataforma']}</td>
+      <td style="text-align:center;font-weight:600">K${r['Kit']}</td>
+      <td style="color:#666">${r['Tipo']}</td>
+      <td class="num">R$${Number(r['Preço Atual']).toFixed(2)}</td>
+      <td class="num" style="color:#0369a1">${r['Preço Ideal']?'R$'+Number(r['Preço Ideal']).toFixed(2):' —'}</td>
+      <td class="num" style="color:#b91c1c">R$${Number(r['Custo']).toFixed(2)}</td>
+      <td class="num" style="color:#b91c1c">R$${Number(r['Total Taxas']).toFixed(2)}</td>
+      <td class="num ${Number(r['Lucro R$'])<0?'neg':'pos'}">R$${Number(r['Lucro R$']).toFixed(2)}</td>
+      <td class="num ${Number(r['Lucro %'])<0?'neg':'pos'}">${r['Lucro %']}%</td>
+      <td class="num" style="color:#555">R$${r['R$/Peça']}</td>
+      <td><span class="badge" style="background:${bgStatus(r['Status'])};color:${corStatus(r['Status'])}">${r['Status']}</span></td>
+    </tr>`).join('')}
+    </tbody>
+  </table>
+  <div class="footer">Relatório gerado pelo sistema KAWLIN Agency · ${data}</div>
+  </body></html>`;
+  const win=window.open('','_blank');
+  if(!win){toast('Permita pop-ups para gerar o PDF','error');return;}
+  win.document.write(html);
+  win.document.close();
+  setTimeout(()=>{win.focus();win.print();},600);
 }
 
 loadAll();
