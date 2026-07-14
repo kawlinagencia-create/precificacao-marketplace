@@ -180,6 +180,7 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 .toast{background:var(--text);color:#fff;padding:10px 16px;border-radius:var(--r);font-size:12px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:slideIn .2s ease}
 .toast.error{background:var(--danger)}
 .toast.success{background:var(--success)}
+.toast.info{background:#2563eb}
 @keyframes slideIn{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
 .shopee-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:20px;font-size:9px;font-weight:600;background:#fef9c3;color:#713f12;margin-left:4px}
 .filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:14px}
@@ -873,7 +874,7 @@ function renderTaxaRow(pl,tipo,r,i,unidade){
   return`<div style="border-bottom:1px solid var(--border);padding:5px 0">
     <div class="taxa-row" style="border:none;padding:2px 0">
       <input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','${tipo}',${i},this.value)" placeholder="Nome"/>
-      ${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px" title="${r.obs}">ℹ️</span>`:''}
+      ${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px;cursor:pointer" onclick="toast('${r.obs.replace(/'/g,"\\'")}','info')">ℹ️</span>`:''}
       <input class="taxa-input" type="number" value="${r.v}" step="${unidade==='%'?'0.1':'0.01'}" onchange="updTaxa('${pl.id}','${tipo}',${i},this.value)"/>
       <span style="font-size:10px;color:var(--text3)">${unidade}</span>
       <button class="btn-icon danger" onclick="rmTaxa('${pl.id}','${tipo}',${i})">✕</button>
