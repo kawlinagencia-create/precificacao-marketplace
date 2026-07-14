@@ -345,15 +345,15 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva){
     let tp=0;
     for(const r of t.perc){
       let v=r.v;
-      if(platId==='shopee'&&isComissaoShopee(r.n)) v=shopeeComissao(p)*100;
-      if(platId==='tiktok'&&isComissaoTikTok(r.n)) v=tiktokComissao(p)*100;
+      if(platId==='shopee'&&isComissaoShopee(r.n)&&r.auto!==false) v=shopeeComissao(p)*100;
+      if(platId==='tiktok'&&isComissaoTikTok(r.n)&&r.auto!==false) v=tiktokComissao(p)*100;
       tp+=v/100;
     }
     let tf=0;
     for(const r of t.fixas){
       let v=r.v;
-      if(platId==='shopee'&&isTaxaFixaShopee(r.n)) v=shopeeTaxaFixa(p);
-      if(platId==='tiktok'&&isTaxaFixaTikTok(r.n)) v=tiktokTaxaFixa(p);
+      if(platId==='shopee'&&isTaxaFixaShopee(r.n)&&r.auto!==false) v=shopeeTaxaFixa(p);
+      if(platId==='tiktok'&&isTaxaFixaTikTok(r.n)&&r.auto!==false) v=tiktokTaxaFixa(p);
       const nL=r.n.toLowerCase();
       const isKitSpecific=nL.includes('embal')||nL.includes('frete');
       if(isKitSpecific&&kitQty){
@@ -388,17 +388,17 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   for(const r of t.perc){
     // Filtro por kit: se a taxa tem kits definidos e o kitQty não está na lista, pula
     if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty))continue;
-    let v=r.v;if(platId==='shopee'&&isComissaoShopee(r.n))v=shopeeComissao(preco)*100;
-    if(platId==='tiktok'&&isComissaoTikTok(r.n))v=tiktokComissao(preco)*100;
-    totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100});
+    let v=r.v;if(platId==='shopee'&&isComissaoShopee(r.n)&&r.auto!==false)v=shopeeComissao(preco)*100;
+    if(platId==='tiktok'&&isComissaoTikTok(r.n)&&r.auto!==false)v=tiktokComissao(preco)*100;
+    totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100,auto:r.auto});
   }
   let totalFixa=0;const fixaDetail=[];
   for(const r of t.fixas){
     // Filtro por kit configurado manualmente na aba Taxas
     if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty))continue;
     let v=r.v;
-    if(platId==='shopee'&&isTaxaFixaShopee(r.n)) v=shopeeTaxaFixa(preco);
-    if(platId==='tiktok'&&isTaxaFixaTikTok(r.n)) v=tiktokTaxaFixa(preco);
+    if(platId==='shopee'&&isTaxaFixaShopee(r.n)&&r.auto!==false) v=shopeeTaxaFixa(preco);
+    if(platId==='tiktok'&&isTaxaFixaTikTok(r.n)&&r.auto!==false) v=tiktokTaxaFixa(preco);
     // Embalagem ou Frete por kit: usar só a taxa correspondente ao kit atual (detecção por nome)
     const nL=r.n.toLowerCase();
     const isKitSpecific=nL.includes('embal')||nL.includes('frete');
@@ -414,7 +414,7 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
         if(!bateK3&&!bateK5&&!bateK10)continue;
       }
     }
-    totalFixa+=v;fixaDetail.push({n:r.n,v,val:v});
+    totalFixa+=v;fixaDetail.push({n:r.n,v,val:v,auto:r.auto});
   }
   let freteML=0;
   if((platId==='ml_classico'||platId==='ml_premium')&&pesoKg>0){freteML=calcFreteML(pesoKg,preco);totalFixa+=freteML;fixaDetail.push({n:'Frete ML (auto)',v:freteML,val:freteML});}
@@ -877,6 +877,8 @@ function renderAlertas(c){
 
 function renderTaxaRow(pl,tipo,r,i,unidade){
   const c=gc();
+  const isAutoField=(pl.id==='shopee'||pl.id==='tiktok')&&((tipo==='perc'&&(pl.id==='shopee'?isComissaoShopee(r.n):isComissaoTikTok(r.n)))||(tipo==='fixas'&&(pl.id==='shopee'?isTaxaFixaShopee(r.n):isTaxaFixaTikTok(r.n))));
+  const isAuto=r.auto!==false;
   // Kits disponíveis nessa plataforma — pega de todos os produtos do cliente
   const todosKits=[...new Set((c.produtos||[]).flatMap(p=>(p.kits||[]).map(k=>k.qty)))].sort((a,b)=>a-b);
   const kitsAtivos=r.kits||[]; // [] = aplica em todos
@@ -889,7 +891,8 @@ function renderTaxaRow(pl,tipo,r,i,unidade){
     <div class="taxa-row" style="border:none;padding:2px 0">
       <input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','${tipo}',${i},this.value)" placeholder="Nome"/>
       ${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px;cursor:pointer" onclick="toast('${r.obs.replace(/'/g,"\\'")}','info')">ℹ️</span>`:''}
-      <input class="taxa-input" type="number" value="${r.v}" step="${unidade==='%'?'0.1':'0.01'}" onchange="updTaxa('${pl.id}','${tipo}',${i},this.value)"/>
+      ${isAutoField?`<span style="font-size:9px;padding:1px 6px;border-radius:20px;cursor:pointer;margin-right:4px;font-weight:600;background:${isAuto?'#dbeafe':'#fef9c3'};color:${isAuto?'#1e40af':'#713f12'}" onclick="toggleTaxaAuto('${pl.id}','${tipo}',${i})" title="Clique para alternar">${isAuto?'🔒 Auto':'✏️ Manual'}</span>`:''}
+      <input class="taxa-input" type="number" value="${r.v}" step="${unidade==='%'?'0.1':'0.01'}" ${isAutoField&&isAuto?'disabled title="Desative o Auto para editar manualmente"':''} onchange="updTaxa('${pl.id}','${tipo}',${i},this.value)"/>
       <span style="font-size:10px;color:var(--text3)">${unidade}</span>
       <button class="btn-icon danger" onclick="rmTaxa('${pl.id}','${tipo}',${i})">✕</button>
     </div>
@@ -1039,9 +1042,13 @@ function updateCalc(){
     function alvo(ma){
       let p=custo*2;
       for(let i=0;i<80;i++){
-        const tp=platSel==='shopee'?shopeeComissao(p):platSel==='tiktok'?tiktokComissao(p):t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
-        const tfE=platSel==='shopee'?t.fixas.filter(r=>!isTaxaFixaShopee(r.n)).reduce((s,r)=>s+(r.v||0),0):platSel==='tiktok'?t.fixas.filter(r=>!isTaxaFixaTikTok(r.n)).reduce((s,r)=>s+(r.v||0),0):0;
-        const tf=platSel==='shopee'?shopeeTaxaFixa(p)+tfE:platSel==='tiktok'?tiktokTaxaFixa(p)+tfE:t.fixas.reduce((s,r)=>s+(r.v||0),0);
+        const comRow=(platSel==='shopee'||platSel==='tiktok')?t.perc.find(r=>platSel==='shopee'?isComissaoShopee(r.n):isComissaoTikTok(r.n)):null;
+        const comAuto=comRow?comRow.auto!==false:true;
+        const tp=(platSel==='shopee'&&comAuto)?shopeeComissao(p):(platSel==='tiktok'&&comAuto)?tiktokComissao(p):t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
+        const tfRow=(platSel==='shopee'||platSel==='tiktok')?t.fixas.find(r=>platSel==='shopee'?isTaxaFixaShopee(r.n):isTaxaFixaTikTok(r.n)):null;
+        const tfAuto=tfRow?tfRow.auto!==false:true;
+        const tfE=(platSel==='shopee'&&tfAuto)?t.fixas.filter(r=>!isTaxaFixaShopee(r.n)).reduce((s,r)=>s+(r.v||0),0):(platSel==='tiktok'&&tfAuto)?t.fixas.filter(r=>!isTaxaFixaTikTok(r.n)).reduce((s,r)=>s+(r.v||0),0):0;
+        const tf=(platSel==='shopee'&&tfAuto)?shopeeTaxaFixa(p)+tfE:(platSel==='tiktok'&&tfAuto)?tiktokTaxaFixa(p)+tfE:t.fixas.reduce((s,r)=>s+(r.v||0),0);
         const fr=(platSel==='ml_classico'||platSel==='ml_premium')&&peso>0?calcFreteML(peso,p):0;
         const d=1-tp-ma;if(d<=0)break;
         const p2=(custo+tf+fr)/d;if(!isFinite(p2)||p2<=0)break;
@@ -1060,8 +1067,8 @@ function updateCalc(){
   if(!r){resEl.innerHTML='<div style="color:var(--text3);padding:20px;text-align:center">Dados insuficientes</div>';return;}
   const cBg=r.lucro>=0?'var(--accent-bg)':'var(--danger-bg)';const cFg=r.lucro>=0?'var(--accent-text)':'var(--danger)';
   resEl.innerHTML=
-    r.percDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&isComissaoShopee(d.n)?`<span class="shopee-badge">${preco<=79.99?'20% ≤R$79':'14% ≥R$80'}</span>`:''}${platSel==='tiktok'&&isComissaoTikTok(d.n)?`<span class="shopee-badge">${preco<50?'10% <R$50':'6% ≥R$50'}</span>`:''}</span><div style="display:flex;gap:8px;align-items:center"><span style="color:var(--text3);font-size:10px">${d.v.toFixed(2)}%</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div></div>`).join('')+
-    r.fixaDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&isTaxaFixaShopee(d.n)?`<span class="shopee-badge">R$${shopeeTaxaFixa(preco)} auto</span>`:''}${platSel==='tiktok'&&isTaxaFixaTikTok(d.n)?`<span class="shopee-badge">R$${tiktokTaxaFixa(preco)} auto</span>`:''}</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div>`).join('')+
+    r.percDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&isComissaoShopee(d.n)&&d.auto!==false?`<span class="shopee-badge">${preco<=79.99?'20% ≤R$79':'14% ≥R$80'}</span>`:''}${platSel==='tiktok'&&isComissaoTikTok(d.n)&&d.auto!==false?`<span class="shopee-badge">${preco<50?'10% <R$50':'6% ≥R$50'}</span>`:''}</span><div style="display:flex;gap:8px;align-items:center"><span style="color:var(--text3);font-size:10px">${d.v.toFixed(2)}%</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div></div>`).join('')+
+    r.fixaDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&isTaxaFixaShopee(d.n)&&d.auto!==false?`<span class="shopee-badge">R$${shopeeTaxaFixa(preco)} auto</span>`:''}${platSel==='tiktok'&&isTaxaFixaTikTok(d.n)&&d.auto!==false?`<span class="shopee-badge">R$${tiktokTaxaFixa(preco)} auto</span>`:''}</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div>`).join('')+
     `<div style="height:1px;background:var(--border);margin:8px 0"></div>
     <div class="calc-row total"><span>Total de Taxas</span><span class="calc-val" style="color:var(--danger)">R$ ${r.tax.toFixed(2)}</span></div>
     <div style="height:1px;background:var(--border);margin:8px 0"></div>
@@ -1355,6 +1362,7 @@ async function saveProduto(){
   ST.modal=null;toast(m.edit?'✅ Produto atualizado e salvo no banco!':'✅ Produto cadastrado e salvo no banco!');render();
 }
 function updTaxa(pl,tipo,i,v){gc().taxas[pl][tipo][i].v=parseFloat(v)||0;}
+function toggleTaxaAuto(pl,tipo,i){const r=gc().taxas[pl][tipo][i];r.auto=r.auto===false?true:false;renderTab();}
 function updTaxaNome(pl,tipo,i,v){gc().taxas[pl][tipo][i].n=v;}
 function rmTaxa(pl,tipo,i){gc().taxas[pl][tipo].splice(i,1);renderTab();}
 function addTaxa(pl,tipo){const id=tipo==='perc'?`an-${pl}`:`af-${pl}`;const el=document.getElementById(id);const name=el?.value?.trim();if(!name)return;gc().taxas[pl][tipo].push({n:name,v:0,kits:[]});el.value='';renderTab();}
