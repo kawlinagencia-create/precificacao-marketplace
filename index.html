@@ -1916,10 +1916,21 @@ async function atualizarPrecosPorExtrato(input){
     const skuPrincipalCol=header.findIndex(h=>h.includes('sku principal'));
     const skuVarianteCol=header.findIndex(h=>h==='sku'||h==='sku da variante'||h==='skus');
     // Priorizar "Preço com Desconto" — é o preço real praticado
-    let precoCol=header.findIndex(h=>h.includes('desconto'));
-    if(precoCol<0) precoCol=header.findIndex(h=>h==='preço'||h==='preco'||(h.includes('preço')&&!h.includes('desconto')));
+    let precoCol=header.findIndex(h=>h.includes('desconto')||h.includes('promocional'));
+    if(precoCol<0) precoCol=header.findIndex(h=>h==='preço'||h==='preco'||(h.includes('preço')&&!h.includes('desconto')&&!h.includes('promocional')));
 
     if(precoCol<0){toast('Coluna de Preço não encontrada no extrato.','error');return;}
+
+    // Converte texto de preço (ex: "R$ 109.99", "R$1.234,56") para número
+    function parsePrecoCel(v){
+      if(v==null||v==='')return NaN;
+      if(typeof v==='number')return v;
+      let s=String(v).replace(/r\$\s*/gi,'').trim();
+      if(!s)return NaN;
+      if(/,\d{1,2}$/.test(s)&&!/\.\d{1,2}$/.test(s)){s=s.replace(/\./g,'').replace(',','.');}
+      else{s=s.replace(/,/g,'');}
+      return parseFloat(s);
+    }
 
     // mapaPrecos: { SKU_PRODUTO: { qty: preco } }
     const mapaPrecos={};
@@ -1929,12 +1940,18 @@ async function atualizarPrecosPorExtrato(input){
       const row=rows[i];
       if(!row||row.every(v=>v==null||v===''))continue;
 
-      // SKU Principal — só presente na primeira linha do anúncio
+      // SKU Principal — só presente na primeira linha do anúncio (formato Shopee)
       const skuPrincipal=skuPrincipalCol>=0&&row[skuPrincipalCol]?String(row[skuPrincipalCol]).trim():'';
       if(skuPrincipal) skuProdutoAtual=skuPrincipal;
+      // Fallback: sem coluna SKU Principal (formato TikTok) — deriva o código direto da SKU da variante
+      if(!skuPrincipal&&skuVarianteCol>=0&&row[skuVarianteCol]){
+        const skuVarRaw=String(row[skuVarianteCol]).trim();
+        const mCode=skuVarRaw.match(/(\d+)?KIT-?(\d+)/i);
+        if(mCode) skuProdutoAtual='KIT'+mCode[2];
+      }
       if(!skuProdutoAtual)continue;
 
-      const preco=parseFloat(row[precoCol]);
+      const preco=parsePrecoCel(row[precoCol]);
       if(isNaN(preco)||preco<=0)continue;
 
       // Detectar kit a partir do SKU da variante (ex: "10KIT028-P" -> kit 10)
