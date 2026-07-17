@@ -704,8 +704,8 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const co2=cor(r2,k.qty,c,pl);
   const isBest=precoOverride==null&&r2.lucro===bestLucro;
   const isWorst=precoOverride==null&&r2.lucro<0&&r2.lucro===worstLucro;
-  const borderColor=isBest?'#4ade80':isWorst?'#fca5a5':co2==='g'?'#86efac':co2==='a'?'#fcd34d':co2==='l'?'#fdba74':'#fca5a5';
-  const headerBg=isBest?'#f0fdf4':isWorst?'#fff5f5':co2==='g'?'#f0fdf4':co2==='a'?'#fffbeb':co2==='l'?'#fff7ed':'#fff5f5';
+  const borderColor=co2==='g'?'#86efac':co2==='a'?'#fcd34d':co2==='l'?'#fdba74':'#fca5a5';
+  const headerBg=co2==='g'?'#f0fdf4':co2==='a'?'#fffbeb':co2==='l'?'#fff7ed':'#fff5f5';
   const lucroColor=co2==='g'?'var(--success)':co2==='a'?'var(--warn)':co2==='l'?'var(--orange)':'var(--danger)';
   // Buscar curva ABC deste SKU no último período consultado
   const skuNorm=(p.sku||'').trim().toUpperCase();
