@@ -781,7 +781,10 @@ function renderProdutos(c){
         <input type="file" id="preco-upload-input" accept=".xlsx,.xls" style="display:none" onchange="atualizarPrecosPorExtrato(this)"/>
         <button class="btn btn-outline" onclick="document.getElementById('preco-upload-input').click()" title="Importar extrato da plataforma para atualizar preços automaticamente por SKU">📥 Atualizar preços</button>
         <select id="preco-upload-plat" class="calc-select" style="width:110px">
-          ${PLATS.map(pl=>`<option value="${pl.id}">${pl.label}</option>`).join('')}
+          <option value="shopee">Shopee</option>
+          <option value="shein">Shein</option>
+          <option value="ml">Mercado Livre</option>
+          <option value="tiktok">TikTok</option>
         </select>
         <button class="btn btn-primary" onclick="openNewProd()">+ Novo produto</button>
       </div>
@@ -1922,7 +1925,8 @@ async function atualizarPrecosPorExtrato(input){
   const file=input.files[0];if(!file)return;
   const c=gc();if(!c)return;
   const platId=document.getElementById('preco-upload-plat')?.value||'shopee';
-  const platLabel=PLATS.find(p=>p.id===platId)?.label||platId;
+  const isMLUnificado=platId==='ml';
+  const platLabel=isMLUnificado?'Mercado Livre':(PLATS.find(p=>p.id===platId)?.label||platId);
   toast(`Lendo extrato da ${platLabel}...`);
   try{
     const data=await file.arrayBuffer();
@@ -1930,6 +1934,8 @@ async function atualizarPrecosPorExtrato(input){
     const ws=wb.Sheets[wb.SheetNames[0]];
     const rows=XLSX.utils.sheet_to_json(ws,{header:1});
     const header=rows[0].map(h=>String(h||'').toLowerCase().trim());
+    const tipoAnuncioCol=isMLUnificado?header.findIndex(h=>h.includes('tipo de anúncio')||h.includes('tipo de anuncio')):-1;
+    if(isMLUnificado&&tipoAnuncioCol<0){toast('Coluna "Tipo de Anúncio" não encontrada no extrato — não dá pra separar Clássico/Premium.','error');return;}
 
     // Detectar colunas
     const skuPrincipalCol=header.findIndex(h=>h.includes('sku principal'));
@@ -1991,11 +1997,18 @@ async function atualizarPrecosPorExtrato(input){
 
       if(!qty)continue;
 
+      // No modo ML unificado, cada linha diz se é Clássico ou Premium
+      let platIdLinha=platId;
+      if(isMLUnificado){
+        const tipoTxt=String(row[tipoAnuncioCol]||'').toLowerCase().trim();
+        platIdLinha=tipoTxt.includes('premium')?'ml_premium':'ml_classico';
+      }
+
       // Normalizar o SKU do produto: remover o prefixo de quantidade se existir
       // Ex: "KIT028" é o SKU cadastrado; o SKU Principal no extrato também é "KIT028"
       const skuNorm=skuProdutoAtual.toUpperCase();
       if(!mapaPrecos[skuNorm])mapaPrecos[skuNorm]={};
-      if(!mapaPrecos[skuNorm][qty])mapaPrecos[skuNorm][qty]=preco; // usa primeiro preço do kit
+      if(!mapaPrecos[skuNorm][qty])mapaPrecos[skuNorm][qty]={preco,platId:platIdLinha}; // usa primeiro preço do kit
     }
 
     if(!Object.keys(mapaPrecos).length){
@@ -2029,7 +2042,7 @@ async function atualizarPrecosPorExtrato(input){
       for(const kit of(prod.kits||[])){
         if(kitPrecos[kit.qty]!==undefined){
           if(!kit.precos)kit.precos={};
-          kit.precos[platId]=kitPrecos[kit.qty];
+          kit.precos[kitPrecos[kit.qty].platId]=kitPrecos[kit.qty].preco;
           mudou=true;
         }
       }
