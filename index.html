@@ -232,7 +232,7 @@ async function loadAll(){
   render();
 }
 async function saveProduct(p,clientId,produtoAntigo){
-  const pay={client_id:clientId,sku:p.sku,nome:p.nome,fabricacao:p.fabricacao||false,plataformas:p.plataformas,kits:p.kits,foto_url:p.foto_url||null,links:p.links||{}};
+  const pay={client_id:clientId,sku:p.sku,nome:p.nome,fabricacao:p.fabricacao||false,plataformas:p.plataformas,kits:p.kits,foto_url:p.foto_url||null,links:p.links||{},custo_unidade:p.custo_unidade||null};
   if(p.id&&!String(p.id).startsWith('new')){
     const{error}=await sb.from('prec_products').update(pay).eq('id',p.id);
     if(error){console.error('Erro ao salvar produto:',error);throw new Error(error.message||'Falha ao salvar produto no banco');}
@@ -1129,7 +1129,7 @@ function renderModal(){
         </div>
         <div style="flex:1">
           <div class="form-row"><div class="form-group"><div class="form-label">SKU</div><input class="form-input" id="p-sku" value="${p.sku||''}" placeholder="001" oninput="ST.modal.p.sku=this.value"/></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="p-nome" value="${p.nome||''}" placeholder="ex: Calçola Comfort" oninput="ST.modal.p.nome=this.value"/></div></div>
-          <div class="form-group"><div class="form-label" title="Custo de 1 peça — use 'Aplicar' para preencher o custo de todos os kits automaticamente (qty × custo unitário)">Custo Unitário (peça)</div><div style="display:flex;gap:6px;align-items:center"><input class="form-input" id="p-custo-und" type="number" step="0.01" placeholder="0.00" style="max-width:110px" value="${m.custoUnidade||''}" oninput="ST.modal.custoUnidade=parseFloat(this.value)||null"/><button class="btn btn-outline" style="font-size:11px;padding:6px 10px;white-space:nowrap" onclick="aplicarCustoUnidadeTodos()">Aplicar a todos os kits</button></div></div>
+          <div class="form-group"><div class="form-label" title="Custo de 1 peça — use 'Aplicar' para preencher o custo de todos os kits automaticamente (qty × custo unitário)">Custo Unitário (peça)</div><div style="display:flex;gap:6px;align-items:center"><input class="form-input" id="p-custo-und" type="number" step="0.01" placeholder="0.00" style="max-width:110px" value="${m.custoUnidade||''}" oninput="ST.modal.custoUnidade=parseFloat(this.value)||null;ST.modal.p.custo_unidade=ST.modal.custoUnidade"/><button class="btn btn-outline" style="font-size:11px;padding:6px 10px;white-space:nowrap" onclick="aplicarCustoUnidadeTodos()">Aplicar a todos os kits</button></div></div>
           <div class="form-group"><div class="form-label">Tipo</div><div class="tgl-group"><button class="tgl-btn ${!p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=false;render()">🛒 Revenda</button><button class="tgl-btn ${p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=true;render()">🔨 Fabricação</button></div></div>
         </div>
       </div>
@@ -1278,11 +1278,11 @@ async function saveNewClient(){
   if(error){toast('Erro ao criar cliente','error');return;}
   const nc={...data,produtos:[],taxas:data.taxas};ST.clients.push(nc);ST.activeId=nc.id;ST.modal=null;toast('Cliente criado!');render();
 }
-function openNewProd(){ST.modal={type:'prod',edit:false,clientId:ST.activeId,p:{sku:'',nome:'',fabricacao:false,plataformas:[],kits:[],foto_url:null,links:{}}};render();}
+function openNewProd(){ST.modal={type:'prod',edit:false,clientId:ST.activeId,custoUnidade:null,p:{sku:'',nome:'',fabricacao:false,plataformas:[],kits:[],foto_url:null,links:{},custo_unidade:null}};render();}
 function openEditProd(pid,cid){
   const cli=ST.clients.find(c=>String(c.id)===String(cid))||gc();
   const p=cli?.produtos?.find(x=>String(x.id)===String(pid));if(!p)return;
-  ST.modal={type:'prod',edit:true,clientId:cli.id,p:JSON.parse(JSON.stringify(p)),snapshot:JSON.parse(JSON.stringify(p))};render();
+  ST.modal={type:'prod',edit:true,clientId:cli.id,custoUnidade:p.custo_unidade||null,p:JSON.parse(JSON.stringify(p)),snapshot:JSON.parse(JSON.stringify(p))};render();
 }
 async function openHistorico(pid,cid){
   const cli=ST.clients.find(c=>String(c.id)===String(cid))||gc();
@@ -1332,6 +1332,7 @@ function aplicarCustoUnidadeTodos(){
   const custoUnidade=parseFloat(cuEl?.value)||null;
   if(!custoUnidade){toast('Informe o custo unitário primeiro','error');return;}
   m.custoUnidade=custoUnidade;
+  p.custo_unidade=custoUnidade;
   const plats=p.plataformas||[];
   if(!p.kits||!p.kits.length){toast('Adicione um kit primeiro','error');return;}
   let aplicados=0;
@@ -1349,6 +1350,7 @@ async function saveProduto(){
   const m=ST.modal;const p=m.p;
   p.sku=document.getElementById('p-sku')?.value?.trim();
   p.nome=document.getElementById('p-nome')?.value?.trim();
+  p.custo_unidade=parseFloat(document.getElementById('p-custo-und')?.value)||null;
   if(!p.nome){toast('Informe o nome do produto','error');return;}
   if(!p.links)p.links={};
   PLATS.forEach(pl=>{const el=document.getElementById('link-'+pl.id);if(el)p.links[pl.id]=el.value.trim()||null;});
