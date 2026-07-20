@@ -479,20 +479,14 @@ function positionTip(e){
 function renderFilterBar(c,idPrefix){
   const platsC=allPlats(c);
   const hasFilter=ST.filter.sku||ST.filter.plat;
-  const isDash=idPrefix==='dash';
-  // No dashboard: ML Clássico e Premium aparecem como "Mercado Livre" unificado
-  let platOptions='';
-  if(isDash){
-    const hasML=platsC.includes('ml_classico')||platsC.includes('ml_premium');
-    const platsUnicas=[...new Set(platsC.map(id=>id==='ml_premium'?'ml_classico':id))];
-    platOptions=platsUnicas.map(id=>{
-      if(id==='ml_classico'&&hasML) return`<option value="ml" ${ST.filter.plat==='ml'?'selected':''}>Mercado Livre</option>`;
-      const po=PLATS.find(x=>x.id===id);
-      return po?`<option value="${po.id}" ${ST.filter.plat===po.id?'selected':''}>${po.label}</option>`:'';
-    }).join('');
-  }else{
-    platOptions=PLATS.filter(pl=>platsC.includes(pl.id)).map(pl=>`<option value="${pl.id}" ${ST.filter.plat===pl.id?'selected':''}>${pl.label}</option>`).join('');
-  }
+  // ML Clássico e Premium aparecem sempre como "Mercado Livre" unificado no filtro
+  const hasML=platsC.includes('ml_classico')||platsC.includes('ml_premium');
+  const platsUnicas=[...new Set(platsC.map(id=>id==='ml_premium'?'ml_classico':id))];
+  const platOptions=platsUnicas.map(id=>{
+    if(id==='ml_classico'&&hasML) return`<option value="ml" ${ST.filter.plat==='ml'?'selected':''}>Mercado Livre</option>`;
+    const po=PLATS.find(x=>x.id===id);
+    return po?`<option value="${po.id}" ${ST.filter.plat===po.id?'selected':''}>${po.label}</option>`:'';
+  }).join('');
   return`<div class="filter-bar">
     <span style="font-size:11px;font-weight:600;color:var(--text3)">Filtrar:</span>
     <input class="filter-input" id="filter-sku-${idPrefix}" placeholder="SKU ou nome" value="${ST.filter.sku}" oninput="onFilterInput(this.value,'${idPrefix}')" style="width:160px"/>
@@ -623,10 +617,10 @@ function renderDash(c){
   const prej=base.filter(x=>x.r.lucro<0);
   const prejPorProd={};for(const x of prej){const id=x.p.id;if(!prejPorProd[id])prejPorProd[id]={p:x.p,items:[]};prejPorProd[id].items.push(x);}
   // ML unificado: agrupar ml_classico e ml_premium como "Mercado Livre" com coluna extra
-  const hasMLFilter=ST.filter.plat==='ml_classico'||ST.filter.plat==='ml_premium';
+  const hasMLFilter=ST.filter.plat==='ml_classico'||ST.filter.plat==='ml_premium'||ST.filter.plat==='ml';
   const showMLTipo=!ST.filter.plat||hasMLFilter; // mostrar coluna tipo ML quando não filtrado ou filtrado em ML
-  const platLabel=(pl)=>pl==='ml_classico'||pl==='ml_premium'?'Mercado Livre':PLATS.find(p=>p.id===pl)?.label||pl;
-  const platCls=(pl)=>pl==='ml_classico'||pl==='ml_premium'?'chip-ml':PLATS.find(p=>p.id===pl)?.cls||'';
+  const platLabel=(pl)=>pl==='ml_classico'||pl==='ml_premium'||pl==='ml'?'Mercado Livre':PLATS.find(p=>p.id===pl)?.label||pl;
+  const platCls=(pl)=>pl==='ml_classico'||pl==='ml_premium'||pl==='ml'?'chip-ml':PLATS.find(p=>p.id===pl)?.cls||'';
   const mlTipo=(pl)=>pl==='ml_classico'?'Clássico':pl==='ml_premium'?'Premium':null;
   const isML=(pl)=>pl==='ml_classico'||pl==='ml_premium';
   const filterLabel=ST.filter.plat?` — ${platLabel(ST.filter.plat)}`:'';
@@ -822,7 +816,7 @@ function renderProdutos(c){
             // Filtro de cima tem prioridade; se não tiver, usa o mini filtro interno
             const platAtiva=ST.filter.plat||ST.open['platfilt_'+p.id]||'';
             const platsDisponiveis=p.plataformas||[];
-            const platsVisiveis=platAtiva?[platAtiva]:platsDisponiveis;
+            const platsVisiveis=platAtiva==='ml'?platsDisponiveis.filter(pl=>pl==='ml_classico'||pl==='ml_premium'):platAtiva?[platAtiva]:platsDisponiveis;
 
             // Mini filtro interno só aparece se o filtro de cima não estiver ativo
             const filtroHtml=ST.filter.plat?'':`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
