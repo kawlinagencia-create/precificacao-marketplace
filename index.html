@@ -1938,7 +1938,9 @@ async function atualizarPrecosPorExtrato(input){
     const skuVarianteCol=header.findIndex(h=>h==='sku'||h==='sku da variante'||h==='skus');
     // Priorizar "Preço com Desconto" — é o preço real praticado
     let precoCol=header.findIndex(h=>h.includes('desconto')||h.includes('promocional')||h.includes('especial'));
-    if(precoCol<0) precoCol=header.findIndex(h=>h==='preço'||h==='preco'||(h.includes('preço')&&!h.includes('desconto')&&!h.includes('promocional')));
+    // Coluna do preço cheio, usada como fallback quando a linha não tem promocional/desconto preenchido
+    const precoBaseCol=header.findIndex(h=>h==='preço'||h==='preco'||(h.includes('preço')&&!h.includes('desconto')&&!h.includes('promocional')&&!h.includes('especial')));
+    if(precoCol<0) precoCol=precoBaseCol;
 
     if(precoCol<0){toast('Coluna de Preço não encontrada no extrato.','error');return;}
 
@@ -1953,6 +1955,20 @@ async function atualizarPrecosPorExtrato(input){
       return parseFloat(s);
     }
 
+    // Extrai {codigo, qty} de uma SKU de variante, reconhecendo os formatos:
+    //  A) qty ANTES de KIT, sem separador (ex: "10KIT028-P")      -> qty=10, codigo=028
+    //  B) codigo ANTES de KIT, com separador (ex: "123-KIT10-G")  -> codigo=123, qty=10
+    //  C) sem "KIT" nenhum = peça avulsa/K1 (ex: "319-CHO-G")      -> codigo=319, qty=1
+    function parseSkuVariante(skuVarRaw){
+      let m=skuVarRaw.match(/^(\d+)KIT-?(\d+)/i);
+      if(m) return{codigo:m[2],qty:parseInt(m[1])};
+      m=skuVarRaw.match(/^(\d+)-?KIT-?(\d+)/i);
+      if(m) return{codigo:m[1],qty:parseInt(m[2])};
+      m=skuVarRaw.match(/^(\d+)/);
+      if(m) return{codigo:m[1],qty:1};
+      return null;
+    }
+
     // mapaPrecos: { SKU_PRODUTO: { qty: preco } }
     const mapaPrecos={};
     let skuProdutoAtual='';
@@ -1961,31 +1977,28 @@ async function atualizarPrecosPorExtrato(input){
       const row=rows[i];
       if(!row||row.every(v=>v==null||v===''))continue;
 
+      let qty=null;
       // SKU Principal — só presente na primeira linha do anúncio (formato Shopee)
       const skuPrincipal=skuPrincipalCol>=0&&row[skuPrincipalCol]?String(row[skuPrincipalCol]).trim():'';
       if(skuPrincipal) skuProdutoAtual=skuPrincipal;
-      // Fallback: sem coluna SKU Principal (formato TikTok) — deriva o código direto da SKU da variante
-      if(!skuPrincipal&&skuVarianteCol>=0&&row[skuVarianteCol]){
+      // Fallback: sem coluna SKU Principal (formato TikTok/ML) — deriva código+qty direto da SKU da variante
+      if(skuVarianteCol>=0&&row[skuVarianteCol]){
         const skuVarRaw=String(row[skuVarianteCol]).trim();
-        const mCode=skuVarRaw.match(/(\d+)?KIT-?(\d+)/i);
-        if(mCode) skuProdutoAtual='KIT'+mCode[2];
+        const parsed=parseSkuVariante(skuVarRaw);
+        if(parsed){
+          qty=parsed.qty;
+          if(!skuPrincipal) skuProdutoAtual='KIT'+parsed.codigo;
+        }
       }
       if(!skuProdutoAtual)continue;
 
-      const preco=parsePrecoCel(row[precoCol]);
+      let preco=parsePrecoCel(row[precoCol]);
+      if((isNaN(preco)||preco<=0)&&precoBaseCol>=0&&precoBaseCol!==precoCol){
+        preco=parsePrecoCel(row[precoBaseCol]);
+      }
       if(isNaN(preco)||preco<=0)continue;
 
-      // Detectar kit a partir do SKU da variante (ex: "10KIT028-P" -> kit 10)
-      // Formato: {QTY}KIT{CODIGO}-{TAMANHO}
-      let qty=null;
-      if(skuVarianteCol>=0&&row[skuVarianteCol]){
-        const skuVar=String(row[skuVarianteCol]).trim();
-        // Padrão: começa com número seguido de KIT (ex: 10KIT028, 5KIT032, 3KIT028)
-        const m=skuVar.match(/^(\d+)KIT/i);
-        if(m) qty=parseInt(m[1]);
-      }
-
-      // Fallback: tentar extrair kit do SKU principal (ex: "KIT028" não tem kit no nome, mas variante sim)
+      // Fallback: tentar extrair kit do SKU principal quando a variante não deu certo
       if(!qty&&skuProdutoAtual){
         const m=skuProdutoAtual.match(/^(\d+)KIT/i);
         if(m) qty=parseInt(m[1]);
