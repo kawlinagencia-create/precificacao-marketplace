@@ -750,6 +750,23 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
         <span style="color:var(--text2)">Preço Atual</span>
         <span class="preco-inline-display" id="pd-${p.id}-${pl}-${k.qty}" onclick="startInlineEditPreco(this,'${p.id}','${c.id}','${pl}',${k.qty})" style="font-family:var(--mono);font-weight:600;cursor:pointer;border-bottom:1px dashed var(--text3);padding:1px 3px;border-radius:3px" title="Clique para editar">R$${r2.preco.toFixed(2)}</span>
       </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--text2)" title="Preço de teste — não conta no histórico de alterações, só o Preço Atual conta">🧪 Preço Teste</span>
+        <span class="preco-inline-display" id="pdt-${p.id}-${pl}-${k.qty}" onclick="startInlineEditPrecoTeste(this,'${p.id}','${c.id}','${pl}',${k.qty})" style="font-family:var(--mono);font-weight:600;cursor:pointer;border-bottom:1px dashed var(--text3);padding:1px 3px;border-radius:3px;color:var(--accent-text)" title="Clique para editar">${k.precos_teste?.[pl]?`R$${Number(k.precos_teste[pl]).toFixed(2)}`:'—'}</span>
+      </div>
+      ${(()=>{
+        const precoTeste=k.precos_teste?.[pl];
+        if(!precoTeste) return'';
+        const rt=calcR(precoTeste,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
+        if(!rt) return'';
+        const cot=cor(rt,k.qty,c,curva);
+        const lucroColorT=cot==='g'?'var(--success)':cot==='a'?'var(--warn)':cot==='l'?'var(--orange)':'var(--danger)';
+        const bgT=cot==='g'?'var(--success-bg)':cot==='a'?'var(--warn-bg)':cot==='l'?'var(--orange-bg)':'var(--danger-bg)';
+        return`<div id="lucro-teste-box-${p.id}-${pl}-${k.qty}" style="background:${bgT};border-radius:6px;padding:6px 8px;margin:2px 0;display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:10px;font-weight:700;color:${lucroColorT}">🧪 LUCRO TESTE</span>
+          <span><span data-ft="lucro-teste-rs" style="font-family:var(--mono);font-weight:700;font-size:12px;color:${lucroColorT}">R$${rt.lucro.toFixed(2)}</span> <span data-ft="lucro-teste-pc" style="font-family:var(--mono);font-size:10px;color:${lucroColorT}">(${rt.margem.toFixed(1)}%)</span></span>
+        </div>`;
+      })()}
       ${idealHTML}
       <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
         <span style="color:var(--text2)">Custo de Compra</span>
@@ -1571,6 +1588,55 @@ async function saveInlineEditPreco(pid,cid,plat,kitQty,novoValor){
     console.error('Erro ao salvar preço inline:',err);
     toast('⚠️ ERRO ao salvar: '+(err.message||'falha desconhecida'),'error');
   }
+}
+// Preço Teste: mesma função de cálculo do Preço Atual, mas NÃO entra no histórico de alterações
+// (registrarHistorico só compara k.precos/k.custos, nunca k.precos_teste)
+function startInlineEditPrecoTeste(span,pid,cid,plat,kitQty){
+  const cli=ST.clients.find(c=>String(c.id)===String(cid));
+  const p=cli?.produtos?.find(x=>String(x.id)===String(pid));
+  if(!p)return;
+  const k=p.kits.find(x=>x.qty===kitQty);
+  if(!k)return;
+  const valorAtual=k.precos_teste?.[plat]||'';
+  const input=document.createElement('input');
+  input.type='number';input.step='0.01';input.className='preco-inline-input';input.value=valorAtual;
+  span.replaceWith(input);input.focus();input.select();
+
+  const cardEl=document.getElementById(`kitcard-${pid}-${plat}-${kitQty}`);
+
+  const finalizar=async(salvar)=>{
+    if(salvar){
+      const novoValor=parseFloat(input.value)||0;
+      await saveInlineEditPrecoTeste(pid,cid,plat,kitQty,novoValor);
+    }else{
+      renderTab();
+    }
+  };
+  input.addEventListener('blur',()=>finalizar(true));
+  input.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();input.blur();}
+    if(e.key==='Escape'){e.preventDefault();input.removeEventListener('blur',()=>finalizar(true));finalizar(false);}
+  });
+}
+async function saveInlineEditPrecoTeste(pid,cid,plat,kitQty,novoValor){
+  const cli=ST.clients.find(c=>String(c.id)===String(cid));
+  const p=cli?.produtos?.find(x=>String(x.id)===String(pid));
+  if(!p)return;
+  const k=p.kits.find(x=>x.qty===kitQty);
+  if(!k)return;
+  // Preço teste é só uma calculadora salva — não gera registro de histórico
+  if(!k.precos_teste)k.precos_teste={};
+  k.precos_teste[plat]=novoValor||null;
+  try{
+    const pay={client_id:cli.id,sku:p.sku,nome:p.nome,fabricacao:p.fabricacao||false,plataformas:p.plataformas,kits:p.kits,foto_url:p.foto_url||null,links:p.links||{},custo_unidade:p.custo_unidade||null};
+    const{error}=await sb.from('prec_products').update(pay).eq('id',p.id);
+    if(error)throw new Error(error.message);
+    toast('✅ Preço teste salvo!');
+  }catch(err){
+    console.error('Erro ao salvar preço teste:',err);
+    toast('⚠️ ERRO ao salvar: '+(err.message||'falha desconhecida'),'error');
+  }
+  renderTab();
 }
 function onKitInput(kitIdx, field, plat, val){
   if(!ST.modal?.p) return;
