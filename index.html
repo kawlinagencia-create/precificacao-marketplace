@@ -754,17 +754,6 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
         <span style="color:var(--text2)" title="Preço de teste — não conta no histórico de alterações, só o Preço Atual conta">🧪 Preço Teste</span>
         <span class="preco-inline-display" id="pdt-${p.id}-${pl}-${k.qty}" onclick="startInlineEditPrecoTeste(this,'${p.id}','${c.id}','${pl}',${k.qty})" style="font-family:var(--mono);font-weight:600;cursor:pointer;border-bottom:1px dashed var(--text3);padding:1px 3px;border-radius:3px;color:var(--accent-text)" title="Clique para editar">${k.precos_teste?.[pl]?`R$${Number(k.precos_teste[pl]).toFixed(2)}`:'—'}</span>
       </div>
-      ${(()=>{
-        const precoTeste=k.precos_teste?.[pl];
-        const rt=precoTeste?calcR(precoTeste,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty):null;
-        const cot=rt?cor(rt,k.qty,c,curva):null;
-        const lucroColorT=cot==='g'?'var(--success)':cot==='a'?'var(--warn)':cot==='l'?'var(--orange)':cot==='r'?'var(--danger)':'var(--text3)';
-        const bgT=cot==='g'?'var(--success-bg)':cot==='a'?'var(--warn-bg)':cot==='l'?'var(--orange-bg)':cot==='r'?'var(--danger-bg)':'var(--surface2)';
-        return`<div id="lucro-teste-box-${p.id}-${pl}-${k.qty}" style="background:${bgT};border-radius:6px;padding:6px 8px;margin:2px 0;display:flex;justify-content:space-between;align-items:center">
-          <span style="font-size:10px;font-weight:700;color:${lucroColorT}">🧪 LUCRO TESTE</span>
-          <span><span data-ft="lucro-teste-rs" style="font-family:var(--mono);font-weight:700;font-size:12px;color:${lucroColorT}">${rt?`R$${rt.lucro.toFixed(2)}`:'—'}</span> <span data-ft="lucro-teste-pc" style="font-family:var(--mono);font-size:10px;color:${lucroColorT}">${rt?`(${rt.margem.toFixed(1)}%)`:''}</span></span>
-        </div>`;
-      })()}
       ${idealHTML}
       <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
         <span style="color:var(--text2)">Custo de Compra</span>
@@ -1600,32 +1589,44 @@ function startInlineEditPrecoTeste(span,pid,cid,plat,kitQty){
   input.type='number';input.step='0.01';input.className='preco-inline-input';input.value=valorAtual;
   span.replaceWith(input);input.focus();input.select();
 
-  const boxEl=document.getElementById(`lucro-teste-box-${pid}-${plat}-${kitQty}`);
+  const cardEl=document.getElementById(`kitcard-${pid}-${plat}-${kitQty}`);
 
-  // Atualiza a caixinha "Lucro Teste" ao vivo, conforme vai digitando
+  // Enquanto digita, atualiza os MESMOS campos que o Preço Atual atualiza
+  // (Total de Taxas, taxas, Lucro R$/%, R$/peça) — sem caixinha separada, sem poluir o card
   const atualizarAoVivo=()=>{
     const novoValor=parseFloat(input.value);
-    if(!boxEl)return;
-    const rsEl=boxEl.querySelector('[data-ft="lucro-teste-rs"]');
-    const pcEl=boxEl.querySelector('[data-ft="lucro-teste-pc"]');
-    if(isNaN(novoValor)||novoValor<=0){
-      if(rsEl)rsEl.textContent='—';
-      if(pcEl)pcEl.textContent='';
-      boxEl.style.background='var(--surface2)';
-      if(rsEl)rsEl.style.color='var(--text3)';
-      if(pcEl)pcEl.style.color='var(--text3)';
-      const lbl=boxEl.querySelector('span');if(lbl)lbl.style.color='var(--text3)';
-      return;
-    }
+    if(!cardEl||isNaN(novoValor)||novoValor<=0)return;
     const rt=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
     if(!rt)return;
     const cot=cor(rt,k.qty,cli,getCurvaProduto(p));
     const lucroColorT=cot==='g'?'var(--success)':cot==='a'?'var(--warn)':cot==='l'?'var(--orange)':'var(--danger)';
-    const bgT=cot==='g'?'var(--success-bg)':cot==='a'?'var(--warn-bg)':cot==='l'?'var(--orange-bg)':'var(--danger-bg)';
-    if(rsEl){rsEl.textContent=`R$${rt.lucro.toFixed(2)}`;rsEl.style.color=lucroColorT;}
-    if(pcEl){pcEl.textContent=`(${rt.margem.toFixed(1)}%)`;pcEl.style.color=lucroColorT;}
-    boxEl.style.background=bgT;
-    const lbl=boxEl.querySelector('span');if(lbl)lbl.style.color=lucroColorT;
+    const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
+    const setColor=(id,color)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.style.color=color;};
+    const ideal=calcPrecoIdeal(rt.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli,getCurvaProduto(p));
+    if(ideal){
+      const diff=rt.preco-ideal.preco;
+      const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
+      setText('ideal-diff',`(${diff>=0?'+':''}${diff.toFixed(2)})`);
+      setColor('ideal-diff',diffColor);
+    }
+    cardEl.querySelectorAll('[data-perctax]').forEach((el,idx)=>{
+      const d=rt.percDetail[idx];if(d)el.textContent='R$'+d.val.toFixed(2);
+    });
+    cardEl.querySelectorAll('[data-fixtax]').forEach((el,idx)=>{
+      const d=rt.fixaDetail[idx];if(d)el.textContent='R$'+d.val.toFixed(2);
+    });
+    setText('total-taxas',`R$${rt.tax.toFixed(2)}`);
+    setText('lucro-rs',`R$${rt.lucro.toFixed(2)}`);
+    setText('lucro-pc',`${rt.margem.toFixed(2)}%`);
+    setText('lucro-peca',`R$${(rt.lucro/k.qty).toFixed(2)}`);
+    setColor('lucro-rs',lucroColorT);
+    setColor('lucro-pc',lucroColorT);
+    setColor('lucro-peca',lucroColorT);
+    const lucroBox=cardEl.querySelector('[data-f="lucro-box"]');
+    if(lucroBox){
+      const bg=cot==='g'?'var(--success-bg)':cot==='a'?'var(--warn-bg)':cot==='l'?'var(--orange-bg)':'var(--danger-bg)';
+      lucroBox.style.background=bg;
+    }
   };
   input.addEventListener('input',atualizarAoVivo);
 
