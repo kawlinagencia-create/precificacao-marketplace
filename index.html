@@ -705,7 +705,13 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const skuNorm=(p.sku||'').trim().toUpperCase();
   const nomeNorm=(p.nome||'').trim().toUpperCase();
   const curvaData=CABC.dados.find(d=>{
-    if(skuNorm&&d.sku&&d.sku.trim().toUpperCase()===skuNorm) return true;
+    if(skuNorm&&d.sku){
+      const dSku=d.sku.trim().toUpperCase();
+      if(dSku===skuNorm) return true;
+      // Novo formato: "5KIT029" -> extrai só o código (029) pra comparar com o SKU cadastrado
+      const mCod=dSku.match(/KIT-?(\d+)/i);
+      if(mCod&&mCod[1].replace(/^0+/,'')===skuNorm.replace(/^0+/,'')) return true;
+    }
     if(nomeNorm&&d.nome_produto&&d.nome_produto.trim().toUpperCase().includes(nomeNorm.substring(0,15))) return true;
     return false;
   });
@@ -1204,6 +1210,9 @@ async function setTab(t){
   if(t==='produtos'){
     await carregarCurvaParaProdutos();
   }
+  if(t==='curva_abc'){
+    await consultarCurvaABC();
+  }
   render();
 }
 function togOpen(id){ST.open[id]=!ST.open[id];
@@ -1621,17 +1630,8 @@ function renderCurvaABC(){
         <div id="abc-extratos-lista" style="font-size:12px;color:var(--text3)">Carregando...</div>
       </div>
     </div>
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:16px">
-      <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">🔍 Consultar período</div>
-      <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-        <div><div class="form-label">Ano</div><select class="calc-select" style="width:90px" onchange="CABC.ano=parseInt(this.value)">${anos.map(a=>`<option value="${a}" ${a===CABC.ano?'selected':''}>${a}</option>`).join('')}</select></div>
-        <div><div class="form-label">Mês</div><select class="calc-select" style="width:110px" onchange="CABC.mes=parseInt(this.value)"><option value="0" ${CABC.mes===0?'selected':''}>Todos os meses</option>${MESES.map((m,i)=>`<option value="${i+1}" ${i+1===CABC.mes?'selected':''}>${m}</option>`).join('')}</select></div>
-        <div><div class="form-label">Plataforma</div><select class="calc-select" style="width:130px" onchange="CABC.plat=this.value">${PLAT_ABC.map(p=>`<option value="${p.id}" ${p.id===CABC.plat?'selected':''}>${p.label}</option>`).join('')}</select></div>
-        <button class="btn btn-primary" onclick="consultarCurvaABC()">${CABC.loading?'Carregando...':'Consultar'}</button>
-      </div>
-    </div>
     ${CABC.loading?`<div class="loading"><div class="spinner"></div> Carregando...</div>`:
-    !CABC.dados.length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📊</div><div style="font-size:13px;font-weight:500">Nenhum dado para este período</div><div style="font-size:11px;color:var(--text3);margin-top:4px">Importe um extrato acima ou ajuste o período</div></div>`:`
+    !CABC.dados.length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📊</div><div style="font-size:13px;font-weight:500">Nenhum dado importado ainda</div><div style="font-size:11px;color:var(--text3);margin-top:4px">Importe um extrato acima pra começar</div></div>`:`
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
       ${['A','B','C'].map(cv=>{const n=cv==='A'?countA:cv==='B'?countB:countC;const f=cv==='A'?fatA:cv==='B'?fatB:fatC;const pct=totalFat>0?f/totalFat*100:0;return`<div style="background:${bgCurva[cv]};border-radius:var(--r-lg);padding:14px;cursor:pointer;border:2px solid ${CABC.filtroCurva===cv?corCurva[cv]:'transparent'}" onclick="CABC.filtroCurva=CABC.filtroCurva==='${cv}'?'':'${cv}';renderTab()">
         <div style="font-size:17px;font-weight:900;color:${corCurva[cv]};margin-bottom:4px">Curva ${cv}</div>
@@ -1643,6 +1643,7 @@ function renderCurvaABC(){
     <div class="filter-bar" style="margin-bottom:10px">
       <span style="font-size:11px;font-weight:600;color:var(--text3)">Filtrar:</span>
       <input class="filter-input" placeholder="SKU ou nome do produto" value="${CABC.filtroSku}" oninput="CABC.filtroSku=this.value;atualizarTabelaABC()" style="width:200px"/>
+      <select class="filter-select" onchange="CABC.plat=this.value;consultarCurvaABC()">${PLAT_ABC.map(p=>`<option value="${p.id}" ${p.id===CABC.plat?'selected':''}>${p.label}</option>`).join('')}</select>
       <div style="display:flex;gap:4px">
         ${['','A','B','C'].map(cv=>`<button onclick="CABC.filtroCurva='${cv}';atualizarTabelaABC()" style="padding:4px 10px;font-size:11px;border-radius:20px;border:1px solid ${CABC.filtroCurva===cv?'var(--text)':'var(--border)'};background:${CABC.filtroCurva===cv?'var(--text)':'transparent'};color:${CABC.filtroCurva===cv?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">${cv||'Todas'}</button>`).join('')}
       </div>
@@ -1765,18 +1766,17 @@ async function excluirExtratoABC(ano,mes,plataforma){
 async function consultarCurvaABC(){
   const c=gc();if(!c)return;
   CABC.loading=true;CABC.dados=[];renderTab();
-  let q=sb.from('prec_curva_abc').select('*').eq('client_id',c.id).eq('ano',CABC.ano).order('pct_acumulado');
-  if(CABC.mes>0) q=q.eq('mes',CABC.mes);
+  let q=sb.from('prec_curva_abc').select('*').eq('client_id',c.id).order('pct_acumulado');
   if(CABC.plat&&CABC.plat!=='todos') q=q.eq('plataforma',CABC.plat);
   const{data,error}=await q;
   if(error){toast('Erro ao consultar dados','error');console.error(error);}
-  else if(CABC.mes===0&&data?.length){
+  else if(data?.length){
     const map={};
     for(const d of data){const k=(d.sku||d.nome_produto);if(!map[k]){map[k]={...d,pedidos:0,unidades:0,faturamento:0};}map[k].pedidos+=d.pedidos;map[k].unidades+=d.unidades;map[k].faturamento+=d.faturamento;}
     let prods=Object.values(map).sort((a,b)=>b.faturamento-a.faturamento);
     const tot=prods.reduce((s,p)=>s+p.faturamento,0);let acum=0;
     CABC.dados=prods.map(p=>{acum+=p.faturamento;const pct=tot>0?p.faturamento/tot*100:0;const pctA=tot>0?acum/tot*100:0;return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:pctA<=80?'A':pctA<=95?'B':'C'};});
-  }else{CABC.dados=data||[];}
+  }else{CABC.dados=[];}
   CABC.loading=false;renderTab();
 }
 
@@ -1797,17 +1797,32 @@ async function processarCurvaABC(input){
     const iCol=header.findIndex(h=>h.includes('produto'));
     const lojaCol=header.findIndex(h=>h.includes('loja'));
     const skuPrincipalCol=header.findIndex(h=>h.includes('sku principal'));
+    const skuVarianteCol=header.findIndex(h=>h==='sku'||h==='sku da variante'||h==='skus');
     const idAnuncioCol=header.findIndex(h=>h.includes('id do anún')||h.includes('id anún')||h.includes('id do anuncio')||h.includes('id anuncio'));
     const pedCol=header.findIndex(h=>h.includes('pedido'));
     const unidCol=header.findIndex(h=>h.includes('unidade'));
     const fatCol=header.findIndex(h=>h.includes('pagamento')||h.includes('faturamento')||h.includes('receita'));
     const precoCol=header.findIndex(h=>h.includes('médio')||h.includes('medio'));
-    if(iCol<0||skuPrincipalCol<0){
+    if(iCol<0||(skuPrincipalCol<0&&skuVarianteCol<0)){
       CABC.uploading=false;
       toast('Formato não reconhecido. Use o extrato "Vendas por Produtos" do UpSeller.','error');
       renderTab();return;
     }
-    // Agrupar por SKU Principal — somando todos os anúncios/lojas do mesmo SKU
+    // Agrupar por SKU (código + quantidade do kit) — soma os tamanhos (G/M/GG/P) juntos,
+    // mas mantém quantidades de kit diferentes (3KIT029 x 5KIT029) em linhas separadas
+    // Extrai {codigo, qty} de uma SKU de variante, reconhecendo os formatos:
+    //  A) qty ANTES de KIT, sem separador (ex: "5KIT029-G")      -> qty=5, codigo=029
+    //  B) codigo ANTES de KIT, com separador (ex: "123-KIT10-G") -> codigo=123, qty=10
+    //  C) sem "KIT" nenhum = peça avulsa/K1 (ex: "319-CHO-G")     -> codigo=319, qty=1
+    function parseSkuVarianteABC(skuVarRaw){
+      let m=skuVarRaw.match(/^(\d+)KIT-?(\d+)/i);
+      if(m) return{codigo:m[2],qty:parseInt(m[1])};
+      m=skuVarRaw.match(/^(\d+)-?KIT-?(\d+)/i);
+      if(m) return{codigo:m[1],qty:parseInt(m[2])};
+      m=skuVarRaw.match(/^(\d+)/);
+      if(m) return{codigo:m[1],qty:1};
+      return null;
+    }
     const map={};
     for(let i=1;i<rows.length;i++){
       const row=rows[i];
@@ -1815,23 +1830,29 @@ async function processarCurvaABC(input){
       const nome=(row[iCol]||'').toString().trim();
       const loja=(row[lojaCol]||'').toString().replace(/\[.*?\]/g,'').trim();
       const skuPrincipal=(row[skuPrincipalCol]||'').toString().trim();
+      const skuVariante=(skuVarianteCol>=0?(row[skuVarianteCol]||''):'').toString().trim();
       const idAnuncio=(idAnuncioCol>=0?(row[idAnuncioCol]||''):'').toString().trim();
       const ped=parseFloat(row[pedCol])||0;
       const unid=parseFloat(row[unidCol])||0;
       const fat=parseFloat(row[fatCol])||0;
       const preco=parseFloat(row[precoCol])||0;
-      // Extrair código limpo do SKU Principal
-      // KIT029 -> 029 | 5KIT302 -> 302 | KIT-008 -> 008 | 3KIT-025 -> 025
-      let skuBase=skuPrincipal;
-      const m1=skuPrincipal.match(/KIT-?(\d+)/i);
-      if(m1)skuBase=m1[1];
-      // Detectar kit qty do prefixo numérico (5KIT302 -> kit 5, 3KIT-025 -> kit 3)
-      let kitQty=null;
-      const m2=skuPrincipal.match(/^(\d+)KIT/i);
-      if(m2)kitQty=parseInt(m2[1]);
+      // Preferir a SKU da variante (dá pra distinguir a quantidade do kit).
+      // Sem essa coluna, cai no SKU Principal (comportamento antigo, sem distinguir kit)
+      let skuBase,kitQty=null;
+      const parsed=skuVariante?parseSkuVarianteABC(skuVariante):null;
+      if(parsed){
+        kitQty=parsed.qty;
+        skuBase=`${parsed.qty}KIT${parsed.codigo}`.toUpperCase();
+      }else{
+        skuBase=skuPrincipal;
+        const m1=skuPrincipal.match(/KIT-?(\d+)/i);
+        if(m1)skuBase=m1[1];
+        const m2=skuPrincipal.match(/^(\d+)KIT/i);
+        if(m2)kitQty=parseInt(m2[1]);
+      }
       const key=skuBase||nome;
       if(!map[key]){map[key]={sku:skuBase,nome,lojas:new Set(),anuncios:new Set(),ped:0,unid:0,fat:0,preco:0,n:0,kits:{}};}
-      // Somar pedidos, unidades e faturamento de todos os anúncios do mesmo SKU
+      // Somar pedidos, unidades e faturamento de todos os tamanhos/anúncios do mesmo SKU+kit
       map[key].ped+=ped;
       map[key].unid+=unid;
       map[key].fat+=fat;
