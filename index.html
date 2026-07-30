@@ -1127,14 +1127,15 @@ function renderModal(){
         <div><div class="modal-title">🕒 Histórico de alterações</div><div style="font-size:12px;color:var(--text3);margin-top:2px">${m.nome} — SKU ${m.sku||'—'}</div></div>
         <button class="btn-icon" onclick="closeModal()">✕</button>
       </div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:10px">
         <button class="btn btn-outline" onclick="exportHistoricoExcel()" ${!regs.length?'disabled':''}>📊 Exportar Excel</button>
+        <button class="btn" style="border-color:var(--danger);color:var(--danger);background:transparent" onclick="limparHistoricoProduto()" ${!regs.length?'disabled':''}>🗑️ Limpar histórico</button>
       </div>
       ${m.loading?`<div class="loading"><div class="spinner"></div> Carregando histórico...</div>`:
         !regs.length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">🕒</div><div style="font-size:13px;font-weight:500">Nenhuma alteração registrada ainda</div><div style="font-size:11px;color:var(--text3);margin-top:4px">O histórico começa a partir de agora — alterações futuras de preço/custo aparecerão aqui</div></div>`
         :`<div class="table-scroll" style="max-height:60vh;overflow-y:auto">
         <table class="data-table">
-          <thead><tr><th>Data</th><th>Plataforma</th><th>Kit</th><th>Campo</th><th>Antes</th><th>Depois</th><th>Lucro Antes</th><th>Lucro Depois</th></tr></thead>
+          <thead><tr><th>Data</th><th>Plataforma</th><th>Kit</th><th>Campo</th><th>Antes</th><th>Depois</th><th>Lucro Antes</th><th>Lucro Depois</th><th></th></tr></thead>
           <tbody>${regs.map(r=>{
             const po=PLATS.find(x=>x.id===r.plataforma);
             const dt=new Date(r.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
@@ -1149,6 +1150,7 @@ function renderModal(){
               <td class="mono" style="font-weight:600">R$${(r.valor_novo||0).toFixed(2)}</td>
               <td class="mono" style="color:var(--text3)">${r.lucro_antigo!=null?'R$'+r.lucro_antigo.toFixed(2):'—'}</td>
               <td class="mono" style="font-weight:600;color:${lucroSubiu?'var(--success)':'var(--danger)'}">${r.lucro_novo!=null?'R$'+r.lucro_novo.toFixed(2):'—'}</td>
+              <td><button class="btn-icon danger" title="Excluir esta linha" onclick="excluirHistoricoRegistro('${r.id}')">🗑️</button></td>
             </tr>`;
           }).join('')}</tbody>
         </table></div>`}
@@ -1334,6 +1336,24 @@ async function openHistorico(pid,cid){
   const{data,error}=await sb.from('prec_historico').select('*').eq('product_id',pid).order('created_at',{ascending:false});
   if(error){console.error('Erro ao buscar histórico:',error);toast('Erro ao carregar histórico','error');}
   if(ST.modal&&ST.modal.type==='historico'){ST.modal.registros=data||[];ST.modal.loading=false;render();}
+}
+async function excluirHistoricoRegistro(id){
+  if(!confirm('Excluir esta linha do histórico? Não tem como desfazer.'))return;
+  const{error}=await sb.from('prec_historico').delete().eq('id',id);
+  if(error){console.error('Erro ao excluir registro do histórico:',error);toast('⚠️ Erro ao excluir: '+error.message,'error');return;}
+  if(ST.modal&&ST.modal.type==='historico'){
+    ST.modal.registros=(ST.modal.registros||[]).filter(r=>String(r.id)!==String(id));
+    render();
+  }
+  toast('✅ Linha excluída do histórico');
+}
+async function limparHistoricoProduto(){
+  const m=ST.modal;if(!m||m.type!=='historico'||!m.productId)return;
+  if(!confirm(`Limpar TODO o histórico de "${m.nome}"? Essa ação não tem como desfazer.`))return;
+  const{error}=await sb.from('prec_historico').delete().eq('product_id',m.productId);
+  if(error){console.error('Erro ao limpar histórico:',error);toast('⚠️ Erro ao limpar: '+error.message,'error');return;}
+  if(ST.modal&&ST.modal.type==='historico'){ST.modal.registros=[];render();}
+  toast('✅ Histórico limpo');
 }
 function exportHistoricoExcel(){
   const m=ST.modal;if(!m||!m.registros||!m.registros.length){toast('Nenhum dado para exportar','error');return;}
