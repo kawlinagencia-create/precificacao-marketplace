@@ -304,18 +304,17 @@ function isComissaoTikTok(nome){
   const n=(nome||'').toLowerCase().trim();
   return n==='comissão'||n==='comissao'||n==='comissão tiktok';
 }
-function getMargemPorCurva(cliente,curva){
+function getMargemPorCurva(cliente,curva,tipoProduto){
   const cv=curva||'N';
-  // Se o usuário já editou a margem por curva em Config, usa o valor dele
-  if(cliente.margem_por_curva&&cliente.margem_por_curva[cv]!=null) return cliente.margem_por_curva[cv];
-  // Senão, cai na tabela padrão (baseada em tipo de loja e status) como sugestão inicial
-  const tipo=cliente.loja_tipo||'fabricacao'; // 'fabricacao' ou 'revendedor'
-  const validada=cliente.loja_validada!==false; // default: validada
-  const regras={
-    fabricacao:{validada:{A:18,B:15,C:13,N:8},nova:{A:12,B:10,C:8,N:5}},
-    revendedor:{validada:{A:12,B:9,C:7,N:5},nova:{A:9,B:7,C:5,N:4}}
-  };
-  const grupo=regras[tipo]?.[validada?'validada':'nova'];
+  const tipo=tipoProduto==='revendedor'?'revendedor':'fabricacao'; // padrão: fabricação
+  // Se o usuário já editou a margem por curva em Config (por tipo de SKU), usa o valor dele
+  const porTipo=cliente.margem_por_curva?.[tipo];
+  if(porTipo&&porTipo[cv]!=null) return porTipo[cv];
+  // Compatibilidade com configuração antiga (antes de separar por tipo)
+  if(cliente.margem_por_curva&&typeof cliente.margem_por_curva[cv]==='number') return cliente.margem_por_curva[cv];
+  // Senão, cai numa sugestão padrão
+  const padrao={fabricacao:{A:18,B:15,C:13,N:8},revendedor:{A:12,B:9,C:7,N:5}};
+  const grupo=padrao[tipo];
   return grupo?.[cv]??grupo?.['N']??8;
 }
 
@@ -330,17 +329,12 @@ function arredondarPara99(preco){
   return Math.abs(preco-baixo)<=Math.abs(preco-alto)?baixo:alto;
 }
 
-function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva){
+function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProduto){
   if(!custo||custo<=0) return null;
   const t=taxas[platId];if(!t) return null;
-  // Margem: se tem curva ABC usa regra por curva, senão usa margem_ideal_por_plat
-  let metaPerc;
-  if(curva){
-    metaPerc=getMargemPorCurva(cliente,curva)/100;
-  }else{
-    const margens=cliente.margem_ideal_por_plat||{};
-    metaPerc=(margens[platId]??20)/100;
-  }
+  // Margem alvo: sempre pela regra por curva ABC (curva real, ou 'PN'/sem curva quando o produto
+  // ainda não apareceu em nenhum extrato importado), considerando o tipo do PRÓPRIO SKU
+  const metaPerc=getMargemPorCurva(cliente,curva,tipoProduto)/100;
   let p=custo*2;
   for(let i=0;i<100;i++){
     // Soma TODAS as taxas percentuais, usando a comissão automática da Shopee quando aplicável
@@ -423,26 +417,7 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   const tax=preco*totalPerc+totalFixa;const lucro=preco-custo-tax;
   return{lucro,margem:preco>0?lucro/preco*100:0,tax,preco,custo,percDetail,fixaDetail,freteML};
 }
-function getRegras(c,curva){
-  const tipoGlobal=c.regra_tipo||'peca';
-  const porCurva=c.regra_por_curva?.[curva||'N']||{};
-  const tipo=porCurva.tipo||tipoGlobal;
-  const defPeca={t1:1.20,t2:1.50,t3:1.80};
-  const defPerc={t1:10,t2:15,t3:20};
-  const def=tipo==='peca'?defPeca:defPerc;
-  return{
-    tipo,
-    t1:getRegraVal(porCurva,'t1',tipo)??def.t1,
-    t2:getRegraVal(porCurva,'t2',tipo)??def.t2,
-    t3:getRegraVal(porCurva,'t3',tipo)??def.t3,
-  };
-}
-function getRegraVal(reg,field,tipo){
-  const key=tipo==='peca'?`peca_${field}`:`perc_${field}`;
-  if(reg[key]!=null) return reg[key];
-  if(reg[field]!=null) return reg[field];
-  return null;
-}
+function tipoDoProduto(p){return p?.fabricacao?'fabricacao':'revendedor';}
 function getCurvaProduto(p){
   if(!p) return null;
   const skuNorm=(p.sku||'').trim().toUpperCase();
@@ -460,13 +435,14 @@ function getCurvaProduto(p){
   });
   return d?.curva||null;
 }
-function cor(r,qty,c,curva){
+// Verde = margem bateu ou passou a meta da curva (configurada em Config, por tipo de SKU)
+// Vermelho = ficou abaixo da meta. Prejuízo (lucro negativo) é sinalizado à parte em cada tela (não é uma 3ª cor)
+function cor(r,qty,c,curva,tipoProduto){
   if(!r)return null;
-  const{tipo,t1,t2,t3}=getRegras(c,curva||'');
-  const val=tipo==='peca'?(qty>0?r.lucro/qty:r.lucro):r.margem;
-  if(val<=t1)return 'r';if(val<=t2)return 'l';if(val<=t3)return 'a';return 'g';
+  const meta=getMargemPorCurva(c,curva,tipoProduto);
+  return r.margem>=meta?'g':'r';
 }
-function allRes(c){const out=[];for(const p of c.produtos){const curva=getCurvaProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c,curva)});}}return out;}
+function allRes(c){const out=[];for(const p of c.produtos){const curva=getCurvaProduto(p);const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c,curva,tipoP)});}}return out;}
 // allPlats: todas as plataformas onde pelo menos 1 produto está cadastrado (mesmo sem dados)
 function allPlats(c){const s=new Set();for(const p of c.produtos)for(const pl of(p.plataformas||[]))s.add(pl);return[...s];}
 function applyFilter(arr){
@@ -532,7 +508,7 @@ function onFilterInput(v,prefix){
     }
   } else {renderTab();setTimeout(()=>{const el=document.getElementById('filter-sku-'+prefix);if(el){el.focus();el.setSelectionRange(v.length,v.length);}},0);}
 }
-function bestR(p,c){let best=null,bc=null;const pri={g:4,a:3,l:2,r:1};const curva=getCurvaProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c,curva);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
+function bestR(p,c){let best=null,bc=null;const pri={g:2,r:1};const curva=getCurvaProduto(p);const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c,curva,tipoP);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
 function hlMark(str,q){if(!q||!str)return String(str||'');return String(str).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
 function toast(msg,type='success'){const w=document.getElementById('toasts');const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=msg;w.appendChild(e);setTimeout(()=>e.remove(),3000);}
 
@@ -608,7 +584,8 @@ function updateSearch(){
     const kH=(p.kits||[]).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('');
     const lk=p.links&&Object.keys(p.links).filter(k=>p.links[k]).length?'<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">'+Object.entries(p.links).filter(([,v])=>v).map(([pl,url])=>{const po=PLATS.find(x=>x.id===pl);return`<a href="${url}" target="_blank" class="link-chip" onclick="event.stopPropagation()">🔗 ${po?.label||pl}</a>`;}).join('')+'</div>':'';
     const curvaRow=getCurvaProduto(p);
-    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli,curvaRow);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
+    const tipoRow=tipoDoProduto(p);
+    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli,curvaRow,tipoRow);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;const prej=r2.lucro<0?'⚠️ ':'';return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">${prej}R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
     return`<div class="prod-card"><div class="prod-card-head" onclick="togOpen('s_${p.id}')">
       <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0">
         ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
@@ -716,20 +693,23 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const r2=calcR(precoUsado,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
   if(!r2) return`<div id="kitcard-${p.id}-${pl}-${k.qty}" style="min-width:160px;flex:1;max-width:220px;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:14px;color:var(--text3);font-size:11px;text-align:center">Sem dados válidos</div>`;
   const curva=getCurvaProduto(p);
-  const co2=cor(r2,k.qty,c,curva);
+  const tipoP=tipoDoProduto(p);
+  const co2=cor(r2,k.qty,c,curva,tipoP);
   const isBest=precoOverride==null&&r2.lucro===bestLucro;
   const isWorst=precoOverride==null&&r2.lucro<0&&r2.lucro===worstLucro;
-  const borderColor=co2==='g'?'#86efac':co2==='a'?'#fcd34d':co2==='l'?'#fdba74':'#fca5a5';
-  const headerBg=co2==='g'?'#f0fdf4':co2==='a'?'#fffbeb':co2==='l'?'#fff7ed':'#fff5f5';
-  const lucroColor=co2==='g'?'var(--success)':co2==='a'?'var(--warn)':co2==='l'?'var(--orange)':'var(--danger)';
+  const prejuizo=r2.lucro<0;
+  const borderColor=prejuizo?'#f87171':co2==='g'?'#86efac':'#fca5a5';
+  const headerBg=prejuizo?'#fef2f2':co2==='g'?'#f0fdf4':'#fff5f5';
+  const lucroColor=co2==='g'?'var(--success)':'var(--danger)';
   const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c',N:'#1e40af'};
   const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2',N:'#dbeafe'};
-  const ideal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c,curva);
+  const labelCurva={A:'Curva A',B:'Curva B',C:'Curva C',N:'PN'};
+  const ideal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c,curva,tipoP);
   let idealHTML='';
   if(ideal){
     const diff=r2.preco-ideal.preco;
     const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
-    const margemLabel=curva?`Curva ${curva} · ${ideal.margemPerc.toFixed(1)}%`:`${ideal.margemPerc.toFixed(1)}%`;
+    const margemLabel=`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}%`;
     idealHTML=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
       <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${margemLabel})</span></span>
       <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
@@ -739,7 +719,8 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
     <div style="background:${headerBg};padding:8px 12px;border-bottom:1px solid ${borderColor};display:flex;align-items:center;justify-content:space-between">
       <span style="font-size:13px;font-weight:700;color:var(--text)">KIT ${k.qty}</span>
       <div style="display:flex;gap:4px;align-items:center">
-        ${curva?`<span style="font-size:10px;background:${bgCurva[curva]};color:${corCurva[curva]};padding:1px 7px;border-radius:20px;font-weight:800">Curva ${curva}</span>`:''}
+        <span style="font-size:10px;background:${bgCurva[curva||'N']};color:${corCurva[curva||'N']};padding:1px 7px;border-radius:20px;font-weight:800">${labelCurva[curva||'N']}</span>
+        ${prejuizo?'<span style="font-size:9px;background:#fecaca;color:#7f1d1d;padding:1px 6px;border-radius:20px;font-weight:700">⚠️ PREJUÍZO</span>':''}
         ${isBest?'<span style="font-size:9px;background:#4ade80;color:#14532d;padding:1px 6px;border-radius:20px;font-weight:700">⬆ MELHOR</span>':''}
         ${isWorst?'<span style="font-size:9px;background:#fca5a5;color:#7f1d1d;padding:1px 6px;border-radius:20px;font-weight:700">⬇ PIOR</span>':''}
         ${k.peso_kg>0?`<span style="font-size:9px;color:var(--text3)">${k.peso_kg}kg</span>`:''}
@@ -768,7 +749,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
       </div>
       <div data-f="lucro-box" style="background:${headerBg};border-radius:6px;padding:8px;margin-top:4px">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-          <span style="font-weight:700;font-size:12px;color:${lucroColor}">LUCRO EM R$</span>
+          <span data-f="lucro-rs-label" style="font-weight:700;font-size:12px;color:${lucroColor}">${prejuizo?'⚠️ ':''}LUCRO EM R$</span>
           <span data-f="lucro-rs" style="font-family:var(--mono);font-weight:700;font-size:14px;color:${lucroColor}">R$${r2.lucro.toFixed(2)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;margin-bottom:4px">
@@ -899,8 +880,8 @@ function renderPlataformas(c){
 
 function renderAlertas(c){
   const filtAll=applyFilter(allRes(c));
-  const mk=(co,cls,title)=>{const its=filtAll.filter(x=>x.cor===co).sort((a,b)=>a.r.lucro-b.r.lucro);if(!its.length)return'';return`<div class="sec"><div class="sec-head"><div class="sec-title">${title} (${its.length})</div><div class="sec-line"></div></div><div class="alert-list">${its.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<div class="alert-item ${cls}"><div style="flex:1"><div style="font-size:12px;font-weight:600">${x.p.nome} — K${x.k.qty} — ${po?.label||x.pl}</div><div style="font-size:11px;color:var(--text2)">Lucro R$${x.r.lucro.toFixed(2)} (R$${(x.r.lucro/x.k.qty).toFixed(2)}/pç) · Margem ${x.r.margem.toFixed(1)}% · Preço R$${x.r.preco.toFixed(2)} · Custo R$${x.r.custo.toFixed(2)}</div></div><span class="lv lv-${co}">${x.r.lucro<0?'−':''}R$${Math.abs(x.r.lucro).toFixed(2)}</span></div>`;}).join('')}</div></div>`;};
-  return`${renderFilterBar(c,'alerta')}${mk('r','red','⛔ Vermelho — atenção urgente')+mk('l','orange','🟠 Laranja — abaixo do ideal')+mk('a','yellow','🟡 Amarelo — atenção')||`<div class="empty"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="font-size:13px;font-weight:500">Tudo no verde!</div></div>`}`;
+  const mk=(filtro,cls,title)=>{const its=filtAll.filter(filtro).sort((a,b)=>a.r.lucro-b.r.lucro);if(!its.length)return'';return`<div class="sec"><div class="sec-head"><div class="sec-title">${title} (${its.length})</div><div class="sec-line"></div></div><div class="alert-list">${its.map(x=>{const po=PLATS.find(p=>p.id===x.pl);return`<div class="alert-item ${cls}"><div style="flex:1"><div style="font-size:12px;font-weight:600">${x.p.nome} — K${x.k.qty} — ${po?.label||x.pl}</div><div style="font-size:11px;color:var(--text2)">Lucro R$${x.r.lucro.toFixed(2)} (R$${(x.r.lucro/x.k.qty).toFixed(2)}/pç) · Margem ${x.r.margem.toFixed(1)}% · Preço R$${x.r.preco.toFixed(2)} · Custo R$${x.r.custo.toFixed(2)}</div></div><span class="lv lv-r">${x.r.lucro<0?'−':''}R$${Math.abs(x.r.lucro).toFixed(2)}</span></div>`;}).join('')}</div></div>`;};
+  return`${renderFilterBar(c,'alerta')}${mk(x=>x.r.lucro<0,'red','⚠️ Prejuízo — lucro negativo')+mk(x=>x.cor==='r'&&x.r.lucro>=0,'orange','🔴 Abaixo da meta da curva')||`<div class="empty"><div style="font-size:32px;margin-bottom:12px">✅</div><div style="font-size:13px;font-weight:500">Tudo no verde!</div></div>`}`;
 }
 
 function renderTaxaRow(pl,tipo,r,i,unidade){
@@ -940,77 +921,36 @@ function renderTaxas(c){
 }
 
 function renderConfig(c){
-  const tipoGlobal=c.regra_tipo||'peca';
-  const regraPorCurva=c.regra_por_curva||{};
   const lojaValidada=c.loja_validada!==false;
-  const lojaTipo=c.loja_tipo||'fabricacao';
   const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c',N:'#1e40af'};
   const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2',N:'#dbeafe'};
+  const labelCurva={A:'Curva A',B:'Curva B',C:'Curva C',N:'PN'};
+  const tabelaMargem=(tipo,titulo,emoji)=>`<div class="config-card">
+    <div class="config-title">${emoji} Margem ideal — SKUs de ${titulo}</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">O tipo de cada produto (Fabricação/Revenda) é definido no próprio cadastro do SKU. "PN" = Produto Novo, sem histórico de vendas em nenhum extrato importado ainda.</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      ${['A','B','C','N'].map(cv=>`<div style="background:${bgCurva[cv]};border-radius:8px;padding:8px;text-align:center">
+        <div style="font-weight:800;color:${corCurva[cv]};font-size:12px;margin-bottom:4px">${labelCurva[cv]}</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:2px">
+          <input class="taxa-input" style="width:52px;text-align:center;font-weight:700;font-family:var(--mono);color:${corCurva[cv]};background:transparent;border-color:${corCurva[cv]}55" type="number" step="1" value="${getMargemPorCurva(c,cv,tipo)}" onchange="updMargemCurva('${tipo}','${cv}',this.value)"/>
+          <span style="font-size:12px;color:${corCurva[cv]}">%</span>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
   return`<div style="max-width:580px">
     <div class="config-card">
       <div class="config-title">Status da loja</div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">
-        <div><div class="form-label" style="margin-bottom:6px">Tipo</div><div class="tgl-group"><button class="tgl-btn ${lojaTipo==='fabricacao'?'on':''}" onclick="updLojaStatus('loja_tipo','fabricacao')">Fabricação</button><button class="tgl-btn ${lojaTipo==='revendedor'?'on':''}" onclick="updLojaStatus('loja_tipo','revendedor')">Revendedor</button></div></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">
         <div><div class="form-label" style="margin-bottom:6px">Status</div><div class="tgl-group"><button class="tgl-btn ${lojaValidada?'on':''}" onclick="updLojaStatus('loja_validada',true)">✅ Validada</button><button class="tgl-btn ${!lojaValidada?'on':''}" onclick="updLojaStatus('loja_validada',false)">🆕 Nova</button></div></div>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Margem do Preço Ideal por curva ABC (edite os valores):</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
-        ${['A','B','C','N'].map(cv=>`<div style="background:${bgCurva[cv]};border-radius:8px;padding:8px;text-align:center">
-          <div style="font-weight:800;color:${corCurva[cv]};font-size:12px;margin-bottom:4px">${cv==='N'?'Sem curva':'Curva '+cv}</div>
-          <div style="display:flex;align-items:center;justify-content:center;gap:2px">
-            <input class="taxa-input" style="width:52px;text-align:center;font-weight:700;font-family:var(--mono);color:${corCurva[cv]};background:transparent;border-color:${corCurva[cv]}55" type="number" step="1" value="${getMargemPorCurva(c,cv)}" onchange="updMargemCurva('${cv}',this.value)"/>
-            <span style="font-size:12px;color:${corCurva[cv]}">%</span>
-          </div>
-        </div>`).join('')}
-      </div>
     </div>
-    <div class="config-card">
-      <div class="config-title">Faixas de alerta por curva ABC</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Cada curva tem seu próprio tipo de regra e faixas. O toggle alterna qual conjunto está ativo — os valores de ambos ficam salvos. Produtos sem curva (extrato não importado ainda) usam a faixa "Sem curva".</div>
-      ${['A','B','C','N'].map(cv=>{
-        const reg=regraPorCurva[cv]||{};
-        const tipo=reg.tipo||tipoGlobal;
-        // Valores do conjunto ativo
-        const defPeca={t1:1.20,t2:1.50,t3:1.80};
-        const defPerc={t1:10,t2:15,t3:20};
-        const vp1=reg.peca_t1??defPeca.t1,vp2=reg.peca_t2??defPeca.t2,vp3=reg.peca_t3??defPeca.t3;
-        const vr1=reg.perc_t1??defPerc.t1,vr2=reg.perc_t2??defPerc.t2,vr3=reg.perc_t3??defPerc.t3;
-        const ativo=tipo==='peca';
-        return`<div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-            <span style="font-weight:800;font-size:12px;color:${corCurva[cv]};background:${bgCurva[cv]};padding:3px 10px;border-radius:20px">${cv==='N'?'Sem curva':'Curva '+cv}</span>
-            <div class="tgl-group" style="transform:scale(.9);transform-origin:left">
-              <button class="tgl-btn ${ativo?'on':''}" onclick="updRegraCurva('${cv}','tipo','peca')">R$/peça</button>
-              <button class="tgl-btn ${!ativo?'on':''}" onclick="updRegraCurva('${cv}','tipo','perc')">%</button>
-            </div>
-            <span style="font-size:10px;color:var(--text3)">Ativo: ${ativo?'R$/peça':'% margem'}</span>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div style="opacity:${ativo?1:0.45}">
-              <div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase">R$ por peça ${ativo?'✓ ativo':''}</div>
-              ${[['#fee2e2','#b91c1c','Vermelho','peca_t1',vp1],['#ffedd5','#9a3412','Laranja','peca_t2',vp2],['#fef9c3','#713f12','Amarelo','peca_t3',vp3]].map(([bg,fg,lb,field,val])=>`
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:11px">
-                <div style="width:8px;height:8px;border-radius:50%;background:${bg};border:1px solid ${fg};flex-shrink:0"></div>
-                <span style="color:var(--text2);width:55px">${lb} até</span>
-                <input class="taxa-input" style="width:65px" type="number" value="${val}" step="0.01" onchange="updRegraCurva('${cv}','${field}',this.value)"/>
-                <span style="font-size:10px;color:var(--text3)">R$/pç</span>
-              </div>`).join('')}
-              <div style="font-size:10px;color:var(--text3)">Verde > R$${vp3.toFixed(2)}/pç</div>
-            </div>
-            <div style="opacity:${!ativo?1:0.45}">
-              <div style="font-size:10px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase">% de margem ${!ativo?'✓ ativo':''}</div>
-              ${[['#fee2e2','#b91c1c','Vermelho','perc_t1',vr1],['#ffedd5','#9a3412','Laranja','perc_t2',vr2],['#fef9c3','#713f12','Amarelo','perc_t3',vr3]].map(([bg,fg,lb,field,val])=>`
-              <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;font-size:11px">
-                <div style="width:8px;height:8px;border-radius:50%;background:${bg};border:1px solid ${fg};flex-shrink:0"></div>
-                <span style="color:var(--text2);width:55px">${lb} até</span>
-                <input class="taxa-input" style="width:65px" type="number" value="${val}" step="1" onchange="updRegraCurva('${cv}','${field}',this.value)"/>
-                <span style="font-size:10px;color:var(--text3)">%</span>
-              </div>`).join('')}
-              <div style="font-size:10px;color:var(--text3)">Verde > ${vr3}%</div>
-            </div>
-          </div>
-        </div>`;
-      }).join('')}
+    ${tabelaMargem('fabricacao','Fabricação','🔨')}
+    ${tabelaMargem('revendedor','Revenda','🛒')}
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px">
+      🟢 <b>Verde</b>: margem do produto está na meta da curva ou acima.<br/>
+      🔴 <b>Vermelho</b>: margem abaixo da meta.<br/>
+      ⚠️ Quando o lucro fica <b>negativo</b> (prejuízo), aparece um aviso extra além do vermelho.
     </div>
     <button class="btn btn-primary" onclick="saveConfig()">Salvar configurações</button>
   </div>`;
@@ -1190,6 +1130,7 @@ function renderKitBlock(k,i,plats,prod){
   const platsOrdenadas=PLATS.filter(p=>plats.includes(p.id));
   const hasML=plats.some(pl=>pl==='ml_classico'||pl==='ml_premium');
   const curvaProd=getCurvaProduto(prod);
+  const tipoProd=tipoDoProduto(prod);
   // Cores dos chips por plataforma
   const platColors={shopee:'#9d2a0a',shein:'#065f46',ml_classico:'#713f12',ml_premium:'#713f12',tiktok:'#334155'};
   const platBgs={shopee:'#fee2d5',shein:'#d1fae5',ml_classico:'#fef9c3',ml_premium:'#fef9c3',tiktok:'#f1f5f9'};
@@ -1207,15 +1148,15 @@ function renderKitBlock(k,i,plats,prod){
       <div style="color:var(--text3);font-weight:500" title="Calculado automaticamente com base na margem ideal configurada em Config">Preço Ideal</div>${platsOrdenadas.map(po=>{
         const c=gc();
         const custo=k.custos?.[po.id];
-        const ideal=(c&&custo)?calcPrecoIdeal(custo,po.id,c.taxas,k.peso_kg||0,k.qty||1,c,curvaProd):null;
+        const ideal=(c&&custo)?calcPrecoIdeal(custo,po.id,c.taxas,k.peso_kg||0,k.qty||1,c,curvaProd,tipoProd):null;
         return`<div id="ideal-${i}-${po.id}" style="text-align:center;font-family:inherit;font-weight:400;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:5px;font-size:11px">${ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—'}</div>`;
       }).join('')}
       <div style="color:var(--text3);font-weight:500">Custo</div>${platsOrdenadas.map(po=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${po.id}" data-tipo="custos" value="${k.custos?.[po.id]||''}" oninput="onKitInput(${i},'custos','${po.id}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
     </div>
-    <div id="kit-preview-${i}">${renderLucroPreviewHTML(k,platsOrdenadas.map(p=>p.id),curvaProd)}</div>`}
+    <div id="kit-preview-${i}">${renderLucroPreviewHTML(k,platsOrdenadas.map(p=>p.id),curvaProd,tipoProd)}</div>`}
   </div>`;
 }
-function renderLucroPreviewHTML(k,plats,curva){
+function renderLucroPreviewHTML(k,plats,curva,tipoProduto){
   const c=gc();if(!c) return'';
   const rows=plats.map(pl=>{
     const preco=k.precos?.[pl];const custo=k.custos?.[pl];
@@ -1223,11 +1164,12 @@ function renderLucroPreviewHTML(k,plats,curva){
     const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0,k.qty||1);
     if(!r) return null;
     const po=PLATS.find(x=>x.id===pl);
-    const co=cor(r,k.qty||1,c,curva);
-    const color=co==='g'?'var(--success)':co==='a'?'var(--warn)':co==='l'?'var(--orange)':'var(--danger)';
-    const bg=co==='g'?'var(--success-bg)':co==='a'?'var(--warn-bg)':co==='l'?'var(--orange-bg)':'var(--danger-bg)';
+    const co=cor(r,k.qty||1,c,curva,tipoProduto);
+    const prej=r.lucro<0;
+    const color=co==='g'?'var(--success)':'var(--danger)';
+    const bg=co==='g'?'var(--success-bg)':'var(--danger-bg)';
     return`<div class="lucro-preview" style="background:${bg};border-color:${color};flex:1;min-width:100px">
-      <div style="font-size:10px;opacity:.8;margin-bottom:3px">${po?.label||pl}</div>
+      <div style="font-size:10px;opacity:.8;margin-bottom:3px">${po?.label||pl}${prej?' ⚠️':''}</div>
       <div style="font-weight:700;font-family:var(--mono);color:${color}">R$ ${r.lucro.toFixed(2)}</div>
       <div style="font-size:10px;opacity:.8;color:${color}">${r.margem.toFixed(1)}% · R$${(r.lucro/(k.qty||1)).toFixed(2)}/pç</div>
     </div>`;
@@ -1277,11 +1219,7 @@ async function duplicarCliente(id){
   // Criar novo cliente com mesmas configs
   const{data:novoCliente,error:e1}=await sb.from('prec_clients').insert({
     name:novoNome,color,taxas:cl.taxas,
-    regra_tipo:cl.regra_tipo,regra_peca_t1:cl.regra_peca_t1,regra_peca_t2:cl.regra_peca_t2,regra_peca_t3:cl.regra_peca_t3,
-    regra_perc_t1:cl.regra_perc_t1,regra_perc_t2:cl.regra_perc_t2,regra_perc_t3:cl.regra_perc_t3,
-    margem_ideal_por_plat:cl.margem_ideal_por_plat,regra_por_plat:cl.regra_por_plat,
-    margem_por_curva:cl.margem_por_curva,regra_por_curva:cl.regra_por_curva,
-    loja_tipo:cl.loja_tipo,loja_validada:cl.loja_validada
+    margem_por_curva:cl.margem_por_curva,loja_validada:cl.loja_validada
   }).select().single();
   if(e1){toast('Erro ao duplicar cliente','error');return;}
   // Duplicar todos os produtos
@@ -1319,7 +1257,7 @@ async function excluirCliente(id){
 async function saveNewClient(){
   const name=document.getElementById('nc-n')?.value?.trim();if(!name)return;
   const color=COLORS[ST.clients.length%COLORS.length];
-  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),regra_tipo:'peca',regra_peca_t1:1.20,regra_peca_t2:1.50,regra_peca_t3:1.80,regra_perc_t1:10,regra_perc_t2:15,regra_perc_t3:20,margem_ideal_por_plat:{shopee:20,shein:20,ml_classico:20,ml_premium:20,tiktok:20},margem_por_curva:{A:18,B:15,C:13,N:8}}).select().single();
+  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),margem_por_curva:{fabricacao:{A:18,B:15,C:13,N:8},revendedor:{A:12,B:9,C:7,N:5}}}).select().single();
   if(error){toast('Erro ao criar cliente','error');return;}
   const nc={...data,produtos:[],taxas:data.taxas};ST.clients.push(nc);ST.activeId=nc.id;ST.modal=null;toast('Cliente criado!');render();
 }
@@ -1463,33 +1401,13 @@ async function saveTaxas(){const c=gc();const{error}=await sb.from('prec_clients
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
 function updLojaStatus(field,v){const c=gc();if(!c)return;c[field]=v;renderTab();}
-function updMargemCurva(curva,v){
+function updMargemCurva(tipo,curva,v){
   const c=gc();
   if(!c.margem_por_curva) c.margem_por_curva={};
-  c.margem_por_curva[curva]=parseFloat(v)||0;
+  if(!c.margem_por_curva[tipo]) c.margem_por_curva[tipo]={};
+  c.margem_por_curva[tipo][curva]=parseFloat(v)||0;
 }
-function updRegraCurva(curva,field,v){
-  const c=gc();
-  if(!c.regra_por_curva) c.regra_por_curva={};
-  if(!c.regra_por_curva[curva]) c.regra_por_curva[curva]={};
-  if(field==='tipo'){
-    // Só o toggle re-renderiza (muda a aparência visual)
-    c.regra_por_curva[curva].tipo=v;
-    renderTab();
-  }else{
-    // Campos de valor: só salva no estado, SEM re-renderizar (não perde foco)
-    c.regra_por_curva[curva][field]=parseFloat(v)||0;
-  }
-}
-function getRegraVal(reg,field,tipo){
-  // Lê o valor do conjunto correto (peca ou perc)
-  const key=tipo==='peca'?`peca_${field}`:`perc_${field}`;
-  if(reg[key]!=null) return reg[key];
-  // Fallback para campo legado sem prefixo
-  if(reg[field]!=null) return reg[field];
-  return null;
-}
-async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({regra_tipo:c.regra_tipo,regra_por_curva:c.regra_por_curva,margem_por_curva:c.margem_por_curva,regra_peca_t1:c.regra_peca_t1,regra_peca_t2:c.regra_peca_t2,regra_peca_t3:c.regra_peca_t3,regra_perc_t1:c.regra_perc_t1,regra_perc_t2:c.regra_perc_t2,regra_perc_t3:c.regra_perc_t3,loja_validada:c.loja_validada!==false,loja_tipo:c.loja_tipo||'fabricacao'}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
+async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({margem_por_curva:c.margem_por_curva,loja_validada:c.loja_validada!==false}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
 function closeModal(e){
   if(e&&e.target!==e.currentTarget)return;
   if(ST.modal&&ST.modal.type==='prod'){
@@ -1522,6 +1440,8 @@ function startInlineEditPreco(span,pid,cid,plat,kitQty){
   span.replaceWith(input);input.focus();input.select();
 
   const cardEl=document.getElementById(`kitcard-${pid}-${plat}-${kitQty}`);
+  const curvaP=getCurvaProduto(p);
+  const tipoP=tipoDoProduto(p);
 
   // Atualiza só os valores internos do card via IDs específicos — nunca recria o card nem o input
   const atualizarCardAoVivo=()=>{
@@ -1529,12 +1449,13 @@ function startInlineEditPreco(span,pid,cid,plat,kitQty){
     if(!cardEl||isNaN(novoValor)||novoValor<=0) return;
     const r2=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
     if(!r2) return;
-    const co2=cor(r2,k.qty,cli,getCurvaProduto(p));
-    const lucroColor=co2==='g'?'var(--success)':co2==='a'?'var(--warn)':co2==='l'?'var(--orange)':'var(--danger)';
+    const co2=cor(r2,k.qty,cli,curvaP,tipoP);
+    const prej=r2.lucro<0;
+    const lucroColor=co2==='g'?'var(--success)':'var(--danger)';
     const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
     const setColor=(id,color)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.style.color=color;};
     // Preço Ideal (comparação)
-    const ideal=calcPrecoIdeal(r2.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli,getCurvaProduto(p));
+    const ideal=calcPrecoIdeal(r2.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli,curvaP,tipoP);
     if(ideal){
       const diff=r2.preco-ideal.preco;
       const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
@@ -1550,16 +1471,18 @@ function startInlineEditPreco(span,pid,cid,plat,kitQty){
     });
     setText('total-taxas',`R$${r2.tax.toFixed(2)}`);
     setText('lucro-rs',`R$${r2.lucro.toFixed(2)}`);
+    setText('lucro-rs-label',`${prej?'⚠️ ':''}LUCRO EM R$`);
     setText('lucro-pc',`${r2.margem.toFixed(2)}%`);
     setText('lucro-peca',`R$${(r2.lucro/k.qty).toFixed(2)}`);
     setColor('lucro-rs',lucroColor);
+    setColor('lucro-rs-label',lucroColor);
     setColor('lucro-pc',lucroColor);
     setColor('lucro-peca',lucroColor);
     setColor('total-taxas','var(--danger)');
     // Atualiza fundo do box de lucro
     const lucroBox=cardEl.querySelector('[data-f="lucro-box"]');
     if(lucroBox){
-      const bg=co2==='g'?'var(--success-bg)':co2==='a'?'var(--warn-bg)':co2==='l'?'var(--orange-bg)':'var(--danger-bg)';
+      const bg=co2==='g'?'var(--success-bg)':'var(--danger-bg)';
       lucroBox.style.background=bg;
     }
   };
@@ -1610,6 +1533,8 @@ function startInlineEditPrecoTeste(span,pid,cid,plat,kitQty){
   span.replaceWith(input);input.focus();input.select();
 
   const cardEl=document.getElementById(`kitcard-${pid}-${plat}-${kitQty}`);
+  const curvaP=getCurvaProduto(p);
+  const tipoP=tipoDoProduto(p);
 
   // Enquanto digita, atualiza os MESMOS campos que o Preço Atual atualiza
   // (Total de Taxas, taxas, Lucro R$/%, R$/peça) — sem caixinha separada, sem poluir o card
@@ -1618,11 +1543,12 @@ function startInlineEditPrecoTeste(span,pid,cid,plat,kitQty){
     if(!cardEl||isNaN(novoValor)||novoValor<=0)return;
     const rt=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
     if(!rt)return;
-    const cot=cor(rt,k.qty,cli,getCurvaProduto(p));
-    const lucroColorT=cot==='g'?'var(--success)':cot==='a'?'var(--warn)':cot==='l'?'var(--orange)':'var(--danger)';
+    const cot=cor(rt,k.qty,cli,curvaP,tipoP);
+    const prej=rt.lucro<0;
+    const lucroColorT=cot==='g'?'var(--success)':'var(--danger)';
     const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
     const setColor=(id,color)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.style.color=color;};
-    const ideal=calcPrecoIdeal(rt.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli,getCurvaProduto(p));
+    const ideal=calcPrecoIdeal(rt.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli,curvaP,tipoP);
     if(ideal){
       const diff=rt.preco-ideal.preco;
       const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
@@ -1637,14 +1563,16 @@ function startInlineEditPrecoTeste(span,pid,cid,plat,kitQty){
     });
     setText('total-taxas',`R$${rt.tax.toFixed(2)}`);
     setText('lucro-rs',`R$${rt.lucro.toFixed(2)}`);
+    setText('lucro-rs-label',`${prej?'⚠️ ':''}LUCRO EM R$`);
     setText('lucro-pc',`${rt.margem.toFixed(2)}%`);
     setText('lucro-peca',`R$${(rt.lucro/k.qty).toFixed(2)}`);
     setColor('lucro-rs',lucroColorT);
+    setColor('lucro-rs-label',lucroColorT);
     setColor('lucro-pc',lucroColorT);
     setColor('lucro-peca',lucroColorT);
     const lucroBox=cardEl.querySelector('[data-f="lucro-box"]');
     if(lucroBox){
-      const bg=cot==='g'?'var(--success-bg)':cot==='a'?'var(--warn-bg)':cot==='l'?'var(--orange-bg)':'var(--danger-bg)';
+      const bg=cot==='g'?'var(--success-bg)':'var(--danger-bg)';
       lucroBox.style.background=bg;
     }
   };
@@ -1699,6 +1627,7 @@ function updateKitPreviewInline(kitIdx){
   const k=ST.modal.p.kits[kitIdx];if(!k) return;
   const plats=ST.modal.p.plataformas||[];
   const curvaProd=getCurvaProduto(ST.modal.p);
+  const tipoProd=tipoDoProduto(ST.modal.p);
   // Ordem SEMPRE fixa (igual às colunas de Preço/Custo), não a ordem de seleção
   const platsFixas=PLATS.filter(pl=>plats.includes(pl.id)).map(pl=>pl.id);
   // Atualizar os valores de Preço Ideal (dependem do custo)
@@ -1706,12 +1635,12 @@ function updateKitPreviewInline(kitIdx){
     const idealEl=document.getElementById(`ideal-${kitIdx}-${pl}`);
     if(!idealEl) return;
     const custo=k.custos?.[pl];
-    const ideal=custo?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c,curvaProd):null;
+    const ideal=custo?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c,curvaProd,tipoProd):null;
     idealEl.innerHTML=ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—';
   });
   const previewEl=document.getElementById('kit-preview-'+kitIdx);
   if(!previewEl) return;
-  previewEl.innerHTML=renderLucroPreviewHTML(k,platsFixas,curvaProd);
+  previewEl.innerHTML=renderLucroPreviewHTML(k,platsFixas,curvaProd,tipoProd);
 }
 
 function updateKitPreview(){
@@ -2245,7 +2174,7 @@ function getDashRows(){
   const platLabel=(pl)=>pl==='ml_classico'||pl==='ml_premium'?'Mercado Livre':PLATS.find(p=>p.id===pl)?.label||pl;
   const mlTipo=(pl)=>pl==='ml_classico'?'Clássico':pl==='ml_premium'?'Premium':null;
   return all.map(x=>{
-    const ideal=calcPrecoIdeal(x.r.custo,x.pl,c.taxas,x.k.peso_kg||0,x.k.qty,c,x.curva||null);
+    const ideal=calcPrecoIdeal(x.r.custo,x.pl,c.taxas,x.k.peso_kg||0,x.k.qty,c,getCurvaProduto(x.p),tipoDoProduto(x.p));
     const tipo=mlTipo(x.pl);
     return{
       'SKU':x.p.sku||'—',
@@ -2261,7 +2190,7 @@ function getDashRows(){
       'Lucro R$':x.r.lucro,
       'Lucro %':parseFloat(x.r.margem.toFixed(2)),
       'R$/Peça':parseFloat((x.r.lucro/x.k.qty).toFixed(2)),
-      'Status':x.cor==='g'?'Verde':x.cor==='a'?'Amarelo':x.cor==='l'?'Laranja':'Oportunidade de ajuste',
+      'Status':x.cor==='g'?'Verde':x.r.lucro<0?'Vermelho (prejuízo)':'Vermelho',
     };
   });
 }
