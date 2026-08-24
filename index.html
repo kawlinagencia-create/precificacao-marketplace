@@ -951,7 +951,7 @@ function renderConfig(c){
       <div class="config-title">Status por plataforma</div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Cada plataforma tem seu próprio status — uma loja pode estar validada no Shopee e ainda ser nova no TikTok, por exemplo.</div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
-        ${PLATS.map(pl=>{const validada=statusPorPlat[pl.id]!==false;return`<div><div class="form-label" style="margin-bottom:6px">${pl.label}</div><div class="tgl-group"><button class="tgl-btn ${validada?'on':''}" onclick="updStatusPlat('${pl.id}',true)">✅ Validada</button><button class="tgl-btn ${!validada?'on':''}" onclick="updStatusPlat('${pl.id}',false)">🆕 Nova</button></div></div>`;}).join('')}
+        ${PLATS.map(pl=>{const validada=statusPorPlat[pl.id]!==false;const desativada=platsDesativadas.includes(pl.id);return`<div style="opacity:${desativada?.4:1}"><div class="form-label" style="margin-bottom:6px">${pl.label}${desativada?' 🚫':''}</div><div class="tgl-group"><button class="tgl-btn ${validada?'on':''}" ${desativada?'disabled':''} onclick="${desativada?'':`updStatusPlat('${pl.id}',true)`}">✅ Validada</button><button class="tgl-btn ${!validada?'on':''}" ${desativada?'disabled':''} onclick="${desativada?'':`updStatusPlat('${pl.id}',false)`}">🆕 Nova</button></div></div>`;}).join('')}
       </div>
     </div>
     ${tabelaMargem('fabricacao','Fabricação','🔨')}
