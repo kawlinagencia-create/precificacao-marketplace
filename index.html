@@ -1903,7 +1903,13 @@ async function consultarCurvaABC(){
     for(const d of data){const k=(d.sku||d.nome_produto);if(!map[k]){map[k]={...d,pedidos:0,unidades:0,faturamento:0};}map[k].pedidos+=d.pedidos;map[k].unidades+=d.unidades;map[k].faturamento+=d.faturamento;}
     let prods=Object.values(map).sort((a,b)=>b.faturamento-a.faturamento);
     const tot=prods.reduce((s,p)=>s+p.faturamento,0);let acum=0;
-    CABC.dados=prods.map(p=>{acum+=p.faturamento;const pct=tot>0?p.faturamento/tot*100:0;const pctA=tot>0?acum/tot*100:0;return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:pctA<=80?'A':pctA<=95?'B':'C'};});
+    CABC.dados=prods.map(p=>{
+      const pctAntes=tot>0?acum/tot*100:0;
+      acum+=p.faturamento;
+      const pct=tot>0?p.faturamento/tot*100:0;
+      const pctA=tot>0?acum/tot*100:0;
+      return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:pctAntes<80?'A':pctAntes<95?'B':'C'};
+    });
   }else{CABC.dados=[];}
   CABC.loading=false;renderTab();
 }
@@ -2000,6 +2006,7 @@ async function processarCurvaABC(input){
     const totalFat=prods.reduce((s,p)=>s+p.fat,0);
     let acum=0;
     const registros=prods.map(p=>{
+      const pctAntes=totalFat>0?acum/totalFat*100:0;
       acum+=p.fat;
       const pct=totalFat>0?p.fat/totalFat*100:0;
       const pctA=totalFat>0?acum/totalFat*100:0;
@@ -2014,7 +2021,7 @@ async function processarCurvaABC(input){
         unidades:p.unid,
         faturamento:p.fat,
         preco_medio:p.n>0?p.preco/p.n:0,
-        curva:pctA<=80?'A':pctA<=95?'B':'C',
+        curva:pctAntes<80?'A':pctAntes<95?'B':'C',
         pct_faturamento:pct,
         pct_acumulado:pctA,
         kits_json:kitsArr.length?JSON.stringify(kitsArr):null
