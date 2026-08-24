@@ -304,17 +304,24 @@ function isComissaoTikTok(nome){
   const n=(nome||'').toLowerCase().trim();
   return n==='comissão'||n==='comissao'||n==='comissão tiktok';
 }
-function getMargemPorCurva(cliente,curva,tipoProduto){
+function getMargemPorCurva(cliente,curva,tipoProduto,platId){
   const cv=curva||'N';
   const tipo=tipoProduto==='revendedor'?'revendedor':'fabricacao'; // padrão: fabricação
-  // Se o usuário já editou a margem por curva em Config (por tipo de SKU), usa o valor dele
+  const validada=(cliente.status_por_plataforma?.[platId]??true)!==false; // status daquela plataforma específica
+  const statusKey=validada?'validada':'nova';
+  // Se o usuário já editou a margem em Config (por tipo de SKU + status da loja), usa o valor dele
   const porTipo=cliente.margem_por_curva?.[tipo];
-  if(porTipo&&porTipo[cv]!=null) return porTipo[cv];
-  // Compatibilidade com configuração antiga (antes de separar por tipo)
+  const porStatus=porTipo&&typeof porTipo[statusKey]==='object'?porTipo[statusKey]:null;
+  if(porStatus&&porStatus[cv]!=null) return porStatus[cv];
+  // Compatibilidade com configuração antiga (antes de separar por status validada/nova)
+  if(porTipo&&typeof porTipo[cv]==='number') return porTipo[cv];
   if(cliente.margem_por_curva&&typeof cliente.margem_por_curva[cv]==='number') return cliente.margem_por_curva[cv];
-  // Senão, cai numa sugestão padrão
-  const padrao={fabricacao:{A:18,B:15,C:13,N:8},revendedor:{A:12,B:9,C:7,N:5}};
-  const grupo=padrao[tipo];
+  // Senão, cai na tabela padrão
+  const padrao={
+    fabricacao:{validada:{A:18,B:15,C:13,N:8},nova:{A:14,B:12,C:8,N:5}},
+    revendedor:{validada:{A:12,B:9,C:7,N:5},nova:{A:9,B:7,C:5,N:4}}
+  };
+  const grupo=padrao[tipo][statusKey];
   return grupo?.[cv]??grupo?.['N']??8;
 }
 
@@ -334,7 +341,7 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
   const t=taxas[platId];if(!t) return null;
   // Margem alvo: sempre pela regra por curva ABC (curva real, ou 'PN'/sem curva quando o produto
   // ainda não apareceu em nenhum extrato importado), considerando o tipo do PRÓPRIO SKU
-  const metaPerc=getMargemPorCurva(cliente,curva,tipoProduto)/100;
+  const metaPerc=getMargemPorCurva(cliente,curva,tipoProduto,platId)/100;
   let p=custo*2;
   for(let i=0;i<100;i++){
     // Soma TODAS as taxas percentuais, usando a comissão automática da Shopee quando aplicável
@@ -437,12 +444,12 @@ function getCurvaProduto(p){
 }
 // Verde = margem bateu ou passou a meta da curva (configurada em Config, por tipo de SKU)
 // Vermelho = ficou abaixo da meta. Prejuízo (lucro negativo) é sinalizado à parte em cada tela (não é uma 3ª cor)
-function cor(r,qty,c,curva,tipoProduto){
+function cor(r,qty,c,curva,tipoProduto,platId){
   if(!r)return null;
-  const meta=getMargemPorCurva(c,curva,tipoProduto);
+  const meta=getMargemPorCurva(c,curva,tipoProduto,platId);
   return r.margem>=meta?'g':'r';
 }
-function allRes(c){const out=[];for(const p of c.produtos){const curva=getCurvaProduto(p);const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c,curva,tipoP)});}}return out;}
+function allRes(c){const out=[];for(const p of c.produtos){const curva=getCurvaProduto(p);const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c,curva,tipoP,pl)});}}return out;}
 // allPlats: todas as plataformas onde pelo menos 1 produto está cadastrado (mesmo sem dados)
 function allPlats(c){const s=new Set();for(const p of c.produtos)for(const pl of(p.plataformas||[]))s.add(pl);return[...s];}
 function applyFilter(arr){
@@ -508,7 +515,7 @@ function onFilterInput(v,prefix){
     }
   } else {renderTab();setTimeout(()=>{const el=document.getElementById('filter-sku-'+prefix);if(el){el.focus();el.setSelectionRange(v.length,v.length);}},0);}
 }
-function bestR(p,c){let best=null,bc=null;const pri={g:2,r:1};const curva=getCurvaProduto(p);const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c,curva,tipoP);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
+function bestR(p,c){let best=null,bc=null;const pri={g:2,r:1};const curva=getCurvaProduto(p);const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c,curva,tipoP,pl);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
 function hlMark(str,q){if(!q||!str)return String(str||'');return String(str).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
 function toast(msg,type='success'){const w=document.getElementById('toasts');const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=msg;w.appendChild(e);setTimeout(()=>e.remove(),3000);}
 
@@ -585,7 +592,7 @@ function updateSearch(){
     const lk=p.links&&Object.keys(p.links).filter(k=>p.links[k]).length?'<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">'+Object.entries(p.links).filter(([,v])=>v).map(([pl,url])=>{const po=PLATS.find(x=>x.id===pl);return`<a href="${url}" target="_blank" class="link-chip" onclick="event.stopPropagation()">🔗 ${po?.label||pl}</a>`;}).join('')+'</div>':'';
     const curvaRow=getCurvaProduto(p);
     const tipoRow=tipoDoProduto(p);
-    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli,curvaRow,tipoRow);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;const prej=r2.lucro<0?'⚠️ ':'';return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">${prej}R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
+    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli,curvaRow,tipoRow,pl);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;const prej=r2.lucro<0?'⚠️ ':'';return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">${prej}R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
     return`<div class="prod-card"><div class="prod-card-head" onclick="togOpen('s_${p.id}')">
       <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0">
         ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
@@ -694,7 +701,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   if(!r2) return`<div id="kitcard-${p.id}-${pl}-${k.qty}" style="min-width:160px;flex:1;max-width:220px;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:14px;color:var(--text3);font-size:11px;text-align:center">Sem dados válidos</div>`;
   const curva=getCurvaProduto(p);
   const tipoP=tipoDoProduto(p);
-  const co2=cor(r2,k.qty,c,curva,tipoP);
+  const co2=cor(r2,k.qty,c,curva,tipoP,pl);
   const isBest=precoOverride==null&&r2.lucro===bestLucro;
   const isWorst=precoOverride==null&&r2.lucro<0&&r2.lucro===worstLucro;
   const prejuizo=r2.lucro<0;
@@ -920,20 +927,29 @@ function renderTaxas(c){
   </div>`;}).join('')}</div>`;
 }
 
+function getMargemRaw(cliente,tipo,status,curva){
+  const porTipo=cliente.margem_por_curva?.[tipo];
+  const porStatus=porTipo?.[status];
+  if(porStatus&&typeof porStatus==='object'&&porStatus[curva]!=null) return porStatus[curva];
+  const padrao={
+    fabricacao:{validada:{A:18,B:15,C:13,N:8},nova:{A:14,B:12,C:8,N:5}},
+    revendedor:{validada:{A:12,B:9,C:7,N:5},nova:{A:9,B:7,C:5,N:4}}
+  };
+  return padrao[tipo][status][curva];
+}
 function renderConfig(c){
   const statusPorPlat=c.status_por_plataforma||{};
   const platsDesativadas=c.plataformas_desativadas||[];
   const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c',N:'#1e40af'};
   const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2',N:'#dbeafe'};
   const labelCurva={A:'Curva A',B:'Curva B',C:'Curva C',N:'PN'};
-  const tabelaMargem=(tipo,titulo,emoji)=>`<div class="config-card">
-    <div class="config-title">${emoji} Margem ideal — SKUs de ${titulo}</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:8px">O tipo de cada produto (Fabricação/Revenda) é definido no próprio cadastro do SKU. "PN" = Produto Novo, sem histórico de vendas em nenhum extrato importado ainda.</div>
+  const tabelaMargem=(tipo,status,titulo,emoji)=>`<div class="config-card">
+    <div class="config-title">${emoji} SKUs de ${titulo} — loja ${status==='validada'?'✅ Validada':'🆕 Nova'}</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
       ${['A','B','C','N'].map(cv=>`<div style="background:${bgCurva[cv]};border-radius:8px;padding:8px;text-align:center">
         <div style="font-weight:800;color:${corCurva[cv]};font-size:12px;margin-bottom:4px">${labelCurva[cv]}</div>
         <div style="display:flex;align-items:center;justify-content:center;gap:2px">
-          <input class="taxa-input" style="width:52px;text-align:center;font-weight:700;font-family:var(--mono);color:${corCurva[cv]};background:transparent;border-color:${corCurva[cv]}55" type="number" step="1" value="${getMargemPorCurva(c,cv,tipo)}" onchange="updMargemCurva('${tipo}','${cv}',this.value)"/>
+          <input class="taxa-input" style="width:52px;text-align:center;font-weight:700;font-family:var(--mono);color:${corCurva[cv]};background:transparent;border-color:${corCurva[cv]}55" type="number" step="1" value="${getMargemRaw(c,tipo,status,cv)}" onchange="updMargemCurva('${tipo}','${status}','${cv}',this.value)"/>
           <span style="font-size:12px;color:${corCurva[cv]}">%</span>
         </div>
       </div>`).join('')}
@@ -949,13 +965,16 @@ function renderConfig(c){
     </div>
     <div class="config-card">
       <div class="config-title">Status por plataforma</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Cada plataforma tem seu próprio status — uma loja pode estar validada no Shopee e ainda ser nova no TikTok, por exemplo.</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Cada plataforma tem seu próprio status — uma loja pode estar validada no Shopee e ainda ser nova no TikTok, por exemplo. É esse status que decide qual das margens abaixo vale pra cada plataforma.</div>
       <div style="display:flex;gap:12px;flex-wrap:wrap">
         ${PLATS.map(pl=>{const validada=statusPorPlat[pl.id]!==false;const desativada=platsDesativadas.includes(pl.id);return`<div style="opacity:${desativada?.4:1}"><div class="form-label" style="margin-bottom:6px">${pl.label}${desativada?' 🚫':''}</div><div class="tgl-group"><button class="tgl-btn ${validada?'on':''}" ${desativada?'disabled':''} onclick="${desativada?'':`updStatusPlat('${pl.id}',true)`}">✅ Validada</button><button class="tgl-btn ${!validada?'on':''}" ${desativada?'disabled':''} onclick="${desativada?'':`updStatusPlat('${pl.id}',false)`}">🆕 Nova</button></div></div>`;}).join('')}
       </div>
     </div>
-    ${tabelaMargem('fabricacao','Fabricação','🔨')}
-    ${tabelaMargem('revendedor','Revenda','🛒')}
+    <div style="font-size:11px;color:var(--text3);margin:4px 0 8px">Margem ideal — "PN" = Produto Novo, sem histórico de vendas em nenhum extrato importado ainda. O tipo de cada SKU (Fabricação/Revenda) é definido no próprio cadastro do produto.</div>
+    ${tabelaMargem('fabricacao','validada','Fabricação','🔨')}
+    ${tabelaMargem('fabricacao','nova','Fabricação','🔨')}
+    ${tabelaMargem('revendedor','validada','Revenda','🛒')}
+    ${tabelaMargem('revendedor','nova','Revenda','🛒')}
     <div style="font-size:11px;color:var(--text3);margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px">
       🟢 <b>Verde</b>: margem do produto está na meta da curva ou acima.<br/>
       🔴 <b>Vermelho</b>: margem abaixo da meta.<br/>
@@ -1173,7 +1192,7 @@ function renderLucroPreviewHTML(k,plats,curva,tipoProduto){
     const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0,k.qty||1);
     if(!r) return null;
     const po=PLATS.find(x=>x.id===pl);
-    const co=cor(r,k.qty||1,c,curva,tipoProduto);
+    const co=cor(r,k.qty||1,c,curva,tipoProduto,pl);
     const prej=r.lucro<0;
     const color=co==='g'?'var(--success)':'var(--danger)';
     const bg=co==='g'?'var(--success-bg)':'var(--danger-bg)';
@@ -1266,7 +1285,7 @@ async function excluirCliente(id){
 async function saveNewClient(){
   const name=document.getElementById('nc-n')?.value?.trim();if(!name)return;
   const color=COLORS[ST.clients.length%COLORS.length];
-  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),margem_por_curva:{fabricacao:{A:18,B:15,C:13,N:8},revendedor:{A:12,B:9,C:7,N:5}}}).select().single();
+  const{data,error}=await sb.from('prec_clients').insert({name,color,taxas:mkTaxas(),margem_por_curva:{fabricacao:{validada:{A:18,B:15,C:13,N:8},nova:{A:14,B:12,C:8,N:5}},revendedor:{validada:{A:12,B:9,C:7,N:5},nova:{A:9,B:7,C:5,N:4}}}}).select().single();
   if(error){toast('Erro ao criar cliente','error');return;}
   const nc={...data,produtos:[],taxas:data.taxas};ST.clients.push(nc);ST.activeId=nc.id;ST.modal=null;toast('Cliente criado!');render();
 }
@@ -1434,11 +1453,12 @@ function updStatusPlat(platId,v){
   c.status_por_plataforma[platId]=v;
   renderTab();
 }
-function updMargemCurva(tipo,curva,v){
+function updMargemCurva(tipo,status,curva,v){
   const c=gc();
   if(!c.margem_por_curva) c.margem_por_curva={};
   if(!c.margem_por_curva[tipo]) c.margem_por_curva[tipo]={};
-  c.margem_por_curva[tipo][curva]=parseFloat(v)||0;
+  if(!c.margem_por_curva[tipo][status]||typeof c.margem_por_curva[tipo][status]!=='object') c.margem_por_curva[tipo][status]={};
+  c.margem_por_curva[tipo][status][curva]=parseFloat(v)||0;
 }
 async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({margem_por_curva:c.margem_por_curva,status_por_plataforma:c.status_por_plataforma,plataformas_desativadas:c.plataformas_desativadas}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
 function closeModal(e){
@@ -1482,7 +1502,7 @@ function startInlineEditPreco(span,pid,cid,plat,kitQty){
     if(!cardEl||isNaN(novoValor)||novoValor<=0) return;
     const r2=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
     if(!r2) return;
-    const co2=cor(r2,k.qty,cli,curvaP,tipoP);
+    const co2=cor(r2,k.qty,cli,curvaP,tipoP,plat);
     const prej=r2.lucro<0;
     const lucroColor=co2==='g'?'var(--success)':'var(--danger)';
     const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
@@ -1576,7 +1596,7 @@ function startInlineEditPrecoTeste(span,pid,cid,plat,kitQty){
     if(!cardEl||isNaN(novoValor)||novoValor<=0)return;
     const rt=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
     if(!rt)return;
-    const cot=cor(rt,k.qty,cli,curvaP,tipoP);
+    const cot=cor(rt,k.qty,cli,curvaP,tipoP,plat);
     const prej=rt.lucro<0;
     const lucroColorT=cot==='g'?'var(--success)':'var(--danger)';
     const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
