@@ -922,6 +922,7 @@ function renderTaxas(c){
 
 function renderConfig(c){
   const statusPorPlat=c.status_por_plataforma||{};
+  const platsDesativadas=c.plataformas_desativadas||[];
   const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c',N:'#1e40af'};
   const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2',N:'#dbeafe'};
   const labelCurva={A:'Curva A',B:'Curva B',C:'Curva C',N:'PN'};
@@ -939,6 +940,13 @@ function renderConfig(c){
     </div>
   </div>`;
   return`<div style="max-width:580px">
+    <div class="config-card">
+      <div class="config-title">Plataformas ativas nesta loja</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Desative uma plataforma se o cliente não vende nela. Ela some do cadastro de novos produtos, mas produtos já cadastrados com ela continuam intactos.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${PLATS.map(pl=>{const ativa=!platsDesativadas.includes(pl.id);return`<button class="chip ${pl.cls}" style="cursor:pointer;border:2px solid ${ativa?'transparent':'var(--danger)'};opacity:${ativa?1:0.55};display:flex;align-items:center;gap:4px" onclick="togPlataformaAtiva('${pl.id}')" title="${ativa?'Clique para desativar':'Clique para reativar'}">${ativa?'✓':'🚫'} ${pl.label}${!ativa?' (desativada)':''}</button>`;}).join('')}
+      </div>
+    </div>
     <div class="config-card">
       <div class="config-title">Status por plataforma</div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Cada plataforma tem seu próprio status — uma loja pode estar validada no Shopee e ainda ser nova no TikTok, por exemplo.</div>
@@ -1113,7 +1121,7 @@ function renderModal(){
           <div class="form-group"><div class="form-label">Tipo</div><div class="tgl-group"><button class="tgl-btn ${!p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=false;render()">🛒 Revenda</button><button class="tgl-btn ${p.fabricacao?'on':''}" onclick="ST.modal.p.fabricacao=true;render()">🔨 Fabricação</button></div></div>
         </div>
       </div>
-      <div class="form-group"><div class="form-label">Plataformas</div><div class="plat-checks">${PLATS.map(pl=>`<div class="plat-cb ${(p.plataformas||[]).includes(pl.id)?'on':''}" onclick="togPlat('${pl.id}')">✓ ${pl.label}</div>`).join('')}</div></div>
+      <div class="form-group"><div class="form-label">Plataformas</div><div class="plat-checks">${PLATS.map(pl=>{const jaSelecionada=(p.plataformas||[]).includes(pl.id);const desativada=(gc()?.plataformas_desativadas||[]).includes(pl.id);return`<div class="plat-cb ${jaSelecionada?'on':''}" style="${desativada&&!jaSelecionada?'opacity:.4':''}" title="${desativada?'Desativada em Config — a loja não vende nessa plataforma':''}" onclick="togPlat('${pl.id}')">${jaSelecionada?'✓':desativada?'🚫':'✓'} ${pl.label}</div>`;}).join('')}</div></div>
       <div class="form-group"><div class="form-label">Links dos anúncios</div>
         <div style="display:flex;flex-direction:column;gap:6px">${PLATS.map(pl=>`<div style="display:flex;align-items:center;gap:8px"><span class="chip ${pl.cls}" style="width:90px;justify-content:center">${pl.label}</span><input class="form-input" id="link-${pl.id}" style="flex:1" placeholder="URL na ${pl.label}" value="${(p.links&&p.links[pl.id])||''}" oninput="if(!ST.modal.p.links)ST.modal.p.links={};ST.modal.p.links['${pl.id}']=this.value"/></div>`).join('')}</div>
       </div>
@@ -1220,7 +1228,7 @@ async function duplicarCliente(id){
   // Criar novo cliente com mesmas configs
   const{data:novoCliente,error:e1}=await sb.from('prec_clients').insert({
     name:novoNome,color,taxas:cl.taxas,
-    margem_por_curva:cl.margem_por_curva,status_por_plataforma:cl.status_por_plataforma
+    margem_por_curva:cl.margem_por_curva,status_por_plataforma:cl.status_por_plataforma,plataformas_desativadas:cl.plataformas_desativadas
   }).select().single();
   if(e1){toast('Erro ao duplicar cliente','error');return;}
   // Duplicar todos os produtos
@@ -1326,7 +1334,18 @@ async function execDelProd(){
   const c=gc();if(c)c.produtos=c.produtos.filter(x=>String(x.id)!==String(pid));
   ST.modal=null;toast('Produto excluído');render();
 }
-function togPlat(pl){const p=ST.modal.p;const idx=(p.plataformas||[]).indexOf(pl);if(idx>=0)p.plataformas.splice(idx,1);else p.plataformas.push(pl);render();}
+function togPlat(pl){
+  const p=ST.modal.p;
+  const idx=(p.plataformas||[]).indexOf(pl);
+  if(idx>=0){p.plataformas.splice(idx,1);render();return;}
+  const desativada=(gc()?.plataformas_desativadas||[]).includes(pl);
+  if(desativada){
+    const po=PLATS.find(x=>x.id===pl);
+    toast(`⚠️ ${po?.label||pl} está desativada em Config — reative lá se precisar usar`,'error');
+    return;
+  }
+  p.plataformas.push(pl);render();
+}
 function addKit(){ST.modal.p.kits.push({qty:null,precos:{},custos:{},peso_kg:0});render();}
 function aplicarCustoUnidadeTodos(){
   const m=ST.modal;const p=m.p;
@@ -1401,6 +1420,14 @@ function updTaxaKits(pl,tipo,i,qtyOrAll){
 async function saveTaxas(){const c=gc();const{error}=await sb.from('prec_clients').update({taxas:c.taxas}).eq('id',c.id);if(error){console.error('Erro ao salvar taxas:',error);toast('⚠️ ERRO ao salvar taxas: '+error.message,'error');return;}toast('✅ Taxas salvas no banco!');}
 function setRegraTipo(t){gc().regra_tipo=t;renderTab();}
 function updRegra(f,v){gc()[f]=parseFloat(v)||0;renderTab();}
+function togPlataformaAtiva(platId){
+  const c=gc();if(!c)return;
+  if(!c.plataformas_desativadas) c.plataformas_desativadas=[];
+  const idx=c.plataformas_desativadas.indexOf(platId);
+  if(idx>=0) c.plataformas_desativadas.splice(idx,1);
+  else c.plataformas_desativadas.push(platId);
+  renderTab();
+}
 function updStatusPlat(platId,v){
   const c=gc();if(!c)return;
   if(!c.status_por_plataforma) c.status_por_plataforma={};
@@ -1413,7 +1440,7 @@ function updMargemCurva(tipo,curva,v){
   if(!c.margem_por_curva[tipo]) c.margem_por_curva[tipo]={};
   c.margem_por_curva[tipo][curva]=parseFloat(v)||0;
 }
-async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({margem_por_curva:c.margem_por_curva,status_por_plataforma:c.status_por_plataforma}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
+async function saveConfig(){const c=gc();const{error}=await sb.from('prec_clients').update({margem_por_curva:c.margem_por_curva,status_por_plataforma:c.status_por_plataforma,plataformas_desativadas:c.plataformas_desativadas}).eq('id',c.id);if(error){console.error('Erro ao salvar config:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}toast('✅ Configurações salvas no banco!');}
 function closeModal(e){
   if(e&&e.target!==e.currentTarget)return;
   if(ST.modal&&ST.modal.type==='prod'){
