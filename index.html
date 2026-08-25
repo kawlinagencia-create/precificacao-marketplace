@@ -1935,7 +1935,7 @@ async function processarCurvaABC(input){
     const idAnuncioCol=header.findIndex(h=>h.includes('id do anún')||h.includes('id anún')||h.includes('id do anuncio')||h.includes('id anuncio'));
     const pedCol=header.findIndex(h=>h.includes('pedido'));
     const unidCol=header.findIndex(h=>h.includes('unidade'));
-    const fatCol=header.findIndex(h=>h.includes('pagamento')||h.includes('faturamento')||h.includes('receita'));
+    const fatCol=header.findIndex(h=>h.includes('pagamento')||h.includes('faturamento')||h.includes('receita')||h.includes('valor de venda')||h.includes('valor total')||(h.includes('valor')&&!h.includes('médio')&&!h.includes('medio')));
     const precoCol=header.findIndex(h=>h.includes('médio')||h.includes('medio'));
     if(iCol<0||(skuPrincipalCol<0&&skuVarianteCol<0)){
       CABC.uploading=false;
