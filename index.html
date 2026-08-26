@@ -421,11 +421,11 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   }
   let freteML=0;
   if((platId==='ml_classico'||platId==='ml_premium')&&pesoKg>0){freteML=calcFreteML(pesoKg,preco);totalFixa+=freteML;fixaDetail.push({n:'Frete ML (auto)',v:freteML,val:freteML});}
-  // Arredondar cada taxa (como já é exibida) e somar os valores arredondados —
-  // assim o Total de Taxas bate exatamente com a soma das linhas que aparecem na tela
-  const round2=x=>Math.round((x+Number.EPSILON)*100)/100;
-  percDetail.forEach(d=>{d.val=round2(d.val);});
-  fixaDetail.forEach(d=>{d.val=round2(d.val);});
+  // Truncar cada taxa pra 2 casas (NUNCA arredonda pra cima — só corta o excedente) e somar os valores
+  // já truncados — assim o Total de Taxas bate exatamente com a soma das linhas exibidas, sem inflar nada
+  const trunc2=x=>Math.floor(x*100+1e-9)/100;
+  percDetail.forEach(d=>{d.val=trunc2(d.val);});
+  fixaDetail.forEach(d=>{d.val=trunc2(d.val);});
   const tax=percDetail.reduce((s,d)=>s+d.val,0)+fixaDetail.reduce((s,d)=>s+d.val,0);
   const lucro=preco-custo-tax;
   return{lucro,margem:preco>0?lucro/preco*100:0,tax,preco,custo,percDetail,fixaDetail,freteML};
