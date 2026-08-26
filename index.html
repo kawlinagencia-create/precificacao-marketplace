@@ -313,9 +313,12 @@ function getMargemPorCurva(cliente,curva,tipoProduto,platId){
   const porTipo=cliente.margem_por_curva?.[tipo];
   const porStatus=porTipo&&typeof porTipo[statusKey]==='object'?porTipo[statusKey]:null;
   if(porStatus&&porStatus[cv]!=null) return porStatus[cv];
-  // Compatibilidade com configuração antiga (antes de separar por status validada/nova)
-  if(porTipo&&typeof porTipo[cv]==='number') return porTipo[cv];
-  if(cliente.margem_por_curva&&typeof cliente.margem_por_curva[cv]==='number') return cliente.margem_por_curva[cv];
+  // Compatibilidade com configuração antiga (antes de existir a separação validada/nova) —
+  // só pode valer pra "validada", nunca pode sobrescrever o status "nova" selecionado na plataforma
+  if(statusKey==='validada'){
+    if(porTipo&&typeof porTipo[cv]==='number') return porTipo[cv];
+    if(cliente.margem_por_curva&&typeof cliente.margem_por_curva[cv]==='number') return cliente.margem_por_curva[cv];
+  }
   // Senão, cai na tabela padrão
   const padrao={
     fabricacao:{validada:{A:18,B:15,C:13,N:8},nova:{A:14,B:12,C:8,N:5}},
