@@ -326,13 +326,9 @@ function getMargemPorCurva(cliente,curva,tipoProduto,platId){
 }
 
 function arredondarPara99(preco){
-  // Arredonda para o ,99 mais próximo
-  const baixo=Math.floor(preco)+0.99;
-  const alto=Math.floor(preco)+1.99;
-  // Se o preço já é ,99 retorna ele mesmo
-  if(Math.abs(preco-baixo)<0.001) return baixo;
-  if(Math.abs(preco-alto)<0.001) return alto;
-  // Escolhe o mais próximo
+  // Arredonda para o ,99 mais próximo — considerando tanto o ,99 abaixo quanto o de cima
+  const baixo=Math.floor(preco-0.99)+0.99; // maior valor terminado em ,99 que seja <= preço
+  const alto=baixo+1; // o próximo ,99 acima
   return Math.abs(preco-baixo)<=Math.abs(preco-alto)?baixo:alto;
 }
 
