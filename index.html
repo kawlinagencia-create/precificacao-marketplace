@@ -430,7 +430,7 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   return{lucro,margem:preco>0?lucro/preco*100:0,tax,preco,custo,percDetail,fixaDetail,freteML};
 }
 function tipoDoProduto(p){return p?.fabricacao?'fabricacao':'revendedor';}
-function getCurvaProduto(p,platId){
+function getCurvaProduto(p,platId,kitQty){
   if(!p) return null;
   const skuNorm=(p.sku||'').trim().toUpperCase();
   const nomeNorm=(p.nome||'').trim().toUpperCase();
@@ -439,12 +439,21 @@ function getCurvaProduto(p,platId){
     if(platId&&d.plataforma&&d.plataforma!==platId) return false;
     if(skuNorm&&d.sku){
       const dSku=d.sku.trim().toUpperCase();
-      if(dSku===skuNorm) return true;
-      // Formato "5KIT029" -> extrai só o código (029) pra comparar com o SKU cadastrado
+      if(dSku===skuNorm&&!kitQty) return true;
+      // Formato "5KIT029" -> extrai qty e código; precisa bater os dois com o kit em questão
+      // (senão um kit acaba herdando a curva de outro kit do mesmo produto)
+      const mQtyCod=dSku.match(/^(\d+)KIT-?(\d+)/i);
+      if(mQtyCod){
+        const codBate=mQtyCod[2].replace(/^0+/,'')===skuNorm.replace(/^0+/,'');
+        const qtyBate=!kitQty||parseInt(mQtyCod[1])===kitQty;
+        if(codBate&&qtyBate) return true;
+        return false;
+      }
+      // Sem quantidade no SKU do extrato (formato antigo) — compara só o código
       const mCod=dSku.match(/KIT-?(\d+)/i);
       if(mCod&&mCod[1].replace(/^0+/,'')===skuNorm.replace(/^0+/,'')) return true;
     }
-    if(nomeNorm&&d.nome_produto&&d.nome_produto.trim().toUpperCase().includes(nomeNorm.substring(0,15))) return true;
+    if(!kitQty&&nomeNorm&&d.nome_produto&&d.nome_produto.trim().toUpperCase().includes(nomeNorm.substring(0,15))) return true;
     return false;
   });
   return d?.curva||null;
@@ -456,7 +465,7 @@ function cor(r,qty,c,curva,tipoProduto,platId){
   const meta=getMargemPorCurva(c,curva,tipoProduto,platId);
   return r.margem>=meta?'g':'r';
 }
-function allRes(c){const out=[];for(const p of c.produtos){const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c,getCurvaProduto(p,pl),tipoP,pl)});}}return out;}
+function allRes(c){const out=[];for(const p of c.produtos){const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c,getCurvaProduto(p,pl,k.qty),tipoP,pl)});}}return out;}
 // allPlats: todas as plataformas onde pelo menos 1 produto está cadastrado (mesmo sem dados)
 function allPlats(c){const s=new Set();for(const p of c.produtos)for(const pl of(p.plataformas||[]))s.add(pl);return[...s];}
 function applyFilter(arr){
@@ -522,7 +531,7 @@ function onFilterInput(v,prefix){
     }
   } else {renderTab();setTimeout(()=>{const el=document.getElementById('filter-sku-'+prefix);if(el){el.focus();el.setSelectionRange(v.length,v.length);}},0);}
 }
-function bestR(p,c){let best=null,bc=null;const pri={g:2,r:1};const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c,getCurvaProduto(p,pl),tipoP,pl);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
+function bestR(p,c){let best=null,bc=null;const pri={g:2,r:1};const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c,getCurvaProduto(p,pl,k.qty),tipoP,pl);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
 function hlMark(str,q){if(!q||!str)return String(str||'');return String(str).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
 function toast(msg,type='success'){const w=document.getElementById('toasts');const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=msg;w.appendChild(e);setTimeout(()=>e.remove(),3000);}
 
@@ -598,7 +607,7 @@ function updateSearch(){
     const kH=(p.kits||[]).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('');
     const lk=p.links&&Object.keys(p.links).filter(k=>p.links[k]).length?'<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">'+Object.entries(p.links).filter(([,v])=>v).map(([pl,url])=>{const po=PLATS.find(x=>x.id===pl);return`<a href="${url}" target="_blank" class="link-chip" onclick="event.stopPropagation()">🔗 ${po?.label||pl}</a>`;}).join('')+'</div>':'';
     const tipoRow=tipoDoProduto(p);
-    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli,getCurvaProduto(p,pl),tipoRow,pl);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;const prej=r2.lucro<0?'⚠️ ':'';return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">${prej}R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
+    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli,getCurvaProduto(p,pl,k.qty),tipoRow,pl);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;const prej=r2.lucro<0?'⚠️ ':'';return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">${prej}R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
     return`<div class="prod-card"><div class="prod-card-head" onclick="togOpen('s_${p.id}')">
       <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0">
         ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
@@ -705,7 +714,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const precoUsado=precoOverride!=null?precoOverride:k.precos?.[pl];
   const r2=calcR(precoUsado,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
   if(!r2) return`<div id="kitcard-${p.id}-${pl}-${k.qty}" style="min-width:160px;flex:1;max-width:220px;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:14px;color:var(--text3);font-size:11px;text-align:center">Sem dados válidos</div>`;
-  const curva=getCurvaProduto(p,pl);
+  const curva=getCurvaProduto(p,pl,k.qty);
   const tipoP=tipoDoProduto(p);
   const co2=cor(r2,k.qty,c,curva,tipoP,pl);
   const isBest=precoOverride==null&&r2.lucro===bestLucro;
@@ -1181,7 +1190,7 @@ function renderKitBlock(k,i,plats,prod){
       <div style="color:var(--text3);font-weight:500" title="Calculado automaticamente com base na margem ideal configurada em Config">Preço Ideal</div>${platsOrdenadas.map(po=>{
         const c=gc();
         const custo=k.custos?.[po.id];
-        const ideal=(c&&custo)?calcPrecoIdeal(custo,po.id,c.taxas,k.peso_kg||0,k.qty||1,c,getCurvaProduto(prod,po.id),tipoProd):null;
+        const ideal=(c&&custo)?calcPrecoIdeal(custo,po.id,c.taxas,k.peso_kg||0,k.qty||1,c,getCurvaProduto(prod,po.id,k.qty),tipoProd):null;
         return`<div id="ideal-${i}-${po.id}" style="text-align:center;font-family:inherit;font-weight:400;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:5px;font-size:11px">${ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—'}</div>`;
       }).join('')}
       <div style="color:var(--text3);font-weight:500">Custo</div>${platsOrdenadas.map(po=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${po.id}" data-tipo="custos" value="${k.custos?.[po.id]||''}" oninput="onKitInput(${i},'custos','${po.id}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
@@ -1197,7 +1206,7 @@ function renderLucroPreviewHTML(k,plats,prod,tipoProduto){
     const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0,k.qty||1);
     if(!r) return null;
     const po=PLATS.find(x=>x.id===pl);
-    const co=cor(r,k.qty||1,c,getCurvaProduto(prod,pl),tipoProduto,pl);
+    const co=cor(r,k.qty||1,c,getCurvaProduto(prod,pl,k.qty),tipoProduto,pl);
     const prej=r.lucro<0;
     const color=co==='g'?'var(--success)':'var(--danger)';
     const bg=co==='g'?'var(--success-bg)':'var(--danger-bg)';
@@ -1498,7 +1507,7 @@ function startInlineEditPreco(span,pid,cid,plat,kitQty){
   span.replaceWith(input);input.focus();input.select();
 
   const cardEl=document.getElementById(`kitcard-${pid}-${plat}-${kitQty}`);
-  const curvaP=getCurvaProduto(p,plat);
+  const curvaP=getCurvaProduto(p,plat,kitQty);
   const tipoP=tipoDoProduto(p);
 
   // Atualiza só os valores internos do card via IDs específicos — nunca recria o card nem o input
@@ -1591,7 +1600,7 @@ function startInlineEditPrecoTeste(span,pid,cid,plat,kitQty){
   span.replaceWith(input);input.focus();input.select();
 
   const cardEl=document.getElementById(`kitcard-${pid}-${plat}-${kitQty}`);
-  const curvaP=getCurvaProduto(p,plat);
+  const curvaP=getCurvaProduto(p,plat,kitQty);
   const tipoP=tipoDoProduto(p);
 
   // Enquanto digita, atualiza os MESMOS campos que o Preço Atual atualiza
@@ -1692,7 +1701,7 @@ function updateKitPreviewInline(kitIdx){
     const idealEl=document.getElementById(`ideal-${kitIdx}-${pl}`);
     if(!idealEl) return;
     const custo=k.custos?.[pl];
-    const ideal=custo?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c,getCurvaProduto(ST.modal.p,pl),tipoProd):null;
+    const ideal=custo?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c,getCurvaProduto(ST.modal.p,pl,k.qty),tipoProd):null;
     idealEl.innerHTML=ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—';
   });
   const previewEl=document.getElementById('kit-preview-'+kitIdx);
@@ -2268,7 +2277,7 @@ function getDashRows(){
   const platLabel=(pl)=>pl==='ml_classico'||pl==='ml_premium'?'Mercado Livre':PLATS.find(p=>p.id===pl)?.label||pl;
   const mlTipo=(pl)=>pl==='ml_classico'?'Clássico':pl==='ml_premium'?'Premium':null;
   return all.map(x=>{
-    const ideal=calcPrecoIdeal(x.r.custo,x.pl,c.taxas,x.k.peso_kg||0,x.k.qty,c,getCurvaProduto(x.p,x.pl),tipoDoProduto(x.p));
+    const ideal=calcPrecoIdeal(x.r.custo,x.pl,c.taxas,x.k.peso_kg||0,x.k.qty,c,getCurvaProduto(x.p,x.pl,x.k.qty),tipoDoProduto(x.p));
     const tipo=mlTipo(x.pl);
     return{
       'SKU':x.p.sku||'—',
