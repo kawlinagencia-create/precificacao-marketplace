@@ -1906,7 +1906,11 @@ async function excluirExtratoABC(ano,mes,plataforma){
 
 async function consultarCurvaABC(){
   const c=gc();if(!c)return;
-  CABC.loading=true;CABC.dados=[];renderTab();
+  CABC.loading=true;CABC.dados=[];
+  // Invalida o cache usado pela aba Produtos — o formato aqui é diferente (agregado só por SKU,
+  // sem separar por quantidade de kit), então a próxima visita à aba Produtos precisa recarregar
+  CABC.clienteCarregado=null;
+  renderTab();
   let q=sb.from('prec_curva_abc').select('*').eq('client_id',c.id).order('pct_acumulado');
   if(CABC.plat&&CABC.plat!=='todos'){
     if(CABC.plat==='ml') q=q.in('plataforma',['ml_classico','ml_premium','ml']);
