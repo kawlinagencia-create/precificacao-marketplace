@@ -445,7 +445,7 @@ function getCurvaProduto(p,platId,kitQty){
       const mQtyCod=dSku.match(/^(\d+)KIT-?(\d+)/i);
       if(mQtyCod){
         const codBate=mQtyCod[2].replace(/^0+/,'')===skuNorm.replace(/^0+/,'');
-        const qtyBate=!kitQty||parseInt(mQtyCod[1])===kitQty;
+        const qtyBate=!kitQty||Number(mQtyCod[1])===Number(kitQty);
         if(codBate&&qtyBate) return true;
         return false;
       }
@@ -2085,9 +2085,8 @@ async function processarCurvaABC(input){
 
 async function carregarCurvaParaProdutos(){
   const c=gc();if(!c)return;
-  // Se já carregamos os dados desse cliente nessa sessão, não recarrega
-  if(CABC.dados.length>0&&CABC.clienteCarregado===c.id)return;
-  // Carregar TODOS os registros do cliente (todos os períodos, todas as plataformas)
+  // Sempre recarrega do banco (sem cache) — garante que nunca fica um dado desatualizado
+  // na memória depois de visitar a aba Curva ABC (que usa um formato agregado diferente)
   const{data,error}=await sb.from('prec_curva_abc')
     .select('sku,nome_produto,faturamento,plataforma')
     .eq('client_id',c.id);
