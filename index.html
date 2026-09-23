@@ -798,10 +798,14 @@ function renderCustos(c){
       return mult*(a.nome||'').localeCompare(b.nome||'','pt-BR');
     });
   const setaSku=sortField==='sku'?(sortDir==='asc'?'↑':'↓'):'↕';
+  const qtdInferidos=produtos.filter(p=>inferCustoUnitario(p).inferido).length;
   return`<div class="sec" style="margin-bottom:0">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div class="sec-title">Custo por SKU</div>
-      <input class="filter-input" placeholder="Filtrar por SKU ou nome" value="${ST.custoFiltro||''}" oninput="ST.custoFiltro=this.value;renderTab()" style="width:220px"/>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="filter-input" placeholder="Filtrar por SKU ou nome" value="${ST.custoFiltro||''}" oninput="ST.custoFiltro=this.value;renderTab()" style="width:220px"/>
+        ${qtdInferidos?`<button class="btn btn-primary" onclick="salvarTodosCustosInferidos()">💾 Confirmar todos os deduzidos (${qtdInferidos})</button>`:''}
+      </div>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px">
       💡 Digite o custo de <b>1 peça</b> aqui e ele já atualiza sozinho o custo de todos os kits (K3, K5, K10 etc.) e todas as plataformas daquele produto — sem precisar abrir o cadastro.
@@ -861,6 +865,24 @@ async function updCustoUnitarioLista(pid,val){
     if(statusEl){statusEl.textContent='⚠️ erro ao salvar';statusEl.style.color='var(--danger)';}
     toast('⚠️ ERRO ao salvar: '+(err.message||'falha desconhecida'),'error');
   }
+}
+async function salvarTodosCustosInferidos(){
+  const c=gc();if(!c)return;
+  const alvos=(c.produtos||[]).map(p=>({p,info:inferCustoUnitario(p)})).filter(x=>x.info.inferido&&x.info.valor);
+  if(!alvos.length){toast('Nenhum custo deduzido pra confirmar','error');return;}
+  toast(`Salvando ${alvos.length} produto(s)...`);
+  let ok=0,falhas=0;
+  for(const{p,info}of alvos){
+    try{
+      await updCustoUnitarioLista(p.id,info.valor);
+      ok++;
+    }catch(err){
+      console.error('Erro ao salvar custo de',p.sku,err);
+      falhas++;
+    }
+  }
+  renderTab();
+  toast(falhas?`✅ ${ok} salvos, ⚠️ ${falhas} com erro`:`✅ ${ok} produto(s) atualizados com o custo deduzido`);
 }
 function renderProdutos(c){
   const sortField=ST.filter.sortField||'nome';
