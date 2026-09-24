@@ -787,6 +787,17 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
     </div>
   </div>`;
 }
+function inferCustoUnitario(p){
+  if(p.custo_unidade) return{valor:p.custo_unidade,inferido:false};
+  for(const k of(p.kits||[])){
+    if(!k.qty)continue;
+    for(const pl of(p.plataformas||[])){
+      const custo=k.custos?.[pl];
+      if(custo){return{valor:Math.round((custo/k.qty)*100)/100,inferido:true};}
+    }
+  }
+  return{valor:null,inferido:false};
+}
 function renderCustos(c){
   const filtro=(ST.custoFiltro||'').toLowerCase().trim();
   const sortField=ST.custoSort?.field||'nome';
@@ -808,13 +819,14 @@ function renderCustos(c){
       </div>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:12px;padding:10px;background:var(--surface2);border-radius:8px">
-      💡 Digite o custo de <b>1 peça</b> aqui e ele já atualiza sozinho o custo de todos os kits (K3, K5, K10 etc.) e todas as plataformas daquele produto — sem precisar abrir o cadastro.
+      💡 Digite o custo de <b>1 peça</b> aqui e ele já atualiza sozinho o custo de todos os kits (K3, K5, K10 etc.) e todas as plataformas daquele produto — sem precisar abrir o cadastro. Valores em <span style="color:var(--accent-text);font-weight:600">azul</span> foram calculados a partir do custo já cadastrado nos kits (ainda não salvos como "Custo Unitário" — clique em 💾 pra confirmar).
     </div>
     ${!produtos.length?`<div class="empty"><div style="font-size:28px;opacity:.3;margin-bottom:10px">📦</div><div style="font-size:13px;font-weight:500">Nenhum produto encontrado</div></div>`:`
     <table class="data-table">
       <thead><tr><th style="cursor:pointer;user-select:none" onclick="ST.custoSort={field:'sku',dir:ST.custoSort?.field==='sku'&&ST.custoSort?.dir==='asc'?'desc':'asc'};renderTab()" title="Ordenar por SKU">SKU <span style="opacity:.6">${setaSku}</span></th><th>Produto</th><th>Tipo</th><th>Kits</th><th>Custo Unitário</th><th></th></tr></thead>
       <tbody>${produtos.map(p=>{
         const kitsLabel=(p.kits||[]).filter(k=>k.qty).map(k=>`K${k.qty}`).join(', ')||'—';
+        const{valor:custoInf,inferido}=inferCustoUnitario(p);
         return`<tr>
           <td class="mono">${p.sku||'—'}</td>
           <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nome||'—'}</td>
@@ -823,7 +835,7 @@ function renderCustos(c){
           <td>
             <div style="display:flex;align-items:center;gap:3px">
               <span style="font-size:11px;color:var(--text3)">R$</span>
-              <input type="number" step="0.01" class="taxa-input" style="width:80px" id="custo-uni-${p.id}" value="${p.custo_unidade||''}" placeholder="0.00" onchange="updCustoUnitarioLista('${p.id}',this.value)"/>
+              <input type="number" step="0.01" class="taxa-input" style="width:80px;${inferido?'color:var(--accent-text);border-color:var(--accent-text)':''}" id="custo-uni-${p.id}" value="${custoInf||''}" placeholder="0.00" title="${inferido?'Calculado a partir do custo já cadastrado nos kits — clique em 💾 pra confirmar':''}" onchange="updCustoUnitarioLista('${p.id}',this.value)"/>
               <button class="btn-icon" title="Salvar" onclick="updCustoUnitarioLista('${p.id}',document.getElementById('custo-uni-${p.id}').value)">💾</button>
             </div>
           </td>
