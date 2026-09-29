@@ -762,6 +762,43 @@ function renderDash(c){
   </div>`:''}`;
 }
 
+function renderKitQuickPriceHTML(p,c,pl,k){
+  const custo=k.custos?.[pl];
+  return`<div style="min-width:160px;flex:1;max-width:220px;border:2px dashed var(--accent-text);border-radius:var(--r-lg);padding:12px;background:var(--accent-bg)">
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px">KIT ${k.qty}</div>
+    <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
+      <span style="color:var(--text2)">Custo</span>
+      <span style="font-family:var(--mono);font-weight:600">R$${custo.toFixed(2)}</span>
+    </div>
+    <div style="margin-top:8px">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:600;text-transform:uppercase">Falta só o preço</div>
+      <div style="display:flex;align-items:center;gap:4px">
+        <span style="font-size:11px;color:var(--text3)">R$</span>
+        <input type="number" step="0.01" class="taxa-input" style="width:80px" id="preco-rapido-${p.id}-${pl}-${k.qty}" placeholder="0.00" onchange="salvarPrecoRapido('${p.id}','${c.id}','${pl}',${k.qty},this.value)"/>
+      </div>
+    </div>
+  </div>`;
+}
+async function salvarPrecoRapido(pid,cid,plat,kitQty,val){
+  const cli=ST.clients.find(c=>String(c.id)===String(cid));
+  const p=cli?.produtos?.find(x=>String(x.id)===String(pid));
+  if(!p)return;
+  const k=p.kits.find(x=>x.qty===kitQty);
+  if(!k)return;
+  const novoValor=parseFloat(val)||0;
+  if(!novoValor){toast('Digite um preço válido','error');return;}
+  const produtoAntigo=JSON.parse(JSON.stringify(p));
+  if(!k.precos)k.precos={};
+  k.precos[plat]=novoValor;
+  try{
+    await saveProduct(p,cli.id,produtoAntigo);
+    toast('✅ Preço salvo!');
+    renderTab();
+  }catch(err){
+    console.error('Erro ao salvar preço:',err);
+    toast('⚠️ ERRO ao salvar: '+(err.message||'falha desconhecida'),'error');
+  }
+}
 function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const precoUsado=precoOverride!=null?precoOverride:k.precos?.[pl];
   const r2=calcR(precoUsado,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
@@ -1029,14 +1066,18 @@ function renderProdutos(c){
               if(!kits.length) return '';
               const kitsComDados=kits.filter(k=>calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty));
               const kitsSemDados=kits.filter(k=>!calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty));
+              // Kits que já têm custo, só falta o preço — dá pra completar ali mesmo, sem abrir o cadastro
+              const kitsFaltaPreco=kitsSemDados.filter(k=>k.custos?.[pl]);
+              const kitsFaltaTudo=kitsSemDados.filter(k=>!k.custos?.[pl]);
               return`<div style="margin-bottom:16px">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border)">
                   <span class="chip ${po?.cls}" style="font-size:12px;padding:3px 10px">${po?.label||pl}</span>
-                  ${kitsSemDados.length?`<span style="font-size:10px;color:var(--text3)">${kitsSemDados.map(k=>`K${k.qty}`).join(', ')} sem dados</span>`:''}
+                  ${kitsFaltaTudo.length?`<span style="font-size:10px;color:var(--text3)">${kitsFaltaTudo.map(k=>`K${k.qty}`).join(', ')} sem dados</span>`:''}
                 </div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap">
                   ${kitsComDados.map(k=>renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro)).join('')}
-                  ${!kitsComDados.length?`<div style="padding:12px;color:var(--text3);font-size:12px">Nenhum kit com dados cadastrados para esta plataforma</div>`:''}
+                  ${kitsFaltaPreco.map(k=>renderKitQuickPriceHTML(p,c,pl,k)).join('')}
+                  ${!kitsComDados.length&&!kitsFaltaPreco.length?`<div style="padding:12px;color:var(--text3);font-size:12px">Nenhum kit com dados cadastrados para esta plataforma</div>`:''}
                 </div>
               </div>`;
             }).join('');
@@ -1651,47 +1692,9 @@ function togPlataformaAtiva(platId){
   const c=gc();if(!c)return;
   if(!c.plataformas_desativadas) c.plataformas_desativadas=[];
   const idx=c.plataformas_desativadas.indexOf(platId);
-  const estavaDesativada=idx>=0;
-  if(estavaDesativada){
-    c.plataformas_desativadas.splice(idx,1);
-    renderTab();
-    const po=PLATS.find(x=>x.id===platId);
-    if(confirm(`Adicionar "${po?.label||platId}" em todos os produtos que ainda não têm essa plataforma?\n\nO custo de cada kit será preenchido automaticamente (a partir do custo unitário já cadastrado do produto) — você só vai precisar colocar o preço depois.`)){
-      aplicarPlataformaEmTodosProdutos(platId);
-    }
-  }else{
-    c.plataformas_desativadas.push(platId);
-    renderTab();
-  }
-}
-async function aplicarPlataformaEmTodosProdutos(platId){
-  const c=gc();if(!c)return;
-  const po=PLATS.find(x=>x.id===platId);
-  const alvos=(c.produtos||[]).filter(p=>!(p.plataformas||[]).includes(platId));
-  if(!alvos.length){toast('Todos os produtos já têm essa plataforma','error');return;}
-  toast(`Atualizando ${alvos.length} produto(s)...`);
-  let ok=0,semCusto=0;
-  for(const p of alvos){
-    const produtoAntigo=JSON.parse(JSON.stringify(p));
-    if(!p.plataformas) p.plataformas=[];
-    p.plataformas.push(platId);
-    const{valor:custoUnit}=inferCustoUnitario(p);
-    let algumCusto=false;
-    (p.kits||[]).forEach(k=>{
-      if(!k.qty) return;
-      if(!k.custos) k.custos={};
-      if(custoUnit){k.custos[platId]=Math.round(custoUnit*k.qty*100)/100;algumCusto=true;}
-    });
-    if(!algumCusto) semCusto++;
-    try{
-      await saveProduct(p,c.id,produtoAntigo);
-      ok++;
-    }catch(err){
-      console.error('Erro ao adicionar plataforma no produto',p.sku,err);
-    }
-  }
+  if(idx>=0) c.plataformas_desativadas.splice(idx,1);
+  else c.plataformas_desativadas.push(platId);
   renderTab();
-  toast(`✅ ${po?.label||platId} adicionado em ${ok} produto(s)${semCusto?` (${semCusto} sem custo cadastrado ainda)`:''} — falta só o preço`);
 }
 function updStatusPlat(platId,v){
   const c=gc();if(!c)return;
