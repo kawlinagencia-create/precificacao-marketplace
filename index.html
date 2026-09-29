@@ -200,22 +200,73 @@ const SUPABASE_URL='https://yvgoseljxxdczpziituq.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2Z29zZWxqeHhkY3pwemlpdHVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3MTQ0MzksImV4cCI6MjA5NTI5MDQzOX0.1gEdI1aaw97oYMQV0pmWJR2JXQgtp514ZuUsKHI9dZE';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const PLATS=[{id:'shopee',label:'Shopee',cls:'chip-shopee'},{id:'shein',label:'Shein',cls:'chip-shein'},{id:'ml_classico',label:'ML Clássico',cls:'chip-ml'},{id:'ml_premium',label:'ML Premium',cls:'chip-ml'},{id:'tiktok',label:'TikTok',cls:'chip-tiktok'}];
-const TAXA_D={shopee:[{n:'Comissão',v:20,obs:'20%(<=R$79) ou 14%(>=R$80) automático'},{n:'Nota Fiscal',v:6.76},{n:'Afiliados',v:2.8},{n:'Ads',v:3.5},{n:'Cupom',v:1.5},{n:'Of. Relâmpago',v:0.3},{n:'Campanha',v:3.5},{n:'Leve+Por',v:0.2},{n:'Live/Vídeo',v:0.15},{n:'Mão de Obra',v:1.5}],shein:[{n:'Comissão',v:16},{n:'Nota Fiscal',v:7.3},{n:'Campanha',v:20},{n:'Of. Relâmpago',v:0.3},{n:'Cupom',v:1.67},{n:'Leve+Por',v:0.1},{n:'Mão de Obra',v:1.5}],ml_classico:[{n:'Comissão',v:14},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Estoque Full (ML Full)',v:0,obs:'Preencha se usar estoque Full'},{n:'Frete Full (ML Full)',v:0,obs:'Preencha se usar frete Full'},{n:'Mão de Obra',v:1.5}],ml_premium:[{n:'Comissão',v:19},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Estoque Full (ML Full)',v:0,obs:'Preencha se usar estoque Full'},{n:'Frete Full (ML Full)',v:0,obs:'Preencha se usar frete Full'},{n:'Mão de Obra',v:1.5}],tiktok:[{n:'Comissão',v:6,obs:'10%(<R$50) ou 6%(>=R$50) automático'},{n:'Taxa Frete%',v:6},{n:'Ads',v:5},{n:'Campanha',v:5},{n:'Afiliados',v:7},{n:'Cupom',v:0.9},{n:'Leve+Por',v:0.2},{n:'Nota Fiscal',v:7.3},{n:'Mão de Obra',v:1.5}]};
-const TF_D={shopee:[{n:'Taxa Fixa',v:4.5,obs:'R$4,50(<=R$79)/R$16(R$80-99)/R$20(R$100-199)/R$26(>=R$200) automático'},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],shein:[{n:'Frete K3/5',v:4},{n:'Frete K10',v:5},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],ml_classico:[{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],ml_premium:[{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],tiktok:[{n:'Taxa Fixa',v:4,obs:'R$4(<R$50) ou R$6(>=R$50) automático'},{n:'Live/Vídeo',v:0.5},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}]};
+const TAXA_D={shopee:[{n:'Comissão',v:20,obs:'Automático por faixa de preço — edite em ⚙️ Taxas Automáticas'},{n:'Nota Fiscal',v:6.76},{n:'Afiliados',v:2.8},{n:'Ads',v:3.5},{n:'Cupom',v:1.5},{n:'Of. Relâmpago',v:0.3},{n:'Campanha',v:3.5},{n:'Leve+Por',v:0.2},{n:'Live/Vídeo',v:0.15},{n:'Mão de Obra',v:1.5}],shein:[{n:'Comissão',v:16},{n:'Nota Fiscal',v:7.3},{n:'Campanha',v:20},{n:'Of. Relâmpago',v:0.3},{n:'Cupom',v:1.67},{n:'Leve+Por',v:0.1},{n:'Mão de Obra',v:1.5}],ml_classico:[{n:'Comissão',v:14},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Estoque Full (ML Full)',v:0,obs:'Preencha se usar estoque Full'},{n:'Frete Full (ML Full)',v:0,obs:'Preencha se usar frete Full'},{n:'Mão de Obra',v:1.5}],ml_premium:[{n:'Comissão',v:19},{n:'Nota Fiscal',v:11.07},{n:'Afiliados',v:1},{n:'Ads Produto',v:5},{n:'Ads Perfil',v:1.3},{n:'Cupom',v:1.3},{n:'Of. Relâmpago',v:0.3},{n:'Estoque Full (ML Full)',v:0,obs:'Preencha se usar estoque Full'},{n:'Frete Full (ML Full)',v:0,obs:'Preencha se usar frete Full'},{n:'Mão de Obra',v:1.5}],tiktok:[{n:'Comissão',v:6,obs:'Automático por faixa de preço — edite em ⚙️ Taxas Automáticas'},{n:'Taxa Frete%',v:6},{n:'Ads',v:5},{n:'Campanha',v:5},{n:'Afiliados',v:7},{n:'Cupom',v:0.9},{n:'Leve+Por',v:0.2},{n:'Nota Fiscal',v:7.3},{n:'Mão de Obra',v:1.5}]};
+const TF_D={shopee:[{n:'Taxa Fixa',v:4.5,obs:'Automático por faixa de preço — edite em ⚙️ Taxas Automáticas'},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],shein:[{n:'Frete K3/5',v:4},{n:'Frete K10',v:5},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],ml_classico:[{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],ml_premium:[{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}],tiktok:[{n:'Taxa Fixa',v:4,obs:'Automático por faixa de preço — edite em ⚙️ Taxas Automáticas'},{n:'Live/Vídeo',v:0.5},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}]};
 const COLORS=['#2d6a4f','#6d28d9','#c2410c','#0369a1','#be185d'];
 const ML_FRETE=[[0.3,[5.65,6.55,7.75,12.35,14.35,16.45,18.45,20.95]],[0.5,[5.95,6.65,7.85,13.25,15.45,17.65,19.85,22.55]],[1.0,[6.05,6.75,7.95,13.85,16.15,18.45,20.75,23.65]],[1.5,[6.15,6.85,8.05,14.15,16.45,18.85,21.15,24.65]],[2.0,[6.25,6.95,8.15,14.45,16.85,19.25,21.65,24.65]],[3.0,[6.35,7.95,8.55,15.75,18.35,21.05,23.65,26.25]],[4.0,[6.45,8.15,8.95,17.05,19.85,22.65,25.55,28.35]],[5.0,[6.55,8.35,9.75,18.45,21.55,24.65,27.75,30.75]],[6.0,[6.65,8.55,9.95,25.45,28.55,32.65,35.75,39.75]],[7.0,[6.75,8.75,10.15,27.05,31.05,36.05,40.05,44.05]],[8.0,[6.85,8.95,10.35,28.85,33.65,38.45,43.25,48.05]],[9.0,[6.95,9.15,10.55,29.65,34.55,39.55,44.45,49.35]],[11.0,[7.05,9.55,10.95,41.25,48.05,54.95,61.75,68.65]],[13.0,[7.15,9.95,11.35,42.15,49.25,56.25,63.25,70.25]],[15.0,[7.25,10.15,11.55,45.05,52.45,59.95,67.45,74.95]],[17.0,[7.35,10.35,11.75,48.55,56.05,63.55,70.75,78.65]],[20.0,[7.55,10.75,12.15,53.05,63.85,72.95,82.05,91.15]],[25.0,[7.75,11.25,12.65,58.35,75.05,84.75,95.35,105.95]],[30.0,[7.95,11.75,13.15,63.75,75.45,85.55,96.25,106.95]]];
 const ML_FAIXAS=[18.99,48.99,78.99,99.99,119.99,149.99,199.99,Infinity];
 function calcFreteML(kg,p){if(!kg||kg<=0||!p||p<=0)return 0;const fi=ML_FAIXAS.findIndex(f=>p<=f);const l=ML_FRETE.find(([pm])=>kg<=pm)||ML_FRETE[ML_FRETE.length-1];return l[1][fi>=0?fi:7]||0;}
-function shopeeComissao(p){return p<=79.99?0.20:0.14;}
-function shopeeTaxaFixa(p){if(p<=79.99)return 4.50;if(p<=99.99)return 16;if(p<=199.99)return 20;return 26;}
-function tiktokComissao(p){return p<50?0.10:0.06;}
-function tiktokTaxaFixa(p){return p<50?4:6;}
+// Faixas de comissão/taxa fixa automáticas — editáveis em "⚙️ Taxas Automáticas" (sidebar).
+// Isso evita precisar mexer no código toda vez que a Shopee/TikTok mudarem as taxas.
+let SISTEMA_CONFIG={
+  shopee:{tiers:[
+    {ate:79.99,comissao:20,taxaFixa:4.5},
+    {ate:99.99,comissao:14,taxaFixa:16},
+    {ate:199.99,comissao:14,taxaFixa:20},
+    {ate:null,comissao:14,taxaFixa:26}
+  ]},
+  tiktok:{tiers:[
+    {ate:49.99,comissao:10,taxaFixa:4},
+    {ate:null,comissao:6,taxaFixa:6}
+  ]}
+};
+function getTierPorPreco(tiers,preco,estrito){
+  for(const t of tiers){
+    if(t.ate==null) return t;
+    if(estrito?preco<t.ate:preco<=t.ate) return t;
+  }
+  return tiers[tiers.length-1];
+}
+function shopeeComissao(p){return getTierPorPreco(SISTEMA_CONFIG.shopee.tiers,p,false).comissao/100;}
+function shopeeTaxaFixa(p){return getTierPorPreco(SISTEMA_CONFIG.shopee.tiers,p,false).taxaFixa;}
+function tiktokComissao(p){return getTierPorPreco(SISTEMA_CONFIG.tiktok.tiers,p,true).comissao/100;}
+function tiktokTaxaFixa(p){return getTierPorPreco(SISTEMA_CONFIG.tiktok.tiers,p,true).taxaFixa;}
+async function carregarConfigTaxasAutomaticas(){
+  try{
+    const{data,error}=await sb.from('prec_sistema_config').select('*').eq('id',1).maybeSingle();
+    if(!error&&data?.taxas_auto){
+      if(data.taxas_auto.shopee?.tiers) SISTEMA_CONFIG.shopee.tiers=data.taxas_auto.shopee.tiers;
+      if(data.taxas_auto.tiktok?.tiers) SISTEMA_CONFIG.tiktok.tiers=data.taxas_auto.tiktok.tiers;
+    }
+  }catch(err){console.error('Erro ao carregar config de taxas automáticas:',err);}
+}
+async function salvarConfigTaxasAutomaticas(){
+  const{error}=await sb.from('prec_sistema_config').upsert({id:1,taxas_auto:{shopee:{tiers:SISTEMA_CONFIG.shopee.tiers},tiktok:{tiers:SISTEMA_CONFIG.tiktok.tiers}}});
+  if(error){console.error('Erro ao salvar config de taxas automáticas:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}
+  toast('✅ Taxas automáticas salvas!');
+  render();
+}
+function updTierAuto(pl,i,field,val){
+  const t=SISTEMA_CONFIG[pl].tiers[i];
+  if(field==='ate') t.ate=val===''?null:parseFloat(val);
+  else t[field]=parseFloat(val)||0;
+}
+function addTierAuto(pl){
+  SISTEMA_CONFIG[pl].tiers.push({ate:null,comissao:0,taxaFixa:0});
+  render();
+}
+function rmTierAuto(pl,i){
+  SISTEMA_CONFIG[pl].tiers.splice(i,1);
+  if(!SISTEMA_CONFIG[pl].tiers.length) SISTEMA_CONFIG[pl].tiers.push({ate:null,comissao:0,taxaFixa:0});
+  render();
+}
 function mkTaxas(){const t={};for(const k of Object.keys(TAXA_D))t[k]={perc:TAXA_D[k].map(r=>({...r})),fixas:TF_D[k].map(r=>({...r}))};return t;}
 
 let ST={clients:[],activeId:null,tab:'dashboard',open:{},search:{q:'',scope:'todos'},modal:null,loading:true,calc:{plat:'shopee',prodId:null,kit:null,preco:'',custo:'',margem:'',peso:''},filter:{sku:'',plat:'',loja:'',sortField:'nome',sortDir:'asc'}};
 function gc(){return ST.clients.find(c=>c.id===ST.activeId)||ST.clients[0]||null;}
 
 async function loadAll(){
+  await carregarConfigTaxasAutomaticas();
   const{data:clients,error}=await sb.from('prec_clients').select('*').order('created_at');
   if(error){toast('Erro ao carregar','error');ST.loading=false;render();return;}
   for(const c of(clients||[])){
@@ -543,7 +594,7 @@ function render(){
     <div class="sb-logo"><div class="sb-logo-title">Precificação</div><div class="sb-logo-sub">Gestão de marketplace</div></div>
     <div class="sb-section">Clientes</div>
     <div class="sb-list">${ST.clients.map(cl=>`<div class="sb-item ${cl.id===ST.activeId?'active':''}" onclick="selC(${cl.id})" onmouseenter="this.querySelector('.sb-acts').style.display='flex'" onmouseleave="this.querySelector('.sb-acts').style.display='none'"><div class="sb-dot" style="background:${cl.color}"></div><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${cl.name}</span><span class="sb-count">${(cl.produtos||[]).length}</span><span class="sb-acts" style="display:none;gap:2px;margin-left:4px" onclick="event.stopPropagation()"><button class="btn-icon" style="width:20px;height:20px;font-size:10px;padding:0" title="Editar nome" onclick="openEditCliente(${cl.id})">✏️</button><button class="btn-icon" style="width:20px;height:20px;font-size:10px;padding:0" title="Duplicar" onclick="duplicarCliente(${cl.id})">📋</button><button class="btn-icon danger" style="width:20px;height:20px;font-size:10px;padding:0" title="Excluir loja" onclick="excluirCliente(${cl.id})">🗑️</button></span></div>`).join('')}</div>
-    <div class="sb-footer"><button class="sb-add-btn" onclick="openNewClient()">+ Novo cliente</button></div>
+    <div class="sb-footer"><button class="sb-add-btn" onclick="openNewClient()">+ Novo cliente</button><button class="btn btn-outline" style="width:100%;margin-top:6px;font-size:12px" onclick="ST.modal={type:'taxasAuto'};render()">⚙️ Taxas Automáticas</button></div>
   </div>
   <div class="main">
     <div class="topbar">
@@ -1214,6 +1265,36 @@ function updateCalc(){
 
 function renderModal(){
   const m=ST.modal;
+  if(m.type==='taxasAuto'){
+    const renderTiers=(pl,label)=>{
+      const tiers=SISTEMA_CONFIG[pl].tiers;
+      return`<div style="margin-bottom:18px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px">${label}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:6px;font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">
+          <div>Até (R$)</div><div>Comissão (%)</div><div>Taxa Fixa (R$)</div><div></div>
+        </div>
+        ${tiers.map((t,i)=>`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:6px;margin-bottom:6px;align-items:center">
+          <input class="taxa-input" type="number" step="0.01" placeholder="sem limite" value="${t.ate??''}" onchange="updTierAuto('${pl}',${i},'ate',this.value)"/>
+          <input class="taxa-input" type="number" step="0.01" value="${t.comissao}" onchange="updTierAuto('${pl}',${i},'comissao',this.value)"/>
+          <input class="taxa-input" type="number" step="0.01" value="${t.taxaFixa}" onchange="updTierAuto('${pl}',${i},'taxaFixa',this.value)"/>
+          <button class="btn-icon danger" title="Remover faixa" onclick="rmTierAuto('${pl}',${i})">✕</button>
+        </div>`).join('')}
+        <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="addTierAuto('${pl}')">+ Adicionar faixa</button>
+      </div>`;
+    };
+    return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" style="width:520px" onclick="event.stopPropagation()">
+      <div class="modal-header"><div><div class="modal-title">⚙️ Taxas Automáticas</div><div style="font-size:12px;color:var(--text3);margin-top:2px">Comissão e taxa fixa por faixa de preço — vale pra todos os clientes</div></div><button class="btn-icon" onclick="closeModal()">✕</button></div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:14px;padding:10px;background:var(--surface2);border-radius:8px">
+        💡 A última faixa de cada plataforma deve ficar com "Até" em branco (sem limite) — ela cobre tudo que passar da faixa anterior. As faixas devem estar em ordem crescente de preço.
+      </div>
+      ${renderTiers('shopee','🛍️ Shopee')}
+      ${renderTiers('tiktok','🎵 TikTok')}
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+        <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-primary" onclick="salvarConfigTaxasAutomaticas()">Salvar</button>
+      </div>
+    </div></div>`;
+  }
   if(m.type==='nc')return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><div class="modal-title">Novo cliente</div><button class="btn-icon" onclick="closeModal()">✕</button></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="nc-n" placeholder="ex: Maria Moda"/></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveNewClient()">Criar</button></div></div></div>`;
   if(m.type==='edit_cliente')return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><div class="modal-title">Editar nome do cliente</div><button class="btn-icon" onclick="closeModal()">✕</button></div><div class="form-group"><div class="form-label">Nome</div><input class="form-input" id="ec-name" value="${m.name||''}" placeholder="Nome do cliente"/></div><div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="saveEditCliente()">Salvar</button></div></div></div>`;
   if(m.type==='historico'){
