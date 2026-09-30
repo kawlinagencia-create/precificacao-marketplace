@@ -426,7 +426,7 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
   const precoArredondado=arredondarPara99(Math.max(0,p));
   // Recalcular a margem real com o preço arredondado
   const r=calcR(precoArredondado,custo,platId,taxas,pesoKg,kitQty);
-  return{preco:precoArredondado,margemPerc:r?r.margem:metaPerc*100,curvaUsada:curva||null};
+  return{preco:precoArredondado,margemPerc:r?r.margem:metaPerc*100,curvaUsada:curva||null,metaUsada:metaPerc*100};
 }
 function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   if(!preco||preco<=0||!custo||custo<=0)return null;
@@ -814,7 +814,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   if(ideal){
     const diff=r2.preco-ideal.preco;
     const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
-    const margemLabel=`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}%`;
+    const margemLabel=`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}% [meta:${ideal.metaUsada.toFixed(2)}%]`;
     idealHTML=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
       <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${margemLabel})</span></span>
       <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
