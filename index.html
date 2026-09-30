@@ -387,6 +387,7 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
   // ainda não apareceu em nenhum extrato importado), considerando o tipo do PRÓPRIO SKU
   const metaPerc=getMargemPorCurva(cliente,curva,tipoProduto,platId)/100;
   let p=custo*2;
+  let tpFinal=0,tfFinal=0;
   for(let i=0;i<100;i++){
     // Soma TODAS as taxas percentuais, usando a comissão automática da Shopee quando aplicável
     let tp=0;
@@ -417,6 +418,7 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
     }
     const frML=(platId==='ml_classico'||platId==='ml_premium')&&pesoKg>0?calcFreteML(pesoKg,p):0;
     tf+=frML;
+    tpFinal=tp;tfFinal=tf;
     // margem % = metaPerc → (p - custo - tf - p*tp)/p = metaPerc
     const p2=(custo+tf)/(1-tp-metaPerc);
     if(!isFinite(p2)||p2<=0) break;
@@ -426,7 +428,7 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
   const precoArredondado=arredondarPara99(Math.max(0,p));
   // Recalcular a margem real com o preço arredondado
   const r=calcR(precoArredondado,custo,platId,taxas,pesoKg,kitQty);
-  return{preco:precoArredondado,margemPerc:r?r.margem:metaPerc*100,curvaUsada:curva||null,metaUsada:metaPerc*100};
+  return{preco:precoArredondado,margemPerc:r?r.margem:metaPerc*100,curvaUsada:curva||null,metaUsada:metaPerc*100,tpUsado:tpFinal*100,tfUsado:tfFinal,precoConvergido:p};
 }
 function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   if(!preco||preco<=0||!custo||custo<=0)return null;
@@ -814,7 +816,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   if(ideal){
     const diff=r2.preco-ideal.preco;
     const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
-    const margemLabel=`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}% [meta:${ideal.metaUsada.toFixed(2)}%]`;
+    const margemLabel=`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}% [meta:${ideal.metaUsada.toFixed(2)}% tp:${ideal.tpUsado.toFixed(2)}% tf:R$${ideal.tfUsado.toFixed(2)} bruto:R$${ideal.precoConvergido.toFixed(2)}]`;
     idealHTML=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
       <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${margemLabel})</span></span>
       <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
