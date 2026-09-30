@@ -762,6 +762,9 @@ function renderDash(c){
 
 function renderKitQuickPriceHTML(p,c,pl,k){
   const custo=k.custos?.[pl];
+  const curva=getCurvaProduto(p,pl,k.qty);
+  const tipoP=tipoDoProduto(p);
+  const ideal=calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty,c,curva,tipoP);
   return`<div style="min-width:160px;flex:1;max-width:220px;border:2px dashed var(--accent-text);border-radius:var(--r-lg);padding:12px;background:var(--accent-bg)">
     <div style="font-size:13px;font-weight:700;margin-bottom:8px">KIT ${k.qty}</div>
     <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
@@ -769,13 +772,34 @@ function renderKitQuickPriceHTML(p,c,pl,k){
       <span style="font-family:var(--mono);font-weight:600">R$${custo.toFixed(2)}</span>
     </div>
     <div style="margin-top:8px">
-      <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:600;text-transform:uppercase">Falta só o preço</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:600;text-transform:uppercase" title="Preço sugerido pela meta de margem configurada — ajuste se quiser antes de salvar">Falta só confirmar o preço${ideal?' (sugestão da Config)':''}</div>
       <div style="display:flex;align-items:center;gap:4px">
         <span style="font-size:11px;color:var(--text3)">R$</span>
-        <input type="number" step="0.01" class="taxa-input" style="width:80px" id="preco-rapido-${p.id}-${pl}-${k.qty}" placeholder="0.00" onchange="salvarPrecoRapido('${p.id}','${c.id}','${pl}',${k.qty},this.value)"/>
+        <input type="number" step="0.01" class="taxa-input" style="width:70px" id="preco-rapido-${p.id}-${pl}-${k.qty}" value="${ideal?ideal.preco.toFixed(2):''}" placeholder="0.00" onchange="salvarPrecoRapido('${p.id}','${c.id}','${pl}',${k.qty},this.value)"/>
+        <button class="btn-icon" title="Confirmar esse preço" onclick="salvarPrecoRapido('${p.id}','${c.id}','${pl}',${k.qty},document.getElementById('preco-rapido-${p.id}-${pl}-${k.qty}').value)">✓</button>
       </div>
     </div>
   </div>`;
+}
+async function copiarIdealParaTeste(pid,cid,plat,kitQty,idealPreco){
+  const cli=ST.clients.find(c=>String(c.id)===String(cid));
+  const p=cli?.produtos?.find(x=>String(x.id)===String(pid));
+  if(!p)return;
+  const k=p.kits.find(x=>x.qty===kitQty);
+  if(!k)return;
+  const produtoAntigo=JSON.parse(JSON.stringify(p));
+  if(!k.precos_teste)k.precos_teste={};
+  k.precos_teste[plat]=Math.round(idealPreco*100)/100;
+  try{
+    const pay={client_id:cli.id,sku:p.sku,nome:p.nome,fabricacao:p.fabricacao||false,plataformas:p.plataformas,kits:p.kits,foto_url:p.foto_url||null,links:p.links||{},custo_unidade:p.custo_unidade||null};
+    const{error}=await sb.from('prec_products').update(pay).eq('id',p.id);
+    if(error)throw new Error(error.message);
+    toast('✅ Preço Ideal copiado pro Preço Teste!');
+  }catch(err){
+    console.error('Erro ao copiar preço ideal:',err);
+    toast('⚠️ ERRO ao salvar: '+(err.message||'falha desconhecida'),'error');
+  }
+  renderTab();
 }
 async function salvarPrecoRapido(pid,cid,plat,kitQty,val){
   const cli=ST.clients.find(c=>String(c.id)===String(cid));
@@ -821,7 +845,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
     const margemLabel=`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}%`;
     idealHTML=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
       <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${margemLabel})</span></span>
-      <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
+      <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span> <span title="Usar esse preço no Preço Teste" style="cursor:pointer" onclick="copiarIdealParaTeste('${p.id}','${c.id}','${pl}',${k.qty},${ideal.preco})">🎯</span></span>
     </div>`;
   }
   return`<div id="kitcard-${p.id}-${pl}-${k.qty}" style="min-width:160px;flex:1;max-width:220px;border:2px solid ${borderColor};border-radius:var(--r-lg);overflow:hidden;background:var(--surface)">
