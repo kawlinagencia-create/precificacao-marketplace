@@ -1714,9 +1714,57 @@ function togPlataformaAtiva(platId){
   const c=gc();if(!c)return;
   if(!c.plataformas_desativadas) c.plataformas_desativadas=[];
   const idx=c.plataformas_desativadas.indexOf(platId);
-  if(idx>=0) c.plataformas_desativadas.splice(idx,1);
-  else c.plataformas_desativadas.push(platId);
+  const estavaDesativada=idx>=0;
+  if(estavaDesativada){
+    c.plataformas_desativadas.splice(idx,1);
+    renderTab();
+    const po=PLATS.find(x=>x.id===platId);
+    if(confirm(`Adicionar "${po?.label||platId}" em todos os produtos que ainda não têm essa plataforma?\n\nO custo e o preço de cada kit já vêm preenchidos automaticamente (custo a partir do custo unitário cadastrado, preço pela meta de margem da Config) — você só precisa conferir e ajustar se quiser.`)){
+      aplicarPlataformaEmTodosProdutos(platId);
+    }
+  }else{
+    c.plataformas_desativadas.push(platId);
+    renderTab();
+  }
+}
+async function aplicarPlataformaEmTodosProdutos(platId){
+  const c=gc();if(!c)return;
+  const po=PLATS.find(x=>x.id===platId);
+  const alvos=(c.produtos||[]).filter(p=>!(p.plataformas||[]).includes(platId));
+  if(!alvos.length){toast('Todos os produtos já têm essa plataforma','error');return;}
+  toast(`Atualizando ${alvos.length} produto(s)...`);
+  let ok=0,semCusto=0;
+  for(const p of alvos){
+    const produtoAntigo=JSON.parse(JSON.stringify(p));
+    if(!p.plataformas) p.plataformas=[];
+    p.plataformas.push(platId);
+    const{valor:custoUnit}=inferCustoUnitario(p);
+    const curva=getCurvaProduto(p,platId);
+    const tipoP=tipoDoProduto(p);
+    let algumCusto=false;
+    (p.kits||[]).forEach(k=>{
+      if(!k.qty) return;
+      if(!k.custos) k.custos={};
+      if(!k.precos) k.precos={};
+      if(custoUnit){
+        const custoKit=Math.round(custoUnit*k.qty*100)/100;
+        k.custos[platId]=custoKit;
+        algumCusto=true;
+        // Preço já vem sugerido pela meta de margem configurada — evita ter que digitar do zero
+        const ideal=calcPrecoIdeal(custoKit,platId,c.taxas,k.peso_kg||0,k.qty,c,curva,tipoP);
+        if(ideal) k.precos[platId]=ideal.preco;
+      }
+    });
+    if(!algumCusto) semCusto++;
+    try{
+      await saveProduct(p,c.id,produtoAntigo);
+      ok++;
+    }catch(err){
+      console.error('Erro ao adicionar plataforma no produto',p.sku,err);
+    }
+  }
   renderTab();
+  toast(`✅ ${po?.label||platId} adicionado em ${ok} produto(s)${semCusto?` (${semCusto} sem custo cadastrado ainda)`:''} — já com preço sugerido`);
 }
 function updStatusPlat(platId,v){
   const c=gc();if(!c)return;
