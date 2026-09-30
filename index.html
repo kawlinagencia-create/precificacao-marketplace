@@ -423,7 +423,9 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
     const p2=(custo+tf)/(1-tp-metaPerc);
     if(!isFinite(p2)||p2<=0) break;
     if(Math.abs(p2-p)<0.005) {p=p2;break;}
-    p=p2;
+    // Amortecimento: evita oscilação infinita entre faixas quando comissão/taxa fixa
+    // não mudam de faixa juntas (ex: uma travada em "Manual" e outra em "Auto")
+    p=i<20?p2:(p*0.5+p2*0.5);
   }
   const precoArredondado=arredondarPara99(Math.max(0,p));
   // Recalcular a margem real com o preço arredondado
@@ -816,7 +818,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   if(ideal){
     const diff=r2.preco-ideal.preco;
     const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
-    const margemLabel=`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}% [meta:${ideal.metaUsada.toFixed(2)}% tp:${ideal.tpUsado.toFixed(2)}% tf:R$${ideal.tfUsado.toFixed(2)} bruto:R$${ideal.precoConvergido.toFixed(2)}]`;
+    const margemLabel=`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}%`;
     idealHTML=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
       <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${margemLabel})</span></span>
       <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span></span>
@@ -1197,14 +1199,6 @@ function renderConfig(c){
       ⚠️ Quando o lucro fica <b>negativo</b> (prejuízo), aparece um aviso extra além do vermelho.
     </div>
     <button class="btn btn-primary" onclick="saveConfig()">Salvar configurações</button>
-    <button class="btn btn-outline" style="margin-left:8px" onclick="ST.mostrarDiagnostico=!ST.mostrarDiagnostico;renderTab()">🔍 Ver dado bruto (diagnóstico)</button>
-    ${ST.mostrarDiagnostico?`<pre style="margin-top:12px;padding:12px;background:#111;color:#0f0;font-size:11px;border-radius:8px;overflow:auto;max-height:400px;white-space:pre-wrap">margem_por_curva:
-
-${JSON.stringify(c.margem_por_curva,null,2)}
-
-status_por_plataforma:
-
-${JSON.stringify(c.status_por_plataforma,null,2)}</pre>`:''}
   </div>`;
 }
 
