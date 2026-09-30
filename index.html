@@ -2066,11 +2066,10 @@ function renderCurvaABC(){
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">📤 Importar extrato de vendas</div>
       <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-        <div><div class="form-label">Ano</div><select class="calc-select" style="width:90px" id="abc-upload-ano">${anos.map(a=>`<option value="${a}" ${a===anoAtual?'selected':''}>${a}</option>`).join('')}</select></div>
-        <div><div class="form-label">Mês</div><select class="calc-select" style="width:100px" id="abc-upload-mes">${MESES.map((m,i)=>`<option value="${i+1}" ${i+1===CABC.mes?'selected':''}>${m}</option>`).join('')}</select></div>
         <div><div class="form-label">Plataforma</div><select class="calc-select" style="width:130px" id="abc-upload-plat">${PLAT_ABC.map(p=>`<option value="${p.id}">${p.label}</option>`).join('')}</select></div>
         <div><input type="file" id="abc-file-input" accept=".xlsx,.xls" style="display:none" onchange="processarCurvaABC(this)"/><button class="btn btn-primary" onclick="document.getElementById('abc-file-input').click()" ${CABC.uploading?'disabled':''}>${CABC.uploading?'Salvando...':'📊 Selecionar Excel'}</button></div>
       </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">Cada importação substitui os dados anteriores dessa plataforma pelo retrato mais recente do extrato — não acumula por mês.</div>
     </div>
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none" onclick="toggleExtratosABC()">
@@ -2169,47 +2168,44 @@ async function carregarExtratosABC(){
   const el=document.getElementById('abc-extratos-lista');
   if(!el)return;
   el.innerHTML='<span style="color:var(--text3)">Carregando...</span>';
-  // Busca períodos únicos salvos (agrupa por ano/mes/plataforma)
+  // Busca a plataforma e a última atualização de cada uma (não agrupa mais por mês)
   const{data,error}=await sb.from('prec_curva_abc')
-    .select('ano,mes,plataforma,created_at')
+    .select('plataforma,created_at')
     .eq('client_id',c.id)
-    .order('ano',{ascending:false})
-    .order('mes',{ascending:false});
+    .order('created_at',{ascending:false});
   if(error||!data?.length){el.innerHTML='<span style="color:var(--text3)">Nenhum extrato salvo ainda.</span>';return;}
-  // Agrupar por ano+mes+plataforma
+  // Agrupar por plataforma — pega a data mais recente e a contagem de produtos de cada uma
   const grupos={};
   for(const d of data){
-    const key=`${d.ano}-${d.mes}-${d.plataforma}`;
-    if(!grupos[key])grupos[key]={ano:d.ano,mes:d.mes,plataforma:d.plataforma,created_at:d.created_at,count:0};
+    const key=d.plataforma;
+    if(!grupos[key])grupos[key]={plataforma:d.plataforma,created_at:d.created_at,count:0};
     grupos[key].count++;
   }
-  const lista=Object.values(grupos).sort((a,b)=>b.ano-a.ano||b.mes-a.mes);
-  const platLabel={todos:'Todas',shopee:'Shopee',shein:'Shein',ml:'Mercado Livre',tiktok:'TikTok'};
+  const lista=Object.values(grupos).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  const platLabel={todos:'Todas',shopee:'Shopee',shein:'Shein',ml:'Mercado Livre',ml_classico:'ML Clássico',ml_premium:'ML Premium',tiktok:'TikTok'};
   el.innerHTML=`<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
     ${lista.map(g=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:10px">
-        <span style="font-weight:600;font-family:var(--mono);font-size:12px">${MESES[g.mes-1]}/${g.ano}</span>
-        <span class="chip chip-${g.plataforma==='shopee'?'shopee':g.plataforma==='shein'?'shein':g.plataforma==='tiktok'?'tiktok':'ml'}" style="font-size:10px">${platLabel[g.plataforma]||g.plataforma}</span>
-        <span style="font-size:11px;color:var(--text3)">${g.count} produtos</span>
+        <span class="chip chip-${g.plataforma.includes('shopee')?'shopee':g.plataforma.includes('shein')?'shein':g.plataforma.includes('tiktok')?'tiktok':'ml'}" style="font-size:10px">${platLabel[g.plataforma]||g.plataforma}</span>
+        <span style="font-size:11px;color:var(--text3)">${g.count} produtos · atualizado em ${new Date(g.created_at).toLocaleDateString('pt-BR')}</span>
       </div>
       <div style="display:flex;gap:6px">
-        <button class="btn btn-outline" style="font-size:11px;padding:3px 10px" onclick="CABC.ano=${g.ano};CABC.mes=${g.mes};CABC.plat='${g.plataforma}';consultarCurvaABC()">Ver</button>
-        <button class="btn-icon danger" style="font-size:11px" onclick="excluirExtratoABC(${g.ano},${g.mes},'${g.plataforma}')" title="Excluir este extrato">🗑️</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:3px 10px" onclick="CABC.plat='${g.plataforma}';consultarCurvaABC()">Ver</button>
+        <button class="btn-icon danger" style="font-size:11px" onclick="excluirExtratoABC('${g.plataforma}')" title="Excluir os dados dessa plataforma">🗑️</button>
       </div>
     </div>`).join('')}
   </div>`;
 }
 
-async function excluirExtratoABC(ano,mes,plataforma){
+async function excluirExtratoABC(plataforma){
   const c=gc();if(!c)return;
-  const platLabel={todos:'Todas',shopee:'Shopee',shein:'Shein',ml:'Mercado Livre',tiktok:'TikTok'};
-  if(!confirm(`Excluir extrato de ${MESES[mes-1]}/${ano} — ${platLabel[plataforma]||plataforma}?\n\nEssa ação não pode ser desfeita.`))return;
+  const platLabel={todos:'Todas',shopee:'Shopee',shein:'Shein',ml:'Mercado Livre',ml_classico:'ML Clássico',ml_premium:'ML Premium',tiktok:'TikTok'};
+  if(!confirm(`Excluir todos os dados de Curva ABC de ${platLabel[plataforma]||plataforma}?\n\nEssa ação não pode ser desfeita.`))return;
   const{error}=await sb.from('prec_curva_abc').delete()
-    .eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma',plataforma);
+    .eq('client_id',c.id).eq('plataforma',plataforma);
   if(error){toast('Erro ao excluir: '+error.message,'error');return;}
-  toast('✅ Extrato excluído!');
-  // Se era o período consultado atualmente, limpar
-  if(CABC.ano===ano&&CABC.mes===mes&&CABC.plat===plataforma){CABC.dados=[];}
+  toast('✅ Dados excluídos!');
+  if(CABC.plat===plataforma){CABC.dados=[];}
   carregarExtratosABC();
   renderTab();
 }
@@ -2230,15 +2226,24 @@ async function consultarCurvaABC(){
   if(error){toast('Erro ao consultar dados','error');console.error(error);}
   else if(data?.length){
     const map={};
-    for(const d of data){const k=(d.sku||d.nome_produto);if(!map[k]){map[k]={...d,pedidos:0,unidades:0,faturamento:0};}map[k].pedidos+=d.pedidos;map[k].unidades+=d.unidades;map[k].faturamento+=d.faturamento;}
+    for(const d of data){
+      const k=(d.sku||d.nome_produto);
+      if(!map[k]){map[k]={...d,pedidos:0,unidades:0,faturamento:0,classFat:{}};}
+      map[k].pedidos+=d.pedidos;
+      map[k].unidades+=d.unidades;
+      map[k].faturamento+=d.faturamento;
+      if(d.curva) map[k].classFat[d.curva]=(map[k].classFat[d.curva]||0)+(d.faturamento||0);
+    }
     let prods=Object.values(map).sort((a,b)=>b.faturamento-a.faturamento);
     const tot=prods.reduce((s,p)=>s+p.faturamento,0);let acum=0;
     CABC.dados=prods.map(p=>{
-      const pctAntes=tot>0?acum/tot*100:0;
       acum+=p.faturamento;
       const pct=tot>0?p.faturamento/tot*100:0;
       const pctA=tot>0?acum/tot*100:0;
-      return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:pctAntes<80?'A':pctAntes<95?'B':'C'};
+      // Usa a classificação ABC já salva (a que teve mais faturamento, quando mescla plataformas)
+      const classEntradas=Object.entries(p.classFat||{});
+      const curvaFinal=classEntradas.length?classEntradas.sort((a,b)=>b[1]-a[1])[0][0]:p.curva;
+      return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:curvaFinal};
     });
   }else{CABC.dados=[];}
   CABC.loading=false;renderTab();
@@ -2247,8 +2252,9 @@ async function consultarCurvaABC(){
 async function processarCurvaABC(input){
   const file=input.files[0];if(!file)return;
   const c=gc();if(!c)return;
-  const ano=parseInt(document.getElementById('abc-upload-ano')?.value)||new Date().getFullYear();
-  const mes=parseInt(document.getElementById('abc-upload-mes')?.value)||new Date().getMonth()+1;
+  const hoje=new Date();
+  const ano=hoje.getFullYear();
+  const mes=hoje.getMonth()+1;
   const plat=document.getElementById('abc-upload-plat')?.value||'todos';
   CABC.uploading=true;renderTab();
   try{
@@ -2264,9 +2270,11 @@ async function processarCurvaABC(input){
     const skuVarianteCol=header.findIndex(h=>h==='sku'||h==='sku da variante'||h==='skus');
     const idAnuncioCol=header.findIndex(h=>h.includes('id do anún')||h.includes('id anún')||h.includes('id do anuncio')||h.includes('id anuncio'));
     const pedCol=header.findIndex(h=>h.includes('pedido'));
-    const unidCol=header.findIndex(h=>h.includes('unidade'));
+    const unidCol=header.findIndex(h=>h.includes('unidade')||h.includes('volume de venda'));
     const fatCol=header.findIndex(h=>h.includes('pagamento')||h.includes('faturamento')||h.includes('receita')||h.includes('valor de venda')||h.includes('valor total')||(h.includes('valor')&&!h.includes('médio')&&!h.includes('medio')));
     const precoCol=header.findIndex(h=>h.includes('médio')||h.includes('medio'));
+    // O UpSeller já manda a classificação A/B/C pronta em alguns extratos — usar direto, sem recalcular
+    const classificacaoCol=header.findIndex(h=>h.includes('classificação')||h.includes('classificacao'));
     // Quando a plataforma selecionada é "Mercado Livre" (unificada), cada linha diz se é Clássico ou Premium
     const isMLUnificado=plat==='ml';
     const tipoAnuncioCol=isMLUnificado?header.findIndex(h=>h.includes('tipo de anúncio')||h.includes('tipo de anuncio')):-1;
@@ -2318,7 +2326,7 @@ async function processarCurvaABC(input){
         if(m2)kitQty=parseInt(m2[1]);
       }
       const key=skuBase||nome;
-      if(!map[key]){map[key]={sku:skuBase,nome,lojas:new Set(),anuncios:new Set(),ped:0,unid:0,fat:0,preco:0,n:0,kits:{},platFat:{}};}
+      if(!map[key]){map[key]={sku:skuBase,nome,lojas:new Set(),anuncios:new Set(),ped:0,unid:0,fat:0,preco:0,n:0,kits:{},platFat:{},classFat:{}};}
       // Somar pedidos, unidades e faturamento de todos os tamanhos/anúncios do mesmo SKU+kit
       map[key].ped+=ped;
       map[key].unid+=unid;
@@ -2327,6 +2335,12 @@ async function processarCurvaABC(input){
       map[key].n++;
       if(loja)map[key].lojas.add(loja);
       if(idAnuncio)map[key].anuncios.add(idAnuncio);
+      // Guardar a classificação ABC nativa (se o extrato já vier com ela), pesada pelo faturamento —
+      // evita recalcular por conta própria quando o UpSeller já manda pronto
+      if(classificacaoCol>=0){
+        const cls=String(row[classificacaoCol]||'').trim().toUpperCase();
+        if(cls==='A'||cls==='B'||cls==='C') map[key].classFat[cls]=(map[key].classFat[cls]||0)+fat;
+      }
       // No modo ML unificado, guardar por Tipo de Anúncio pra saber depois se esse SKU é
       // majoritariamente Clássico ou Premium (evita salvar como "ml" genérico, que não bate
       // com o SKU cadastrado — os produtos usam ml_classico/ml_premium especificamente)
@@ -2358,6 +2372,10 @@ async function processarCurvaABC(input){
         const entradas=Object.entries(p.platFat||{});
         plataformaLinha=entradas.length?entradas.sort((a,b)=>b[1]-a[1])[0][0]:'ml_classico';
       }
+      // Classificação ABC: usa a nativa do extrato (dominante por faturamento) quando disponível;
+      // só recalcula pelo percentual acumulado se o extrato não trouxer essa coluna
+      const classEntradas=Object.entries(p.classFat||{});
+      const curvaFinal=classEntradas.length?classEntradas.sort((a,b)=>b[1]-a[1])[0][0]:(pctAntes<80?'A':pctAntes<95?'B':'C');
       return{
         client_id:c.id,ano,mes,plataforma:plataformaLinha,
         sku:p.sku||null,
@@ -2368,26 +2386,28 @@ async function processarCurvaABC(input){
         unidades:p.unid,
         faturamento:p.fat,
         preco_medio:p.n>0?p.preco/p.n:0,
-        curva:pctAntes<80?'A':pctAntes<95?'B':'C',
+        curva:curvaFinal,
         pct_faturamento:pct,
         pct_acumulado:pctA,
         kits_json:kitsArr.length?JSON.stringify(kitsArr):null
       };
     });
     if(isMLUnificado){
-      // Apaga qualquer registro anterior das duas variantes de ML pra esse período
-      await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma','ml_classico');
-      await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma','ml_premium');
-      await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma','ml');
+      // Substitui qualquer dado anterior das duas variantes de ML — não acumula mais por período,
+      // cada importação é o retrato atual daquela plataforma
+      await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('plataforma','ml_classico');
+      await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('plataforma','ml_premium');
+      await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('plataforma','ml');
     }else{
-      await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('ano',ano).eq('mes',mes).eq('plataforma',plat);
+      // Substitui qualquer dado anterior dessa plataforma — não acumula mais por período
+      await sb.from('prec_curva_abc').delete().eq('client_id',c.id).eq('plataforma',plat);
     }
     for(let i=0;i<registros.length;i+=100){
       const{error}=await sb.from('prec_curva_abc').insert(registros.slice(i,i+100));
       if(error)throw error;
     }
-    toast('✅ '+registros.length+' produtos importados — '+MESES[mes-1]+'/'+ano);
-    CABC.ano=ano;CABC.mes=mes;CABC.plat=plat;
+    toast('✅ '+registros.length+' produtos importados');
+    CABC.plat=plat;
     await consultarCurvaABC();
   }catch(e){console.error(e);toast('⚠️ Erro: '+e.message,'error');}
   CABC.uploading=false;renderTab();
@@ -2398,7 +2418,7 @@ async function carregarCurvaParaProdutos(){
   // Sempre recarrega do banco (sem cache) — garante que nunca fica um dado desatualizado
   // na memória depois de visitar a aba Curva ABC (que usa um formato agregado diferente)
   const{data,error}=await sb.from('prec_curva_abc')
-    .select('sku,nome_produto,faturamento,plataforma')
+    .select('sku,nome_produto,faturamento,plataforma,curva')
     .eq('client_id',c.id);
   if(error){console.error('Erro ao buscar curva ABC:',error);CABC.dados=[];return;}
   if(!data?.length){CABC.dados=[];CABC.clienteCarregado=c.id;return;}
@@ -2410,8 +2430,9 @@ async function carregarCurvaParaProdutos(){
     if(!porPlat[plat]) porPlat[plat]={};
     const key=(d.sku||d.nome_produto||'').trim().toUpperCase();
     if(!key) continue;
-    if(!porPlat[plat][key]) porPlat[plat][key]={sku:d.sku,nome_produto:d.nome_produto,plataforma:plat,faturamento:0};
+    if(!porPlat[plat][key]) porPlat[plat][key]={sku:d.sku,nome_produto:d.nome_produto,plataforma:plat,faturamento:0,classFat:{}};
     porPlat[plat][key].faturamento+=d.faturamento||0;
+    if(d.curva) porPlat[plat][key].classFat[d.curva]=(porPlat[plat][key].classFat[d.curva]||0)+(d.faturamento||0);
   }
   const resultado=[];
   for(const plat in porPlat){
@@ -2419,10 +2440,12 @@ async function carregarCurvaParaProdutos(){
     const tot=prods.reduce((s,p)=>s+p.faturamento,0);
     let acum=0;
     for(const p of prods){
-      const pctAntes=tot>0?acum/tot*100:0;
       acum+=p.faturamento;
       const pctA=tot>0?acum/tot*100:0;
-      resultado.push({...p,pct_acumulado:pctA,curva:pctAntes<80?'A':pctAntes<95?'B':'C'});
+      // Usa a classificação já salva (nativa do extrato quando disponível)
+      const classEntradas=Object.entries(p.classFat||{});
+      const curva=classEntradas.length?classEntradas.sort((a,b)=>b[1]-a[1])[0][0]:null;
+      resultado.push({...p,pct_acumulado:pctA,curva});
     }
   }
   CABC.dados=resultado;
