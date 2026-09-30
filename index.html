@@ -2040,6 +2040,20 @@ function onCalcKit(qty){
 
 // Estado da Curva ABC
 let CABC={ano:new Date().getFullYear(),mes:new Date().getMonth()+1,plat:'todos',filtroSku:'',filtroCurva:'',dados:[],loading:false,uploading:false};
+// Classifica um item em A (80%), B (+15%) ou C (+5%) pelo percentual acumulado ANTES e DEPOIS de somá-lo.
+// Quando o item cruza uma fronteira, fica na faixa mais próxima (equilibra pra cima ou pra baixo,
+// em vez de sempre empurrar o item inteiro pra faixa de cima). Item gigante que cruza as duas
+// fronteiras de uma vez sempre fica em A (é claramente o campeão de vendas).
+function classificarCurva(pctAntes,pctDepois){
+  if(pctAntes>=95) return 'C';
+  if(pctAntes>=80){
+    if(pctDepois<=95) return 'B';
+    return(pctDepois-95)<=(95-pctAntes)?'B':'C';
+  }
+  if(pctDepois<=80) return 'A';
+  if(pctDepois<=95) return(pctDepois-80)<=(80-pctAntes)?'A':'B';
+  return 'A';
+}
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 const PLAT_ABC=[{id:'todos',label:'Todas'},{id:'shopee',label:'Shopee'},{id:'shein',label:'Shein'},{id:'ml',label:'Mercado Livre'},{id:'tiktok',label:'TikTok'}];
 
@@ -2240,7 +2254,7 @@ async function consultarCurvaABC(){
       acum+=p.faturamento;
       const pct=tot>0?p.faturamento/tot*100:0;
       const pctA=tot>0?acum/tot*100:0;
-      return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:pctAntes<80?'A':pctAntes<95?'B':'C'};
+      return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:classificarCurva(pctAntes,pctA)};
     });
   }else{CABC.dados=[];}
   CABC.loading=false;renderTab();
@@ -2362,7 +2376,7 @@ async function processarCurvaABC(input){
         plataformaLinha=entradas.length?entradas.sort((a,b)=>b[1]-a[1])[0][0]:'ml_classico';
       }
       // Classificação ABC sempre pela regra da própria Config (80% acumulado = A, até 95% = B, resto = C)
-      const curvaFinal=pctAntes<80?'A':pctAntes<95?'B':'C';
+      const curvaFinal=classificarCurva(pctAntes,pctA);
       return{
         client_id:c.id,ano,mes,plataforma:plataformaLinha,
         sku:p.sku||null,
@@ -2429,7 +2443,7 @@ async function carregarCurvaParaProdutos(){
       const pctAntes=tot>0?acum/tot*100:0;
       acum+=p.faturamento;
       const pctA=tot>0?acum/tot*100:0;
-      resultado.push({...p,pct_acumulado:pctA,curva:pctAntes<80?'A':pctAntes<95?'B':'C'});
+      resultado.push({...p,pct_acumulado:pctA,curva:classificarCurva(pctAntes,pctA)});
     }
   }
   CABC.dados=resultado;
