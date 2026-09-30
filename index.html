@@ -2228,22 +2228,19 @@ async function consultarCurvaABC(){
     const map={};
     for(const d of data){
       const k=(d.sku||d.nome_produto);
-      if(!map[k]){map[k]={...d,pedidos:0,unidades:0,faturamento:0,classFat:{}};}
+      if(!map[k]){map[k]={...d,pedidos:0,unidades:0,faturamento:0};}
       map[k].pedidos+=d.pedidos;
       map[k].unidades+=d.unidades;
       map[k].faturamento+=d.faturamento;
-      if(d.curva) map[k].classFat[d.curva]=(map[k].classFat[d.curva]||0)+(d.faturamento||0);
     }
     let prods=Object.values(map).sort((a,b)=>b.faturamento-a.faturamento);
     const tot=prods.reduce((s,p)=>s+p.faturamento,0);let acum=0;
     CABC.dados=prods.map(p=>{
+      const pctAntes=tot>0?acum/tot*100:0;
       acum+=p.faturamento;
       const pct=tot>0?p.faturamento/tot*100:0;
       const pctA=tot>0?acum/tot*100:0;
-      // Usa a classificação ABC já salva (a que teve mais faturamento, quando mescla plataformas)
-      const classEntradas=Object.entries(p.classFat||{});
-      const curvaFinal=classEntradas.length?classEntradas.sort((a,b)=>b[1]-a[1])[0][0]:p.curva;
-      return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:curvaFinal};
+      return{...p,pct_faturamento:pct,pct_acumulado:pctA,curva:pctAntes<80?'A':pctAntes<95?'B':'C'};
     });
   }else{CABC.dados=[];}
   CABC.loading=false;renderTab();
@@ -2273,8 +2270,6 @@ async function processarCurvaABC(input){
     const unidCol=header.findIndex(h=>h.includes('unidade')||h.includes('volume de venda'));
     const fatCol=header.findIndex(h=>h.includes('pagamento')||h.includes('faturamento')||h.includes('receita')||h.includes('valor de venda')||h.includes('valor total')||(h.includes('valor')&&!h.includes('médio')&&!h.includes('medio')));
     const precoCol=header.findIndex(h=>h.includes('médio')||h.includes('medio'));
-    // O UpSeller já manda a classificação A/B/C pronta em alguns extratos — usar direto, sem recalcular
-    const classificacaoCol=header.findIndex(h=>h.includes('classificação')||h.includes('classificacao'));
     // Quando a plataforma selecionada é "Mercado Livre" (unificada), cada linha diz se é Clássico ou Premium
     const isMLUnificado=plat==='ml';
     const tipoAnuncioCol=isMLUnificado?header.findIndex(h=>h.includes('tipo de anúncio')||h.includes('tipo de anuncio')):-1;
@@ -2326,7 +2321,7 @@ async function processarCurvaABC(input){
         if(m2)kitQty=parseInt(m2[1]);
       }
       const key=skuBase||nome;
-      if(!map[key]){map[key]={sku:skuBase,nome,lojas:new Set(),anuncios:new Set(),ped:0,unid:0,fat:0,preco:0,n:0,kits:{},platFat:{},classFat:{}};}
+      if(!map[key]){map[key]={sku:skuBase,nome,lojas:new Set(),anuncios:new Set(),ped:0,unid:0,fat:0,preco:0,n:0,kits:{},platFat:{}};}
       // Somar pedidos, unidades e faturamento de todos os tamanhos/anúncios do mesmo SKU+kit
       map[key].ped+=ped;
       map[key].unid+=unid;
@@ -2335,12 +2330,6 @@ async function processarCurvaABC(input){
       map[key].n++;
       if(loja)map[key].lojas.add(loja);
       if(idAnuncio)map[key].anuncios.add(idAnuncio);
-      // Guardar a classificação ABC nativa (se o extrato já vier com ela), pesada pelo faturamento —
-      // evita recalcular por conta própria quando o UpSeller já manda pronto
-      if(classificacaoCol>=0){
-        const cls=String(row[classificacaoCol]||'').trim().toUpperCase();
-        if(cls==='A'||cls==='B'||cls==='C') map[key].classFat[cls]=(map[key].classFat[cls]||0)+fat;
-      }
       // No modo ML unificado, guardar por Tipo de Anúncio pra saber depois se esse SKU é
       // majoritariamente Clássico ou Premium (evita salvar como "ml" genérico, que não bate
       // com o SKU cadastrado — os produtos usam ml_classico/ml_premium especificamente)
@@ -2372,10 +2361,8 @@ async function processarCurvaABC(input){
         const entradas=Object.entries(p.platFat||{});
         plataformaLinha=entradas.length?entradas.sort((a,b)=>b[1]-a[1])[0][0]:'ml_classico';
       }
-      // Classificação ABC: usa a nativa do extrato (dominante por faturamento) quando disponível;
-      // só recalcula pelo percentual acumulado se o extrato não trouxer essa coluna
-      const classEntradas=Object.entries(p.classFat||{});
-      const curvaFinal=classEntradas.length?classEntradas.sort((a,b)=>b[1]-a[1])[0][0]:(pctAntes<80?'A':pctAntes<95?'B':'C');
+      // Classificação ABC sempre pela regra da própria Config (80% acumulado = A, até 95% = B, resto = C)
+      const curvaFinal=pctAntes<80?'A':pctAntes<95?'B':'C';
       return{
         client_id:c.id,ano,mes,plataforma:plataformaLinha,
         sku:p.sku||null,
@@ -2418,7 +2405,7 @@ async function carregarCurvaParaProdutos(){
   // Sempre recarrega do banco (sem cache) — garante que nunca fica um dado desatualizado
   // na memória depois de visitar a aba Curva ABC (que usa um formato agregado diferente)
   const{data,error}=await sb.from('prec_curva_abc')
-    .select('sku,nome_produto,faturamento,plataforma,curva')
+    .select('sku,nome_produto,faturamento,plataforma')
     .eq('client_id',c.id);
   if(error){console.error('Erro ao buscar curva ABC:',error);CABC.dados=[];return;}
   if(!data?.length){CABC.dados=[];CABC.clienteCarregado=c.id;return;}
@@ -2430,9 +2417,8 @@ async function carregarCurvaParaProdutos(){
     if(!porPlat[plat]) porPlat[plat]={};
     const key=(d.sku||d.nome_produto||'').trim().toUpperCase();
     if(!key) continue;
-    if(!porPlat[plat][key]) porPlat[plat][key]={sku:d.sku,nome_produto:d.nome_produto,plataforma:plat,faturamento:0,classFat:{}};
+    if(!porPlat[plat][key]) porPlat[plat][key]={sku:d.sku,nome_produto:d.nome_produto,plataforma:plat,faturamento:0};
     porPlat[plat][key].faturamento+=d.faturamento||0;
-    if(d.curva) porPlat[plat][key].classFat[d.curva]=(porPlat[plat][key].classFat[d.curva]||0)+(d.faturamento||0);
   }
   const resultado=[];
   for(const plat in porPlat){
@@ -2440,12 +2426,10 @@ async function carregarCurvaParaProdutos(){
     const tot=prods.reduce((s,p)=>s+p.faturamento,0);
     let acum=0;
     for(const p of prods){
+      const pctAntes=tot>0?acum/tot*100:0;
       acum+=p.faturamento;
       const pctA=tot>0?acum/tot*100:0;
-      // Usa a classificação já salva (nativa do extrato quando disponível)
-      const classEntradas=Object.entries(p.classFat||{});
-      const curva=classEntradas.length?classEntradas.sort((a,b)=>b[1]-a[1])[0][0]:null;
-      resultado.push({...p,pct_acumulado:pctA,curva});
+      resultado.push({...p,pct_acumulado:pctA,curva:pctAntes<80?'A':pctAntes<95?'B':'C'});
     }
   }
   CABC.dados=resultado;
