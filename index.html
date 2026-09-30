@@ -1195,7 +1195,14 @@ function renderConfig(c){
       ⚠️ Quando o lucro fica <b>negativo</b> (prejuízo), aparece um aviso extra além do vermelho.
     </div>
     <button class="btn btn-primary" onclick="saveConfig()">Salvar configurações</button>
-    <button class="btn btn-outline" style="margin-left:8px" onclick="alert('margem_por_curva:\n\n'+JSON.stringify(gc().margem_por_curva,null,2)+'\n\nstatus_por_plataforma:\n\n'+JSON.stringify(gc().status_por_plataforma,null,2))">🔍 Ver dado bruto (diagnóstico)</button>
+    <button class="btn btn-outline" style="margin-left:8px" onclick="ST.mostrarDiagnostico=!ST.mostrarDiagnostico;renderTab()">🔍 Ver dado bruto (diagnóstico)</button>
+    ${ST.mostrarDiagnostico?`<pre style="margin-top:12px;padding:12px;background:#111;color:#0f0;font-size:11px;border-radius:8px;overflow:auto;max-height:400px;white-space:pre-wrap">margem_por_curva:
+
+${JSON.stringify(c.margem_por_curva,null,2)}
+
+status_por_plataforma:
+
+${JSON.stringify(c.status_por_plataforma,null,2)}</pre>`:''}
   </div>`;
 }
 
