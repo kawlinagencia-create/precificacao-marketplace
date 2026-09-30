@@ -862,7 +862,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
     <div style="padding:10px 12px;display:flex;flex-direction:column;gap:3px;font-size:11px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border)">
         <span style="color:var(--text2)">Preço Atual</span>
-        <span class="preco-inline-display" id="pd-${p.id}-${pl}-${k.qty}" onclick="startInlineEditPreco(this,'${p.id}','${c.id}','${pl}',${k.qty})" style="font-family:var(--mono);font-weight:600;cursor:pointer;border-bottom:1px dashed var(--text3);padding:1px 3px;border-radius:3px" title="Clique para editar">R$${r2.preco.toFixed(2)}</span>
+        <span class="preco-inline-display" id="pd-${p.id}-${pl}-${k.qty}" onclick="startInlineEditPreco(this,'${p.id}','${c.id}','${pl}',${k.qty},${r2.preco})" style="font-family:var(--mono);font-weight:600;cursor:pointer;border-bottom:1px dashed var(--text3);padding:1px 3px;border-radius:3px" title="Clique para editar">R$${r2.preco.toFixed(2)}</span>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid var(--border)">
         <span style="color:var(--text2)" title="Preço de teste — não conta no histórico de alterações, só o Preço Atual conta">🧪 Preço Teste</span>
@@ -1098,7 +1098,12 @@ function renderProdutos(c){
                 </div>
                 <div style="display:flex;gap:10px;flex-wrap:wrap">
                   ${kitsComDados.map(k=>renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro)).join('')}
-                  ${kitsFaltaPreco.map(k=>renderKitQuickPriceHTML(p,c,pl,k)).join('')}
+                  ${kitsFaltaPreco.map(k=>{
+                    const curvaSug=getCurvaProduto(p,pl,k.qty);
+                    const tipoSug=tipoDoProduto(p);
+                    const ideal=calcPrecoIdeal(k.custos[pl],pl,c.taxas,k.peso_kg||0,k.qty,c,curvaSug,tipoSug);
+                    return renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,ideal?ideal.preco:null);
+                  }).join('')}
                   ${!kitsComDados.length&&!kitsFaltaPreco.length?`<div style="padding:12px;color:var(--text3);font-size:12px">Nenhum kit com dados cadastrados para esta plataforma</div>`:''}
                 </div>
               </div>`;
@@ -1800,13 +1805,13 @@ function formatMoneyInput(el){
   if(!isNaN(v)&&v>=0) el.value=v.toFixed(2);
 }
 // Edição inline do Preço Atual direto na aba Produtos, tipo Excel
-function startInlineEditPreco(span,pid,cid,plat,kitQty){
+function startInlineEditPreco(span,pid,cid,plat,kitQty,valorSugerido){
   const cli=ST.clients.find(c=>String(c.id)===String(cid));
   const p=cli?.produtos?.find(x=>String(x.id)===String(pid));
   if(!p)return;
   const k=p.kits.find(x=>x.qty===kitQty);
   if(!k)return;
-  const valorAtual=k.precos?.[plat]||0;
+  const valorAtual=k.precos?.[plat]||valorSugerido||0;
   const input=document.createElement('input');
   input.type='number';input.step='0.01';input.className='preco-inline-input';input.value=valorAtual;
   span.replaceWith(input);input.focus();input.select();
