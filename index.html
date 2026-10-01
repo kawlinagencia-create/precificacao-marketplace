@@ -2299,6 +2299,10 @@ async function processarCurvaABC(input){
     //  B) codigo ANTES de KIT, com separador (ex: "123-KIT10-G") -> codigo=123, qty=10
     //  C) sem "KIT" nenhum = peça avulsa/K1 (ex: "319-CHO-G")     -> codigo=319, qty=1
     function parseSkuVarianteABC(skuVarRaw){
+      // Padrão combo: código-COR1+COR2(+COR3...)-tamanho -> quantidade = nº de cores unidas por "+"
+      // Ex: "672-PRE+CHO-XG" (Preto+Chocolate) = Kit 2
+      let mCombo=skuVarRaw.match(/^(\d+)-([A-ZÀ-Ü]+(?:\+[A-ZÀ-Ü]+)+)-/i);
+      if(mCombo) return{codigo:mCombo[1],qty:mCombo[2].split('+').length};
       let m=skuVarRaw.match(/^(\d+)KIT-?(\d+)/i);
       if(m) return{codigo:m[2],qty:parseInt(m[1])};
       m=skuVarRaw.match(/^(\d+)-?KIT-?(\d+)/i);
@@ -2493,6 +2497,9 @@ async function atualizarPrecosPorExtrato(input){
     //  B) codigo ANTES de KIT, com separador (ex: "123-KIT10-G")  -> codigo=123, qty=10
     //  C) sem "KIT" nenhum = peça avulsa/K1 (ex: "319-CHO-G")      -> codigo=319, qty=1
     function parseSkuVariante(skuVarRaw){
+      // Padrão combo: código-COR1+COR2(+COR3...)-tamanho -> quantidade = nº de cores unidas por "+"
+      let mCombo=skuVarRaw.match(/^(\d+)-([A-ZÀ-Ü]+(?:\+[A-ZÀ-Ü]+)+)-/i);
+      if(mCombo) return{codigo:mCombo[1],qty:mCombo[2].split('+').length};
       let m=skuVarRaw.match(/^(\d+)KIT-?(\d+)/i);
       if(m) return{codigo:m[2],qty:parseInt(m[1])};
       m=skuVarRaw.match(/^(\d+)-?KIT-?(\d+)/i);
