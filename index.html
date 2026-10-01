@@ -2299,14 +2299,23 @@ async function processarCurvaABC(input){
     //  B) codigo ANTES de KIT, com separador (ex: "123-KIT10-G") -> codigo=123, qty=10
     //  C) sem "KIT" nenhum = peça avulsa/K1 (ex: "319-CHO-G")     -> codigo=319, qty=1
     function parseSkuVarianteABC(skuVarRaw){
-      // Padrão combo: código-COR1+COR2(+COR3...)-tamanho -> quantidade = nº de cores unidas por "+"
-      // Ex: "672-PRE+CHO-XG" (Preto+Chocolate) = Kit 2
-      let mCombo=skuVarRaw.match(/^(\d+)-([A-ZÀ-Ü]+(?:\+[A-ZÀ-Ü]+)+)-/i);
-      if(mCombo) return{codigo:mCombo[1],qty:mCombo[2].split('+').length};
       let m=skuVarRaw.match(/^(\d+)KIT-?(\d+)/i);
       if(m) return{codigo:m[2],qty:parseInt(m[1])};
       m=skuVarRaw.match(/^(\d+)-?KIT-?(\d+)/i);
       if(m) return{codigo:m[1],qty:parseInt(m[2])};
+      // Padrão combo: código-(cores e quantidades)-tamanho -> soma a quantidade de cada parte.
+      // Cobre: "672-PRE+CHO-XG" (2 cores, 1 cada), "672-2CHO-XG" (2 do mesmo tom),
+      // "672- 1 PRE + 1 CHO-GG" (quantidade explícita por cor, com espaços)
+      let mCombo=skuVarRaw.match(/^(\d+)-(.+)-[A-Z0-9]+$/i);
+      if(mCombo&&/[A-ZÀ-Ü]/i.test(mCombo[2])){
+        const partes=mCombo[2].split(/\s*\+\s*/);
+        let qty=0,temCor=false;
+        for(const parte of partes){
+          const mp=parte.trim().match(/^(\d+)?\s*([A-ZÀ-Ü].*)$/i);
+          if(mp){qty+=mp[1]?parseInt(mp[1]):1;temCor=true;}
+        }
+        if(temCor&&qty>0) return{codigo:mCombo[1],qty};
+      }
       m=skuVarRaw.match(/^(\d+)/);
       if(m) return{codigo:m[1],qty:1};
       return null;
@@ -2497,13 +2506,21 @@ async function atualizarPrecosPorExtrato(input){
     //  B) codigo ANTES de KIT, com separador (ex: "123-KIT10-G")  -> codigo=123, qty=10
     //  C) sem "KIT" nenhum = peça avulsa/K1 (ex: "319-CHO-G")      -> codigo=319, qty=1
     function parseSkuVariante(skuVarRaw){
-      // Padrão combo: código-COR1+COR2(+COR3...)-tamanho -> quantidade = nº de cores unidas por "+"
-      let mCombo=skuVarRaw.match(/^(\d+)-([A-ZÀ-Ü]+(?:\+[A-ZÀ-Ü]+)+)-/i);
-      if(mCombo) return{codigo:mCombo[1],qty:mCombo[2].split('+').length};
       let m=skuVarRaw.match(/^(\d+)KIT-?(\d+)/i);
       if(m) return{codigo:m[2],qty:parseInt(m[1])};
       m=skuVarRaw.match(/^(\d+)-?KIT-?(\d+)/i);
       if(m) return{codigo:m[1],qty:parseInt(m[2])};
+      // Padrão combo: código-(cores e quantidades)-tamanho -> soma a quantidade de cada parte
+      let mCombo=skuVarRaw.match(/^(\d+)-(.+)-[A-Z0-9]+$/i);
+      if(mCombo&&/[A-ZÀ-Ü]/i.test(mCombo[2])){
+        const partes=mCombo[2].split(/\s*\+\s*/);
+        let qty=0,temCor=false;
+        for(const parte of partes){
+          const mp=parte.trim().match(/^(\d+)?\s*([A-ZÀ-Ü].*)$/i);
+          if(mp){qty+=mp[1]?parseInt(mp[1]):1;temCor=true;}
+        }
+        if(temCor&&qty>0) return{codigo:mCombo[1],qty};
+      }
       m=skuVarRaw.match(/^(\d+)/);
       if(m) return{codigo:m[1],qty:1};
       return null;
