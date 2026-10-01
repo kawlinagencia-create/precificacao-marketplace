@@ -2317,7 +2317,7 @@ async function processarCurvaABC(input){
         if(temCor&&qty>0) return{codigo:mCombo[1],qty};
       }
       m=skuVarRaw.match(/^(\d+)/);
-      if(m) return{codigo:m[1],qty:1};
+      if(m) return{codigo:m[1],qty:1,ambiguo:true};
       return null;
     }
     const map={};
@@ -2339,7 +2339,12 @@ async function processarCurvaABC(input){
       const parsed=skuVariante?parseSkuVarianteABC(skuVariante):null;
       if(parsed){
         kitQty=parsed.qty;
-        skuBase=`${parsed.qty}KIT${parsed.codigo}`.toUpperCase();
+        // SKU sem info de kit (ex: "025-G", só o código) — reforça buscando "Kit N" no nome do produto
+        if(parsed.ambiguo){
+          const mNome=nome.match(/\bKIT\s*(?:COM\s*)?(\d+)\b/i);
+          if(mNome) kitQty=parseInt(mNome[1]);
+        }
+        skuBase=`${kitQty}KIT${parsed.codigo}`.toUpperCase();
       }else{
         skuBase=skuPrincipal;
         const m1=skuPrincipal.match(/KIT-?(\d+)/i);
@@ -2480,6 +2485,7 @@ async function atualizarPrecosPorExtrato(input){
     if(isMLUnificado&&tipoAnuncioCol<0){toast('Coluna "Tipo de Anúncio" não encontrada no extrato — não dá pra separar Clássico/Premium.','error');return;}
 
     // Detectar colunas
+    const nomeCol=header.findIndex(h=>h.includes('produto'));
     const skuPrincipalCol=header.findIndex(h=>h.includes('sku principal'));
     const skuVarianteCol=header.findIndex(h=>h==='sku'||h==='sku da variante'||h==='skus');
     // Priorizar "Preço com Desconto" — é o preço real praticado
@@ -2522,7 +2528,7 @@ async function atualizarPrecosPorExtrato(input){
         if(temCor&&qty>0) return{codigo:mCombo[1],qty};
       }
       m=skuVarRaw.match(/^(\d+)/);
-      if(m) return{codigo:m[1],qty:1};
+      if(m) return{codigo:m[1],qty:1,ambiguo:true};
       return null;
     }
 
@@ -2544,7 +2550,12 @@ async function atualizarPrecosPorExtrato(input){
         const parsed=parseSkuVariante(skuVarRaw);
         if(parsed){
           qty=parsed.qty;
-          if(!skuPrincipal) skuProdutoAtual='KIT'+parsed.codigo;
+          // SKU sem info de kit (ex: "025-G") — reforça buscando "Kit N" no nome do produto
+          if(parsed.ambiguo&&nomeCol>=0&&row[nomeCol]){
+            const mNome=String(row[nomeCol]).match(/\bKIT\s*(?:COM\s*)?(\d+)\b/i);
+            if(mNome) qty=parseInt(mNome[1]);
+          }
+          if(!skuPrincipal) skuProdutoAtual=qty+'KIT'+parsed.codigo;
         }
       }
       if(!skuProdutoAtual)continue;
