@@ -64,6 +64,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14
 .chip-shein{background:#d1fae5;color:#065f46}
 .chip-ml{background:#fef9c3;color:#713f12}
 .chip-tiktok{background:#f1f5f9;color:#334155}
+.chip-custom{background:#ede9fe;color:#5b21b6}
 .chip-kit{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
 .lv{display:inline-flex;align-items:center;padding:3px 8px;border-radius:5px;font-size:11px;font-weight:600;white-space:nowrap;font-family:var(--mono)}
 .lv-g{background:var(--success-bg);color:var(--success)}
@@ -210,7 +211,8 @@ const ML_FRETE=[[0.3,[5.65,6.55,7.75,12.35,14.35,16.45,18.45,20.95]],[0.5,[5.95,
 const ML_FAIXAS=[18.99,48.99,78.99,99.99,119.99,149.99,199.99,Infinity];
 function calcFreteML(kg,p){if(!kg||kg<=0||!p||p<=0)return 0;const fi=ML_FAIXAS.findIndex(f=>p<=f);const l=ML_FRETE.find(([pm])=>kg<=pm)||ML_FRETE[ML_FRETE.length-1];return l[1][fi>=0?fi:7]||0;}
 // Faixas de comissão/taxa fixa automáticas — editáveis em "⚙️ Taxas Automáticas" (sidebar).
-// Isso evita precisar mexer no código toda vez que a Shopee/TikTok mudarem as taxas.
+// Qualquer plataforma que tenha faixas aqui passa a calcular Comissão e Taxa Fixa sozinha pelo preço.
+// Plataformas SEM faixas continuam usando o valor digitado por cliente na aba Taxas.
 let SISTEMA_CONFIG={
   shopee:{tiers:[
     {ate:79.99,comissao:20,taxaFixa:4.5},
@@ -218,11 +220,14 @@ let SISTEMA_CONFIG={
     {ate:199.99,comissao:14,taxaFixa:20},
     {ate:null,comissao:14,taxaFixa:26}
   ]},
-  tiktok:{tiers:[
+  tiktok:{estrito:true,tiers:[
     {ate:49.99,comissao:10,taxaFixa:4},
     {ate:null,comissao:6,taxaFixa:6}
-  ]}
+  ]},
+  extras:[] // plataformas criadas pelo usuário: [{id,label}]
 };
+// Valores iniciais sugeridos ao ativar faixas numa plataforma que ainda não tem (igual ao padrão da aba Taxas)
+const TIER_SEED={shein:16,ml_classico:14,ml_premium:19};
 function getTierPorPreco(tiers,preco,estrito){
   for(const t of tiers){
     if(t.ate==null) return t;
@@ -230,21 +235,69 @@ function getTierPorPreco(tiers,preco,estrito){
   }
   return tiers[tiers.length-1];
 }
+function tiersPlat(platId){
+  const c=SISTEMA_CONFIG[platId];
+  return(c&&Array.isArray(c.tiers)&&c.tiers.length)?c.tiers:null;
+}
+// Faixa que vale pro preço informado nessa plataforma (ou null se ela não tem faixas automáticas)
+function tierAutoPlat(platId,preco){
+  const t=tiersPlat(platId);
+  return t?getTierPorPreco(t,preco,!!SISTEMA_CONFIG[platId].estrito):null;
+}
+function isComissaoAuto(nome){
+  const n=(nome||'').toLowerCase().trim();
+  return n==='comissão'||n==='comissao'||n==='taxa shopee'||n==='comissão shopee'||n==='comissão tiktok';
+}
+function isTaxaFixaAuto(nome){
+  const n=(nome||'').toLowerCase().trim();
+  return n==='taxa fixa'||n==='taxa fixa shopee'||n==='taxa fixa tiktok'||n==='taxa por item'||n==='taxa fixa (auto)';
+}
 function shopeeComissao(p){return getTierPorPreco(SISTEMA_CONFIG.shopee.tiers,p,false).comissao/100;}
 function shopeeTaxaFixa(p){return getTierPorPreco(SISTEMA_CONFIG.shopee.tiers,p,false).taxaFixa;}
 function tiktokComissao(p){return getTierPorPreco(SISTEMA_CONFIG.tiktok.tiers,p,true).comissao/100;}
 function tiktokTaxaFixa(p){return getTierPorPreco(SISTEMA_CONFIG.tiktok.tiers,p,true).taxaFixa;}
+
+// ----- Plataformas criadas pelo usuário -----
+const TAXA_D_EXTRA=[{n:'Comissão',v:0,obs:'Automático por faixa de preço — edite em ⚙️ Taxas Automáticas'},{n:'Nota Fiscal',v:0},{n:'Ads',v:0},{n:'Cupom',v:0},{n:'Mão de Obra',v:0}];
+const TF_D_EXTRA=[{n:'Taxa Fixa',v:0,obs:'Automático por faixa de preço — edite em ⚙️ Taxas Automáticas'},{n:'Embal. K3',v:0.1},{n:'Embal. K5',v:0.1},{n:'Embal. K10',v:0.13}];
+function registrarPlataformaExtra(ex){
+  if(!ex||!ex.id||PLATS.some(p=>p.id===ex.id)) return;
+  PLATS.push({id:ex.id,label:ex.label||ex.id,cls:'chip-custom',custom:true});
+}
+// Garante que o cliente tenha as taxas de toda plataforma existente (inclusive as criadas depois dele)
+function garantirTaxasPlataformas(cli){
+  if(!cli.taxas) cli.taxas={};
+  for(const pl of PLATS){
+    if(cli.taxas[pl.id]) continue;
+    const baseP=(typeof TAXA_D!=='undefined'&&TAXA_D[pl.id])?TAXA_D[pl.id]:TAXA_D_EXTRA;
+    const baseF=(typeof TF_D!=='undefined'&&TF_D[pl.id])?TF_D[pl.id]:TF_D_EXTRA;
+    cli.taxas[pl.id]={perc:baseP.map(r=>({...r})),fixas:baseF.map(r=>({...r}))};
+  }
+}
+function slugPlataforma(nome){
+  return 'x_'+String(nome||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+}
 async function carregarConfigTaxasAutomaticas(){
   try{
     const{data,error}=await sb.from('prec_sistema_config').select('*').eq('id',1).maybeSingle();
     if(!error&&data?.taxas_auto){
-      if(data.taxas_auto.shopee?.tiers) SISTEMA_CONFIG.shopee.tiers=data.taxas_auto.shopee.tiers;
-      if(data.taxas_auto.tiktok?.tiers) SISTEMA_CONFIG.tiktok.tiers=data.taxas_auto.tiktok.tiers;
+      const ta=data.taxas_auto;
+      for(const k of Object.keys(ta)){
+        if(k==='extras'){
+          SISTEMA_CONFIG.extras=Array.isArray(ta.extras)?ta.extras:[];
+          SISTEMA_CONFIG.extras.forEach(registrarPlataformaExtra);
+        }else if(ta[k]&&Array.isArray(ta[k].tiers)&&ta[k].tiers.length){
+          // mescla pra manter flags padrão (ex.: tiktok.estrito) quando o salvo não tiver
+          SISTEMA_CONFIG[k]=Object.assign({},SISTEMA_CONFIG[k]||{},ta[k]);
+        }
+      }
     }
   }catch(err){console.error('Erro ao carregar config de taxas automáticas:',err);}
 }
 async function salvarConfigTaxasAutomaticas(){
-  const{error}=await sb.from('prec_sistema_config').upsert({id:1,taxas_auto:{shopee:{tiers:SISTEMA_CONFIG.shopee.tiers},tiktok:{tiers:SISTEMA_CONFIG.tiktok.tiers}}});
+  const payload={};
+  for(const k of Object.keys(SISTEMA_CONFIG)){ payload[k]=SISTEMA_CONFIG[k]; }
+  const{error}=await sb.from('prec_sistema_config').upsert({id:1,taxas_auto:payload});
   if(error){console.error('Erro ao salvar config de taxas automáticas:',error);toast('⚠️ ERRO ao salvar: '+error.message,'error');return;}
   toast('✅ Taxas automáticas salvas!');
   render();
@@ -258,12 +311,37 @@ function addTierAuto(pl){
   SISTEMA_CONFIG[pl].tiers.push({ate:null,comissao:0,taxaFixa:0});
   render();
 }
+function ativarTiersPlat(pl){
+  if(tiersPlat(pl)) return;
+  SISTEMA_CONFIG[pl]=Object.assign({},SISTEMA_CONFIG[pl]||{},{tiers:[{ate:null,comissao:TIER_SEED[pl]||0,taxaFixa:0}]});
+  render();
+}
+function desativarTiersPlat(pl){
+  if(pl==='shopee'||pl==='tiktok') return; // essas duas sempre têm faixas
+  if(!confirm('Desativar as faixas automáticas dessa plataforma?\n\nCada cliente volta a usar o valor digitado na aba Taxas.')) return;
+  delete SISTEMA_CONFIG[pl];
+  render();
+}
+function adicionarPlataformaCustom(){
+  const el=document.getElementById('nova-plat-nome');
+  const nome=(el?.value||'').trim();
+  if(!nome){toast('Digite o nome da plataforma','error');return;}
+  const id=slugPlataforma(nome);
+  if(id==='x_'){toast('Nome inválido','error');return;}
+  if(PLATS.some(p=>p.id===id||p.label.toLowerCase()===nome.toLowerCase())){toast('Essa plataforma já existe','error');return;}
+  SISTEMA_CONFIG.extras.push({id,label:nome});
+  registrarPlataformaExtra({id,label:nome});
+  SISTEMA_CONFIG[id]={tiers:[{ate:null,comissao:0,taxaFixa:0}]};
+  (ST.clients||[]).forEach(garantirTaxasPlataformas);
+  toast('✅ '+nome+' adicionada — preencha as faixas e clique em Salvar');
+  render();
+}
 function rmTierAuto(pl,i){
   SISTEMA_CONFIG[pl].tiers.splice(i,1);
   if(!SISTEMA_CONFIG[pl].tiers.length) SISTEMA_CONFIG[pl].tiers.push({ate:null,comissao:0,taxaFixa:0});
   render();
 }
-function mkTaxas(){const t={};for(const k of Object.keys(TAXA_D))t[k]={perc:TAXA_D[k].map(r=>({...r})),fixas:TF_D[k].map(r=>({...r}))};return t;}
+function mkTaxas(){const t={};for(const k of Object.keys(TAXA_D))t[k]={perc:TAXA_D[k].map(r=>({...r})),fixas:TF_D[k].map(r=>({...r}))};for(const pl of PLATS){if(!t[pl.id])t[pl.id]={perc:TAXA_D_EXTRA.map(r=>({...r})),fixas:TF_D_EXTRA.map(r=>({...r}))};}return t;}
 
 let ST={clients:[],activeId:null,tab:'dashboard',open:{},search:{q:'',scope:'todos'},modal:null,loading:true,calc:{plat:'shopee',prodId:null,kit:null,preco:'',custo:'',margem:'',peso:''},filter:{sku:'',plat:'',loja:'',sortField:'nome',sortDir:'asc'}};
 function gc(){return ST.clients.find(c=>c.id===ST.activeId)||ST.clients[0]||null;}
@@ -277,6 +355,7 @@ async function loadAll(){
     c.produtos=prods||[];
     if(!c.taxas)c.taxas=mkTaxas();
     else if(typeof c.taxas==='string')c.taxas=JSON.parse(c.taxas);
+    garantirTaxasPlataformas(c);
   }
   ST.clients=clients||[];
   if(!ST.activeId&&ST.clients.length)ST.activeId=ST.clients[0].id;
@@ -396,15 +475,13 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
     let tp=0;
     for(const r of t.perc){
       let v=r.v;
-      if(platId==='shopee'&&isComissaoShopee(r.n)&&r.auto!==false) v=shopeeComissao(p)*100;
-      if(platId==='tiktok'&&isComissaoTikTok(r.n)&&r.auto!==false) v=tiktokComissao(p)*100;
+      if(isComissaoAuto(r.n)&&r.auto!==false){const tr=tierAutoPlat(platId,p);if(tr) v=tr.comissao;}
       tp+=v/100;
     }
     let tf=0;
     for(const r of t.fixas){
       let v=r.v;
-      if(platId==='shopee'&&isTaxaFixaShopee(r.n)&&r.auto!==false) v=shopeeTaxaFixa(p);
-      if(platId==='tiktok'&&isTaxaFixaTikTok(r.n)&&r.auto!==false) v=tiktokTaxaFixa(p);
+      if(isTaxaFixaAuto(r.n)&&r.auto!==false){const tr=tierAutoPlat(platId,p);if(tr) v=tr.taxaFixa;}
       const nL=r.n.toLowerCase();
       const isKitSpecific=nL.includes('embal')||nL.includes('frete');
       if(isKitSpecific&&kitQty){
@@ -442,8 +519,7 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
   for(const r of t.perc){
     // Filtro por kit: se a taxa tem kits definidos e o kitQty não está na lista, pula
     if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty))continue;
-    let v=r.v;if(platId==='shopee'&&isComissaoShopee(r.n)&&r.auto!==false)v=shopeeComissao(preco)*100;
-    if(platId==='tiktok'&&isComissaoTikTok(r.n)&&r.auto!==false)v=tiktokComissao(preco)*100;
+    let v=r.v;if(isComissaoAuto(r.n)&&r.auto!==false){const tr=tierAutoPlat(platId,preco);if(tr)v=tr.comissao;}
     totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100,auto:r.auto});
   }
   let totalFixa=0;const fixaDetail=[];
@@ -451,8 +527,7 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
     // Filtro por kit configurado manualmente na aba Taxas
     if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty))continue;
     let v=r.v;
-    if(platId==='shopee'&&isTaxaFixaShopee(r.n)&&r.auto!==false) v=shopeeTaxaFixa(preco);
-    if(platId==='tiktok'&&isTaxaFixaTikTok(r.n)&&r.auto!==false) v=tiktokTaxaFixa(preco);
+    if(isTaxaFixaAuto(r.n)&&r.auto!==false){const tr=tierAutoPlat(platId,preco);if(tr) v=tr.taxaFixa;}
     // Embalagem ou Frete por kit: usar só a taxa correspondente ao kit atual (detecção por nome)
     const nL=r.n.toLowerCase();
     const isKitSpecific=nL.includes('embal')||nL.includes('frete');
@@ -1034,6 +1109,7 @@ function renderProdutos(c){
           <option value="shein">Shein</option>
           <option value="ml">Mercado Livre</option>
           <option value="tiktok">TikTok</option>
+          ${(SISTEMA_CONFIG.extras||[]).map(e=>`<option value="${e.id}">${e.label}</option>`).join('')}
         </select>
         <button class="btn-icon" title="Ordenado por SKU — ${sortDir==='asc'?'crescente':'decrescente'}" onclick="ST.filter.sortDir=ST.filter.sortDir==='asc'?'desc':'asc';renderTab()">${sortDir==='asc'?'↑':'↓'}</button>
         <button class="btn btn-primary" onclick="openNewProd()">+ Novo produto</button>
@@ -1142,7 +1218,7 @@ function renderAlertas(c){
 
 function renderTaxaRow(pl,tipo,r,i,unidade){
   const c=gc();
-  const isAutoField=(pl.id==='shopee'||pl.id==='tiktok')&&((tipo==='perc'&&(pl.id==='shopee'?isComissaoShopee(r.n):isComissaoTikTok(r.n)))||(tipo==='fixas'&&(pl.id==='shopee'?isTaxaFixaShopee(r.n):isTaxaFixaTikTok(r.n))));
+  const isAutoField=!!tiersPlat(pl.id)&&((tipo==='perc'&&isComissaoAuto(r.n))||(tipo==='fixas'&&isTaxaFixaAuto(r.n)));
   const isAuto=r.auto!==false;
   // Kits disponíveis nessa plataforma — pega de todos os produtos do cliente
   const todosKits=[...new Set((c.produtos||[]).flatMap(p=>(p.kits||[]).map(k=>k.qty)))].sort((a,b)=>a-b);
@@ -1293,13 +1369,15 @@ function updateCalc(){
     function alvo(ma){
       let p=custo*2;
       for(let i=0;i<80;i++){
-        const comRow=(platSel==='shopee'||platSel==='tiktok')?t.perc.find(r=>platSel==='shopee'?isComissaoShopee(r.n):isComissaoTikTok(r.n)):null;
+        const temTiers=!!tiersPlat(platSel);
+        const trP=temTiers?tierAutoPlat(platSel,p):null;
+        const comRow=temTiers?t.perc.find(r=>isComissaoAuto(r.n)):null;
         const comAuto=comRow?comRow.auto!==false:true;
-        const tp=(platSel==='shopee'&&comAuto)?shopeeComissao(p):(platSel==='tiktok'&&comAuto)?tiktokComissao(p):t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
-        const tfRow=(platSel==='shopee'||platSel==='tiktok')?t.fixas.find(r=>platSel==='shopee'?isTaxaFixaShopee(r.n):isTaxaFixaTikTok(r.n)):null;
+        // Comissão automática da faixa + as demais taxas percentuais (antes ignorava as demais)
+        const tp=(trP&&comAuto)?(trP.comissao+t.perc.filter(r=>!isComissaoAuto(r.n)).reduce((s,r)=>s+(r.v||0),0))/100:t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
+        const tfRow=temTiers?t.fixas.find(r=>isTaxaFixaAuto(r.n)):null;
         const tfAuto=tfRow?tfRow.auto!==false:true;
-        const tfE=(platSel==='shopee'&&tfAuto)?t.fixas.filter(r=>!isTaxaFixaShopee(r.n)).reduce((s,r)=>s+(r.v||0),0):(platSel==='tiktok'&&tfAuto)?t.fixas.filter(r=>!isTaxaFixaTikTok(r.n)).reduce((s,r)=>s+(r.v||0),0):0;
-        const tf=(platSel==='shopee'&&tfAuto)?shopeeTaxaFixa(p)+tfE:(platSel==='tiktok'&&tfAuto)?tiktokTaxaFixa(p)+tfE:t.fixas.reduce((s,r)=>s+(r.v||0),0);
+        const tf=(trP&&tfAuto)?trP.taxaFixa+t.fixas.filter(r=>!isTaxaFixaAuto(r.n)).reduce((s,r)=>s+(r.v||0),0):t.fixas.reduce((s,r)=>s+(r.v||0),0);
         const fr=(platSel==='ml_classico'||platSel==='ml_premium')&&peso>0?calcFreteML(peso,p):0;
         const d=1-tp-ma;if(d<=0)break;
         const p2=(custo+tf+fr)/d;if(!isFinite(p2)||p2<=0)break;
@@ -1318,8 +1396,8 @@ function updateCalc(){
   if(!r){resEl.innerHTML='<div style="color:var(--text3);padding:20px;text-align:center">Dados insuficientes</div>';return;}
   const cBg=r.lucro>=0?'var(--accent-bg)':'var(--danger-bg)';const cFg=r.lucro>=0?'var(--accent-text)':'var(--danger)';
   resEl.innerHTML=
-    r.percDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&isComissaoShopee(d.n)&&d.auto!==false?`<span class="shopee-badge">${preco<=79.99?'20% ≤R$79':'14% ≥R$80'}</span>`:''}${platSel==='tiktok'&&isComissaoTikTok(d.n)&&d.auto!==false?`<span class="shopee-badge">${preco<50?'10% <R$50':'6% ≥R$50'}</span>`:''}</span><div style="display:flex;gap:8px;align-items:center"><span style="color:var(--text3);font-size:10px">${d.v.toFixed(2)}%</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div></div>`).join('')+
-    r.fixaDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${platSel==='shopee'&&isTaxaFixaShopee(d.n)&&d.auto!==false?`<span class="shopee-badge">R$${shopeeTaxaFixa(preco)} auto</span>`:''}${platSel==='tiktok'&&isTaxaFixaTikTok(d.n)&&d.auto!==false?`<span class="shopee-badge">R$${tiktokTaxaFixa(preco)} auto</span>`:''}</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div>`).join('')+
+    r.percDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${isComissaoAuto(d.n)&&d.auto!==false&&tierAutoPlat(platSel,preco)?`<span class="shopee-badge">${tierAutoPlat(platSel,preco).comissao}% auto</span>`:''}</span><div style="display:flex;gap:8px;align-items:center"><span style="color:var(--text3);font-size:10px">${d.v.toFixed(2)}%</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div></div>`).join('')+
+    r.fixaDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${isTaxaFixaAuto(d.n)&&d.auto!==false&&tierAutoPlat(platSel,preco)?`<span class="shopee-badge">R$${tierAutoPlat(platSel,preco).taxaFixa} auto</span>`:''}</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div>`).join('')+
     `<div style="height:1px;background:var(--border);margin:8px 0"></div>
     <div class="calc-row total"><span>Total de Taxas</span><span class="calc-val" style="color:var(--danger)">R$ ${r.tax.toFixed(2)}</span></div>
     <div style="height:1px;background:var(--border);margin:8px 0"></div>
@@ -1336,29 +1414,50 @@ function updateCalc(){
 function renderModal(){
   const m=ST.modal;
   if(m.type==='taxasAuto'){
-    const renderTiers=(pl,label)=>{
-      const tiers=SISTEMA_CONFIG[pl].tiers;
-      return`<div style="margin-bottom:18px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:8px">${label}</div>
+    const renderTiers=(pl)=>{
+      const tiers=tiersPlat(pl.id);
+      const fixa=pl.id==='shopee'||pl.id==='tiktok';
+      if(!tiers){
+        return`<div style="margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <div style="font-weight:700;font-size:13px"><span class="chip ${pl.cls}">${pl.label}</span></div>
+            <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="ativarTiersPlat('${pl.id}')">Ativar faixas automáticas</button>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px">Sem faixas automáticas — cada cliente usa a comissão e a taxa fixa digitadas na aba Taxas.</div>
+        </div>`;
+      }
+      return`<div style="margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px">
+          <div style="font-weight:700;font-size:13px"><span class="chip ${pl.cls}">${pl.label}</span></div>
+          ${fixa?'':`<button class="btn-icon" style="font-size:11px" title="Voltar a usar o valor de cada cliente (aba Taxas)" onclick="desativarTiersPlat('${pl.id}')">Desativar faixas</button>`}
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:6px;font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">
           <div>Até (R$)</div><div>Comissão (%)</div><div>Taxa Fixa (R$)</div><div></div>
         </div>
         ${tiers.map((t,i)=>`<div style="display:grid;grid-template-columns:1fr 1fr 1fr 32px;gap:6px;margin-bottom:6px;align-items:center">
-          <input class="taxa-input" type="number" step="0.01" placeholder="sem limite" value="${t.ate??''}" onchange="updTierAuto('${pl}',${i},'ate',this.value)"/>
-          <input class="taxa-input" type="number" step="0.01" value="${t.comissao}" onchange="updTierAuto('${pl}',${i},'comissao',this.value)"/>
-          <input class="taxa-input" type="number" step="0.01" value="${t.taxaFixa}" onchange="updTierAuto('${pl}',${i},'taxaFixa',this.value)"/>
-          <button class="btn-icon danger" title="Remover faixa" onclick="rmTierAuto('${pl}',${i})">✕</button>
+          <input class="taxa-input" type="number" step="0.01" placeholder="sem limite" value="${t.ate??''}" onchange="updTierAuto('${pl.id}',${i},'ate',this.value)"/>
+          <input class="taxa-input" type="number" step="0.01" value="${t.comissao}" onchange="updTierAuto('${pl.id}',${i},'comissao',this.value)"/>
+          <input class="taxa-input" type="number" step="0.01" value="${t.taxaFixa}" onchange="updTierAuto('${pl.id}',${i},'taxaFixa',this.value)"/>
+          <button class="btn-icon danger" title="Remover faixa" onclick="rmTierAuto('${pl.id}',${i})">✕</button>
         </div>`).join('')}
-        <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="addTierAuto('${pl}')">+ Adicionar faixa</button>
+        <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="addTierAuto('${pl.id}')">+ Adicionar faixa</button>
+        ${pl.id!=='shopee'&&pl.id!=='tiktok'?'<div style="font-size:10px;color:var(--text3);margin-top:6px">A taxa fixa só é aplicada se o cliente tiver uma linha chamada "Taxa Fixa" nessa plataforma (aba Taxas).</div>':''}
       </div>`;
     };
-    return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" style="width:520px" onclick="event.stopPropagation()">
+    return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" style="width:560px;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
       <div class="modal-header"><div><div class="modal-title">⚙️ Taxas Automáticas</div><div style="font-size:12px;color:var(--text3);margin-top:2px">Comissão e taxa fixa por faixa de preço — vale pra todos os clientes</div></div><button class="btn-icon" onclick="closeModal()">✕</button></div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:14px;padding:10px;background:var(--surface2);border-radius:8px">
         💡 A última faixa de cada plataforma deve ficar com "Até" em branco (sem limite) — ela cobre tudo que passar da faixa anterior. As faixas devem estar em ordem crescente de preço.
       </div>
-      ${renderTiers('shopee','🛍️ Shopee')}
-      ${renderTiers('tiktok','🎵 TikTok')}
+      ${PLATS.map(renderTiers).join('')}
+      <div style="margin-bottom:16px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px">➕ Adicionar plataforma</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="taxa-input" id="nova-plat-nome" type="text" placeholder="Ex: Amazon, Magalu..." style="flex:1;text-align:left"/>
+          <button class="btn btn-outline" onclick="adicionarPlataformaCustom()">Adicionar</button>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">A nova plataforma aparece no cadastro de produtos e na aba Taxas de todos os clientes, com as faixas acima.</div>
+      </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
         <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarConfigTaxasAutomaticas()">Salvar</button>
@@ -2057,7 +2156,8 @@ function classificarCurva(pctAntes,pctDepois){
   return 'A';
 }
 const MESES=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-const PLAT_ABC=[{id:'todos',label:'Todas'},{id:'shopee',label:'Shopee'},{id:'shein',label:'Shein'},{id:'ml',label:'Mercado Livre'},{id:'tiktok',label:'TikTok'}];
+function platAbcLista(){return[...PLAT_ABC_BASE,...(SISTEMA_CONFIG.extras||[]).map(e=>({id:e.id,label:e.label}))];}
+const PLAT_ABC_BASE=[{id:'todos',label:'Todas'},{id:'shopee',label:'Shopee'},{id:'shein',label:'Shein'},{id:'ml',label:'Mercado Livre'},{id:'tiktok',label:'TikTok'}];
 
 function renderCurvaABC(){
   const dadosFilt=CABC.dados.filter(d=>{
@@ -2082,7 +2182,7 @@ function renderCurvaABC(){
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px">📤 Importar extrato de vendas</div>
       <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-        <div><div class="form-label">Plataforma</div><select class="calc-select" style="width:130px" id="abc-upload-plat">${PLAT_ABC.map(p=>`<option value="${p.id}">${p.label}</option>`).join('')}</select></div>
+        <div><div class="form-label">Plataforma</div><select class="calc-select" style="width:130px" id="abc-upload-plat">${platAbcLista().map(p=>`<option value="${p.id}">${p.label}</option>`).join('')}</select></div>
         <div><input type="file" id="abc-file-input" accept=".xlsx,.xls" style="display:none" onchange="processarCurvaABC(this)"/><button class="btn btn-primary" onclick="document.getElementById('abc-file-input').click()" ${CABC.uploading?'disabled':''}>${CABC.uploading?'Salvando...':'📊 Selecionar Excel'}</button></div>
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:8px">Cada importação substitui os dados anteriores dessa plataforma pelo retrato mais recente do extrato — não acumula por mês.</div>
@@ -2109,7 +2209,7 @@ function renderCurvaABC(){
     <div class="filter-bar" style="margin-bottom:10px">
       <span style="font-size:11px;font-weight:600;color:var(--text3)">Filtrar:</span>
       <input class="filter-input" placeholder="SKU ou nome do produto" value="${CABC.filtroSku}" oninput="CABC.filtroSku=this.value;atualizarTabelaABC()" style="width:200px"/>
-      <select class="filter-select" onchange="CABC.plat=this.value;consultarCurvaABC()">${PLAT_ABC.map(p=>`<option value="${p.id}" ${p.id===CABC.plat?'selected':''}>${p.label}</option>`).join('')}</select>
+      <select class="filter-select" onchange="CABC.plat=this.value;consultarCurvaABC()">${platAbcLista().map(p=>`<option value="${p.id}" ${p.id===CABC.plat?'selected':''}>${p.label}</option>`).join('')}</select>
       <div style="display:flex;gap:4px">
         ${['','A','B','C'].map(cv=>`<button onclick="CABC.filtroCurva='${cv}';atualizarTabelaABC()" style="padding:4px 10px;font-size:11px;border-radius:20px;border:1px solid ${CABC.filtroCurva===cv?'var(--text)':'var(--border)'};background:${CABC.filtroCurva===cv?'var(--text)':'transparent'};color:${CABC.filtroCurva===cv?'#fff':'var(--text2)'};cursor:pointer;font-family:var(--font)">${cv||'Todas'}</button>`).join('')}
       </div>
