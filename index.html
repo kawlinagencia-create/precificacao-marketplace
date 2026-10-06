@@ -241,6 +241,8 @@ function tiersPlat(platId){
 }
 // Faixa que vale pro preço informado nessa plataforma (ou null se ela não tem faixas automáticas)
 // Shopee: a comissão automática incide sobre (preço − cupom fixo em R$)
+// Linhas percentuais que incidem sobre (preço − cupom) na Shopee
+function baseDescontaCupom(n){return isComissaoAuto(n)||/^\s*(campanha|afiliados?)\b/i.test(n||'');}
 function cupomFixoShopee(platId,t,kitQty){
   if(platId!=='shopee'||!t||!t.fixas) return 0;
   let s=0;
@@ -487,7 +489,7 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
     for(const r of t.perc){
       let v=r.v;
       if(isComissaoAuto(r.n)&&r.auto!==false){const tr=tierAutoPlat(platId,p);if(tr) v=tr.comissao;}
-      if(isComissaoAuto(r.n)) comPct+=v/100;
+      if(baseDescontaCupom(r.n)) comPct+=v/100;
       tp+=v/100;
     }
     let tf=0;
@@ -538,7 +540,7 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
     // Filtro por kit: se a taxa tem kits definidos e o kitQty não está na lista, pula
     if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty))continue;
     let v=r.v;if(isComissaoAuto(r.n)&&r.auto!==false){const tr=tierAutoPlat(platId,preco);if(tr)v=tr.comissao;}
-    const baseCom=isComissaoAuto(r.n)?Math.max(0,preco-cupomFixoShopee(platId,t,kitQty)):preco;
+    const baseCom=baseDescontaCupom(r.n)?Math.max(0,preco-cupomFixoShopee(platId,t,kitQty)):preco;
     totalPerc+=v/100;percDetail.push({n:r.n,v,val:baseCom*v/100,auto:r.auto});
   }
   let totalFixa=0;const fixaDetail=[];
@@ -1397,7 +1399,7 @@ function updateCalc(){
         const tfRow=temTiers?t.fixas.find(r=>isTaxaFixaAuto(r.n)):null;
         const tfAuto=tfRow?tfRow.auto!==false:true;
         const tf=(trP&&tfAuto)?trP.taxaFixa+t.fixas.filter(r=>!isTaxaFixaAuto(r.n)).reduce((s,r)=>s+(r.v||0),0):t.fixas.reduce((s,r)=>s+(r.v||0),0);
-        const comPctA=(trP&&comAuto)?trP.comissao/100:((t.perc.find(r=>isComissaoAuto(r.n))||{}).v||0)/100;
+        const comPctA=((trP&&comAuto)?trP.comissao:0)/100+t.perc.filter(r=>baseDescontaCupom(r.n)&&!((trP&&comAuto)&&isComissaoAuto(r.n))).reduce((s,r)=>s+(r.v||0),0)/100;
         const tfX=tf-comPctA*cupomFixoShopee(platSel,t);
         const fr=(platSel==='ml_classico'||platSel==='ml_premium')&&peso>0?calcFreteML(peso,p):0;
         const d=1-tp-ma;if(d<=0)break;
