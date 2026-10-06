@@ -240,6 +240,17 @@ function tiersPlat(platId){
   return(c&&Array.isArray(c.tiers)&&c.tiers.length)?c.tiers:null;
 }
 // Faixa que vale pro preço informado nessa plataforma (ou null se ela não tem faixas automáticas)
+// Shopee: a comissão automática incide sobre (preço − cupom fixo em R$)
+function cupomFixoShopee(platId,t,kitQty){
+  if(platId!=='shopee'||!t||!t.fixas) return 0;
+  let s=0;
+  for(const r of t.fixas){
+    if(!/cupom/i.test(r.n||'')) continue;
+    if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty)) continue;
+    s+=Number(r.v)||0;
+  }
+  return s;
+}
 function tierAutoPlat(platId,preco){
   const t=tiersPlat(platId);
   return t?getTierPorPreco(t,preco,!!SISTEMA_CONFIG[platId].estrito):null;
@@ -472,10 +483,11 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
   let tpFinal=0,tfFinal=0;
   for(let i=0;i<100;i++){
     // Soma TODAS as taxas percentuais, usando a comissão automática da Shopee quando aplicável
-    let tp=0;
+    let tp=0,comPct=0;
     for(const r of t.perc){
       let v=r.v;
       if(isComissaoAuto(r.n)&&r.auto!==false){const tr=tierAutoPlat(platId,p);if(tr) v=tr.comissao;}
+      if(isComissaoAuto(r.n)) comPct+=v/100;
       tp+=v/100;
     }
     let tf=0;
@@ -498,6 +510,7 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
     }
     const frML=(platId==='ml_classico'||platId==='ml_premium')&&pesoKg>0?calcFreteML(pesoKg,p):0;
     tf+=frML;
+    tf-=comPct*cupomFixoShopee(platId,t,kitQty); // desconto do cupom na base da comissão (Shopee)
     tpFinal=tp;tfFinal=tf;
     // margem % = metaPerc → (p - custo - tf - p*tp)/p = metaPerc
     const p2=(custo+tf)/(1-tp-metaPerc);
@@ -525,7 +538,8 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
     // Filtro por kit: se a taxa tem kits definidos e o kitQty não está na lista, pula
     if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty))continue;
     let v=r.v;if(isComissaoAuto(r.n)&&r.auto!==false){const tr=tierAutoPlat(platId,preco);if(tr)v=tr.comissao;}
-    totalPerc+=v/100;percDetail.push({n:r.n,v,val:preco*v/100,auto:r.auto});
+    const baseCom=isComissaoAuto(r.n)?Math.max(0,preco-cupomFixoShopee(platId,t,kitQty)):preco;
+    totalPerc+=v/100;percDetail.push({n:r.n,v,val:baseCom*v/100,auto:r.auto});
   }
   let totalFixa=0;const fixaDetail=[];
   for(const r of t.fixas){
@@ -1383,9 +1397,11 @@ function updateCalc(){
         const tfRow=temTiers?t.fixas.find(r=>isTaxaFixaAuto(r.n)):null;
         const tfAuto=tfRow?tfRow.auto!==false:true;
         const tf=(trP&&tfAuto)?trP.taxaFixa+t.fixas.filter(r=>!isTaxaFixaAuto(r.n)).reduce((s,r)=>s+(r.v||0),0):t.fixas.reduce((s,r)=>s+(r.v||0),0);
+        const comPctA=(trP&&comAuto)?trP.comissao/100:((t.perc.find(r=>isComissaoAuto(r.n))||{}).v||0)/100;
+        const tfX=tf-comPctA*cupomFixoShopee(platSel,t);
         const fr=(platSel==='ml_classico'||platSel==='ml_premium')&&peso>0?calcFreteML(peso,p):0;
         const d=1-tp-ma;if(d<=0)break;
-        const p2=(custo+tf+fr)/d;if(!isFinite(p2)||p2<=0)break;
+        const p2=(custo+tfX+fr)/d;if(!isFinite(p2)||p2<=0)break;
         if(Math.abs(p2-p)<0.01)break;p=p2;
       }
       return Math.max(0,p);
