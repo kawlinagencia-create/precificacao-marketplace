@@ -507,9 +507,14 @@ function calcPrecoIdeal(custo,platId,taxas,pesoKg,kitQty,cliente,curva,tipoProdu
     // não mudam de faixa juntas (ex: uma travada em "Manual" e outra em "Auto")
     p=i<20?p2:(p*0.5+p2*0.5);
   }
-  const precoArredondado=arredondarPara99(Math.max(0,p));
+  let precoArredondado=arredondarPara99(Math.max(0,p));
   // Recalcular a margem real com o preço arredondado
-  const r=calcR(precoArredondado,custo,platId,taxas,pesoKg,kitQty);
+  let r=calcR(precoArredondado,custo,platId,taxas,pesoKg,kitQty);
+  // Nunca ficar abaixo da meta: sobe de ,99 em ,99 até atingir a margem configurada
+  for(let k=0;k<30&&r&&r.margem<metaPerc*100-0.0001;k++){
+    precoArredondado=Math.round((precoArredondado+1)*100)/100;
+    r=calcR(precoArredondado,custo,platId,taxas,pesoKg,kitQty);
+  }
   return{preco:precoArredondado,margemPerc:r?r.margem:metaPerc*100,curvaUsada:curva||null,metaUsada:metaPerc*100,tpUsado:tpFinal*100,tfUsado:tfFinal,precoConvergido:p};
 }
 function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
