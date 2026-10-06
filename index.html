@@ -242,7 +242,7 @@ function tiersPlat(platId){
 // Faixa que vale pro preço informado nessa plataforma (ou null se ela não tem faixas automáticas)
 // Shopee: a comissão automática incide sobre (preço − cupom fixo em R$)
 // Linhas percentuais que incidem sobre (preço − cupom) na Shopee
-function baseDescontaCupom(n){return isComissaoAuto(n)||/^\s*(campanha|afiliados?)\b/i.test(n||'');}
+function baseDescontaCupom(n){return isComissaoAuto(n)||/^\s*(campanha|afiliados?|ads)\b/i.test(n||'');}
 function cupomFixoShopee(platId,t,kitQty){
   if(platId!=='shopee'||!t||!t.fixas) return 0;
   let s=0;
