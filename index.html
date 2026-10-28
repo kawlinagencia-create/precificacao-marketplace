@@ -1672,7 +1672,7 @@ function renderCalculadora(c){
     :!p||!k?`<div class="est-muted">Escolha um SKU e o kit para ver e lançar os usos da reserva.</div>`
     :`${usos.length?`<table class="est-table"><thead><tr><th>Ferramenta</th><th>Valor</th><th>Desde</th><th>Motivo</th><th></th></tr></thead><tbody>
         ${usos.map(u=>`<tr><td>${escH(u.ferramenta)}</td><td class="num">${u.tipo==='%'?String(u.valor).replace('.',',')+'%':brlE(Number(u.valor))}</td><td>${new Date(u.created_at).toLocaleDateString('pt-BR')}</td><td>${escH(u.motivo||'')}</td><td><button class="btn btn-outline est-mini" onclick="estEncerrarUso('${u.id}')">Encerrar</button></td></tr>`).join('')}
-      </tbody></table>`:`<div class="est-muted">Nenhum uso ativo da reserva neste SKU/kit/plataforma.</div>`}
+      </tbody></table>`:`<div class="est-muted">Nenhum uso ativo da reserva neste kit nesta plataforma.</div>`}
       <div class="est-form">
         <select id="est-uso-ferr" class="calc-select" style="width:auto;flex:2" onchange="document.getElementById('est-uso-outra').style.display=this.value==='__outra'?'':'none'">
           ${[...(c.taxas[pl]?.perc||[]),...(c.taxas[pl]?.fixas||[])].filter(r=>catTaxa(r)==='mkt').map(r=>`<option value="${escH(r.n)}">Aumentar ${escH(r.n)}</option>`).join('')}
@@ -1723,9 +1723,9 @@ function renderCalculadora(c){
         <div class="calc-title">💡 Estratégia de preço${p?` · ${escH(p.sku||p.nome)} · Kit ${k?.qty||''} · ${PLATS.find(x=>x.id===pl)?.label||pl}`:''}</div>
         <div id="est-top"></div>
         ${p&&k?`<div class="est-save">
-          <button class="btn btn-primary" onclick="estSalvar()">💾 Salvar estratégia neste SKU</button>
+          <button class="btn btn-primary" onclick="estSalvar()">💾 Salvar estratégia deste kit</button>
           <span class="est-muted">${est?`Salvo em ${new Date(est.salvo_em).toLocaleString('pt-BR')}: piso ${brlE(est.piso)} · alvo ${brlE(est.alvo)} · tabela ${brlE(est.tabela)}`:'Ainda não salvo para esta plataforma.'}</span>
-        </div>`:`<div class="est-muted" style="margin-top:10px">Escolha um SKU para salvar a estratégia nele.</div>`}
+        </div>`:`<div class="est-muted" style="margin-top:10px">Escolha o SKU e o kit para salvar a estratégia.</div>`}
       </div>
       <div class="calc-card" style="margin-bottom:12px">
         <div class="calc-title">🎚️ Simulador de desconto</div>
@@ -1828,7 +1828,7 @@ function renderEstrategias(c){
       ${platsUsadas.map(id=>`<span class="est-chip ${F.plat===id?'on':''}" onclick="estFiltro('plat','${id}')">${PLATS.find(y=>y.id===id)?.label||id}</span>`).join('')}
       ${F.sit?`<span class="est-chip on" onclick="estFiltro('sit','')">✕ limpar situação</span>`:''}
     </div>
-    ${!todas.length?`<div class="calc-card" style="text-align:center;color:var(--text3);padding:30px">Nenhuma estratégia salva nesta loja ainda.<br>Abra a <a href="#" onclick="setTab('calculadora');return false">Calculadora</a>, escolha um SKU e clique em "Salvar estratégia neste SKU".</div>`
+    ${!todas.length?`<div class="calc-card" style="text-align:center;color:var(--text3);padding:30px">Nenhuma estratégia salva nesta loja ainda.<br>Abra a <a href="#" onclick="setTab('calculadora');return false">Calculadora</a>, escolha um SKU e clique em "Salvar estratégia deste kit".</div>`
       :!rows.length?`<div class="calc-card" style="text-align:center;color:var(--text3);padding:30px">Nada encontrado com esses filtros.</div>`
       :`<div class="est-cards">${rows.map(card).join('')}</div>`}
   </div>`;
@@ -1854,7 +1854,7 @@ function renderEstLoja(c){
       }
     }
   }
-  if(!rows.length) return`<div class="est-muted">Nenhuma estratégia salva ainda. Escolha um SKU acima e clique em "Salvar estratégia neste SKU".</div>`;
+  if(!rows.length) return`<div class="est-muted">Nenhuma estratégia salva ainda. Escolha um SKU acima e clique em "Salvar estratégia deste kit".</div>`;
   return`<div class="table-scroll"><table class="est-table">
     <thead><tr><th>SKU</th><th>Kit</th><th>Plataforma</th><th class="num">Piso</th><th class="num">Alvo</th><th class="num">Tabela</th><th class="num">Preço atual</th><th class="num">Reserva</th><th class="num">Usado</th><th>Situação</th><th></th></tr></thead>
     <tbody>${rows.map(x=>`<tr>
@@ -1939,7 +1939,7 @@ async function estSalvar(){
     desconto:Math.round(E.desc*1000)/10,reserva:Math.round(E.reserva*10000)/100,margem:Math.round(E.margem*10000)/100,
     margem_manual:E.margemManual,custo:E.custo,salvo_em:new Date().toISOString()};
   try{await saveProduct(E.p,E.c.id);}catch(err){toast('⚠️ ERRO ao salvar: '+(err.message||'falha'),'error');return;}
-  toast('✅ Estratégia salva — veja na aba 🎯 Estratégias');renderTab();
+  toast(`✅ Estratégia do Kit ${E.k.qty} (${PLATS.find(x=>x.id===E.pl)?.label||E.pl}) salva — veja na aba 🎯 Estratégias`);renderTab();
 }
 
 function renderModal(){
