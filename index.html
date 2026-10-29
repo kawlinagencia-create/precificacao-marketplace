@@ -225,8 +225,6 @@ let SISTEMA_CONFIG={
   tiktok:{estrito:true,tiers:[
     {ate:49.99,comissao:10,taxaFixa:4},
     {ate:null,comissao:6,taxaFixa:6}
-  ],outras:[
-    {n:'Taxa Frete%',tipo:'%',v:6,teto:50}   // Programa de Taxas de Envio: 6% por pedido, teto R$50
   ]},
   shein:{tiers:[
     {ate:null,comissao:20,taxaFixa:0}   // moda feminina 20% (demais categorias 18%); sem taxa fixa
@@ -564,8 +562,7 @@ function calcR(preco,custo,platId,taxas,pesoKg,kitQty){
     if(kitQty&&r.kits&&r.kits.length>0&&!r.kits.includes(kitQty))continue;
     let v=r.v;if(isComissaoAuto(r.n)&&r.auto!==false){const tr=tierAutoPlat(platId,preco);if(tr)v=tr.comissao;}
     const baseCom=baseDescontaCupom(r.n)?Math.max(0,preco-cupomFixoShopee(platId,t,kitQty)):preco;
-    let valP=baseCom*v/100;if(r.teto>0&&valP>r.teto)valP=r.teto; // ex.: taxa de frete do TikTok com teto de R$50
-    totalPerc+=v/100;percDetail.push({n:r.n,v,val:valP,auto:r.auto});
+    totalPerc+=v/100;percDetail.push({n:r.n,v,val:baseCom*v/100,auto:r.auto});
   }
   let totalFixa=0;const fixaDetail=[];
   for(const r of t.fixas){
@@ -946,39 +943,7 @@ async function salvarPrecoRapido(pid,cid,plat,kitQty,val){
 }
 /* ===== Taxas por kit: desativar ou mudar o valor de uma taxa da loja só em um kit/plataforma =====
    Fica salvo no próprio kit: k.taxas_kit[plataforma]["perc:Nome"|"fixas:Nome"] = {off:true} ou {v:número} */
-/* "Outras taxas da plataforma" (⚙️ Taxas Automáticas): valem para todas as lojas.
-   Se a loja tiver uma taxa com o mesmo nome na aba Taxas, vale a da plataforma (evita cobrar duas vezes). */
-const normTx=x=>(x||'').toLowerCase().normalize('NFD').replace(/[^a-z0-9]/g,'');
-function outrasPlat(pl){return (SISTEMA_CONFIG[pl]?.outras||[]).filter(o=>o&&String(o.n||'').trim());}
-function aplicaOutras(taxas,pl){
-  const ou=outrasPlat(pl);
-  if(!ou.length||!taxas||!taxas[pl]) return taxas;
-  const t=taxas[pl];const nomes=new Set(ou.map(o=>normTx(o.n)));
-  const perc=(t.perc||[]).filter(r=>!nomes.has(normTx(r.n))).concat(ou.filter(o=>o.tipo!=='R$').map(o=>({n:o.n,v:Number(o.v)||0,teto:Number(o.teto)||null,plataforma:true})));
-  const fixas=(t.fixas||[]).filter(r=>!nomes.has(normTx(r.n))).concat(ou.filter(o=>o.tipo==='R$').map(o=>({n:o.n,v:Number(o.v)||0,plataforma:true})));
-  return {...taxas,[pl]:{...t,perc,fixas}};
-}
-function updOutra(pl,i,campo,val){const o=SISTEMA_CONFIG[pl].outras[i];if(campo==='n'||campo==='tipo')o[campo]=val;else o[campo]=val===''?null:(parseFloat(String(val).replace(',','.'))||0);if(campo==='tipo')render();}
-function addOutra(pl){if(!SISTEMA_CONFIG[pl])SISTEMA_CONFIG[pl]={};if(!SISTEMA_CONFIG[pl].outras)SISTEMA_CONFIG[pl].outras=[];SISTEMA_CONFIG[pl].outras.push({n:'',tipo:'%',v:0,teto:null});render();}
-function rmOutra(pl,i){SISTEMA_CONFIG[pl].outras.splice(i,1);render();}
-function renderOutrasPlat(pl){
-  const ou=SISTEMA_CONFIG[pl.id]?.outras||[];
-  return`<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)">
-    <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:2px">Outras taxas da plataforma</div>
-    <div style="font-size:10px;color:var(--text3);margin-bottom:6px">Valem para todas as lojas (ex.: taxa de frete, tarifa de serviço). Se a loja tiver uma taxa com o mesmo nome na aba Taxas, vale esta.</div>
-    ${ou.length?`<div style="display:grid;grid-template-columns:1.6fr 64px 1fr 1fr 32px;gap:6px;font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px"><div>Nome</div><div>Tipo</div><div>Valor</div><div>Teto (R$)</div><div></div></div>`:''}
-    ${ou.map((o,i)=>`<div style="display:grid;grid-template-columns:1.6fr 64px 1fr 1fr 32px;gap:6px;margin-bottom:6px;align-items:center">
-      <input class="taxa-input" style="text-align:left;width:100%" type="text" placeholder="Nome da taxa" value="${String(o.n||'').replace(/"/g,'&quot;')}" onchange="updOutra('${pl.id}',${i},'n',this.value)"/>
-      <select class="taxa-input" style="width:100%" onchange="updOutra('${pl.id}',${i},'tipo',this.value)"><option value="%" ${o.tipo!=='R$'?'selected':''}>%</option><option value="R$" ${o.tipo==='R$'?'selected':''}>R$</option></select>
-      <input class="taxa-input" style="width:100%" type="number" step="0.01" value="${o.v??''}" onchange="updOutra('${pl.id}',${i},'v',this.value)"/>
-      <input class="taxa-input" style="width:100%" type="number" step="0.01" placeholder="${o.tipo==='R$'?'—':'sem teto'}" ${o.tipo==='R$'?'disabled':''} value="${o.teto??''}" onchange="updOutra('${pl.id}',${i},'teto',this.value)"/>
-      <button class="btn-icon danger" title="Remover" onclick="rmOutra('${pl.id}',${i})">✕</button>
-    </div>`).join('')}
-    <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="addOutra('${pl.id}')">+ Adicionar taxa da plataforma</button>
-  </div>`;
-}
 function txK(taxas,k,pl){
-  taxas=aplicaOutras(taxas,pl);
   const o=k&&k.taxas_kit&&k.taxas_kit[pl];
   if(!o||!taxas||!taxas[pl]||!Object.keys(o).length) return taxas;
   const t=taxas[pl];
@@ -1012,7 +977,7 @@ async function salvarTaxasKit(){
 }
 function renderModalTaxasKit(m){
   const cli=ST.clients.find(c=>String(c.id)===String(m.cid));const p=cli?.produtos?.find(x=>String(x.id)===String(m.pid));
-  const t=txK(cli?.taxas,null,m.pl)?.[m.pl];const po=PLATS.find(x=>x.id===m.pl);
+  const t=cli?.taxas?.[m.pl];const po=PLATS.find(x=>x.id===m.pl);
   if(!t||!p) return '';
   const linha=(r,tipo)=>{
     const chave=tipo+':'+r.n;const d=m.draft[chave]||{};const ativa=!d.off;
@@ -1394,7 +1359,6 @@ function renderTaxaRow(pl,tipo,r,i,unidade){
 function renderTaxas(c){
   return`<div class="taxas-grid">${PLATS.map(pl=>{const t=c.taxas[pl.id];return`<div class="taxa-card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><span class="chip ${pl.cls}">${pl.label}</span><button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="saveTaxas()">💾 Salvar</button></div>
-    ${outrasPlat(pl.id).length?`<div style="font-size:10px;color:var(--text3);background:var(--surface2);border-radius:6px;padding:6px 8px;margin-bottom:8px">Da plataforma (⚙️ Taxas Automáticas): ${outrasPlat(pl.id).map(o=>`<b>${o.n}</b> ${o.tipo==='R$'?'R$'+Number(o.v).toFixed(2):o.v+'%'}${o.teto?` (teto R$${o.teto})`:''}`).join(' · ')}</div>`:''}
     <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Percentuais (%)</div>
     ${t.perc.map((r,i)=>renderTaxaRow(pl,'perc',r,i,'%')).join('')}
     <div class="taxa-add-row"><input class="taxa-add-input" id="an-${pl.id}" placeholder="Nova taxa %"/><button class="btn btn-outline" style="font-size:11px;padding:4px 8px" onclick="addTaxa('${pl.id}','perc')">+ Add</button></div>
@@ -1579,7 +1543,6 @@ function renderModal(){
             <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="ativarTiersPlat('${pl.id}')">Ativar faixas automáticas</button>
           </div>
           <div style="font-size:11px;color:var(--text3);margin-top:6px">Sem faixas automáticas — cada cliente usa a comissão e a taxa fixa digitadas na aba Taxas.</div>
-          ${renderOutrasPlat(pl)}
         </div>`;
       }
       return`<div style="margin-bottom:18px;padding-bottom:14px;border-bottom:1px solid var(--border)">
@@ -1597,11 +1560,11 @@ function renderModal(){
           <button class="btn-icon danger" title="Remover faixa" onclick="rmTierAuto('${pl.id}',${i})">✕</button>
         </div>`).join('')}
         <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="addTierAuto('${pl.id}')">+ Adicionar faixa</button>
-        ${renderOutrasPlat(pl)}
+        ${pl.id!=='shopee'&&pl.id!=='tiktok'?'<div style="font-size:10px;color:var(--text3);margin-top:6px">A taxa fixa só é aplicada se o cliente tiver uma linha chamada "Taxa Fixa" nessa plataforma (aba Taxas).</div>':''}
       </div>`;
     };
     return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" style="width:560px;max-height:90vh;overflow-y:auto" onclick="event.stopPropagation()">
-      <div class="modal-header"><div><div class="modal-title">⚙️ Taxas Automáticas</div><div style="font-size:12px;color:var(--text3);margin-top:2px">Comissão, taxa fixa por faixa de preço e outras taxas de cada plataforma — vale pra todos os clientes</div></div><button class="btn-icon" onclick="closeModal()">✕</button></div>
+      <div class="modal-header"><div><div class="modal-title">⚙️ Taxas Automáticas</div><div style="font-size:12px;color:var(--text3);margin-top:2px">Comissão e taxa fixa por faixa de preço — vale pra todos os clientes</div></div><button class="btn-icon" onclick="closeModal()">✕</button></div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:14px;padding:10px;background:var(--surface2);border-radius:8px">
         💡 A última faixa de cada plataforma deve ficar com "Até" em branco (sem limite) — ela cobre tudo que passar da faixa anterior. As faixas devem estar em ordem crescente de preço.
       </div>
