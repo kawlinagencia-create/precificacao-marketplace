@@ -214,10 +214,8 @@ function calcFreteML(kg,p){if(!kg||kg<=0||!p||p<=0)return 0;const fi=ML_FAIXAS.f
 // Qualquer plataforma que tenha faixas aqui passa a calcular Comissão e Taxa Fixa sozinha pelo preço.
 // Plataformas SEM faixas continuam usando o valor digitado por cliente na aba Taxas.
 let SISTEMA_CONFIG={
-  // Valores de referência 2026 (fontes de mercado) — confira na central de cada plataforma e ajuste em ⚙️ Taxas Automáticas
   shopee:{tiers:[
-    {ate:7.99,comissao:50,taxaFixa:0},
-    {ate:79.99,comissao:20,taxaFixa:4},
+    {ate:79.99,comissao:20,taxaFixa:4.5},
     {ate:99.99,comissao:14,taxaFixa:16},
     {ate:199.99,comissao:14,taxaFixa:20},
     {ate:null,comissao:14,taxaFixa:26}
@@ -226,20 +224,10 @@ let SISTEMA_CONFIG={
     {ate:49.99,comissao:10,taxaFixa:4},
     {ate:null,comissao:6,taxaFixa:6}
   ]},
-  shein:{tiers:[
-    {ate:null,comissao:20,taxaFixa:0}   // moda feminina 20% (demais categorias 18%); sem taxa fixa
-  ]},
-  // ML: a tarifa por unidade (< R$79) e o frete (>= R$79) já entram pelo "Frete ML (auto)", calculado pelo peso do kit
-  ml_classico:{tiers:[
-    {ate:null,comissao:14,taxaFixa:0}
-  ]},
-  ml_premium:{tiers:[
-    {ate:null,comissao:19,taxaFixa:0}
-  ]},
   extras:[] // plataformas criadas pelo usuário: [{id,label}]
 };
 // Valores iniciais sugeridos ao ativar faixas numa plataforma que ainda não tem (igual ao padrão da aba Taxas)
-const TIER_SEED={shein:20,ml_classico:14,ml_premium:19};
+const TIER_SEED={shein:16,ml_classico:14,ml_premium:19};
 function getTierPorPreco(tiers,preco,estrito){
   for(const t of tiers){
     if(t.ate==null) return t;
@@ -297,15 +285,6 @@ function garantirTaxasPlataformas(cli){
     const baseP=(typeof TAXA_D!=='undefined'&&TAXA_D[pl.id])?TAXA_D[pl.id]:TAXA_D_EXTRA;
     const baseF=(typeof TF_D!=='undefined'&&TF_D[pl.id])?TF_D[pl.id]:TF_D_EXTRA;
     cli.taxas[pl.id]={perc:baseP.map(r=>({...r})),fixas:baseF.map(r=>({...r}))};
-  }
-  // Plataformas com faixas automáticas precisam das linhas "Comissão" e "Taxa Fixa" para o valor da faixa entrar na conta
-  for(const pl of PLATS){
-    const t=cli.taxas[pl.id];const tiers=tiersPlat(pl.id);
-    if(!t||!tiers) continue;
-    if(!t.perc) t.perc=[];if(!t.fixas) t.fixas=[];
-    const obs='Automático por faixa de preço — edite em ⚙️ Taxas Automáticas';
-    if(!t.perc.some(r=>isComissaoAuto(r.n))) t.perc.unshift({n:'Comissão',v:tiers[0].comissao||0,obs});
-    if(tiers.some(x=>(x.taxaFixa||0)>0)&&!t.fixas.some(r=>isTaxaFixaAuto(r.n))) t.fixas.unshift({n:'Taxa Fixa',v:0,obs});
   }
 }
 function slugPlataforma(nome){
