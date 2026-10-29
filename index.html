@@ -409,8 +409,8 @@ async function registrarHistorico(antigo,novo,clientId){
       const mudouPreco=precoAntigo!==precoNovo&&(precoAntigo||precoNovo);
       const mudouCusto=custoAntigo!==custoNovo&&(custoAntigo||custoNovo);
       if(!mudouPreco&&!mudouCusto) continue;
-      const rAntigo=calcR(precoAntigo,custoAntigo,pl,txK(cli.taxas,kAntigo,pl),kAntigo.peso_kg||0,kAntigo.qty);
-      const rNovo=calcR(precoNovo,custoNovo,pl,txK(cli.taxas,kNovo,pl),kNovo.peso_kg||0,kNovo.qty);
+      const rAntigo=calcR(precoAntigo,custoAntigo,pl,cli.taxas,kAntigo.peso_kg||0,kAntigo.qty);
+      const rNovo=calcR(precoNovo,custoNovo,pl,cli.taxas,kNovo.peso_kg||0,kNovo.qty);
       registros.push({
         client_id:clientId,product_id:novo.id,sku:novo.sku,nome_produto:novo.nome,
         plataforma:pl,kit_qty:kNovo.qty,
@@ -613,7 +613,7 @@ function cor(r,qty,c,curva,tipoProduto,platId){
   const meta=getMargemPorCurva(c,curva,tipoProduto,platId);
   return r.margem>=meta?'g':'r';
 }
-function allRes(c){const out=[];for(const p of c.produtos){const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c,getCurvaProduto(p,pl,k.qty),tipoP,pl)});}}return out;}
+function allRes(c){const out=[];for(const p of c.produtos){const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r)out.push({p,pl,k,r,cor:cor(r,k.qty,c,getCurvaProduto(p,pl,k.qty),tipoP,pl)});}}return out;}
 // allPlats: todas as plataformas onde pelo menos 1 produto está cadastrado (mesmo sem dados)
 function allPlats(c){const s=new Set();for(const p of c.produtos)for(const pl of(p.plataformas||[]))s.add(pl);return[...s];}
 function applyFilter(arr){
@@ -679,7 +679,7 @@ function onFilterInput(v,prefix){
     }
   } else {renderTab();setTimeout(()=>{const el=document.getElementById('filter-sku-'+prefix);if(el){el.focus();el.setSelectionRange(v.length,v.length);}},0);}
 }
-function bestR(p,c){let best=null,bc=null;const pri={g:2,r:1};const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c,getCurvaProduto(p,pl,k.qty),tipoP,pl);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
+function bestR(p,c){let best=null,bc=null;const pri={g:2,r:1};const tipoP=tipoDoProduto(p);for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){const r=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);if(r){const co=cor(r,k.qty,c,getCurvaProduto(p,pl,k.qty),tipoP,pl);if(!best||(pri[co]||0)>(pri[bc]||0)){best=r;bc=co;}}}return{r:best,cor:bc};}
 function hlMark(str,q){if(!q||!str)return String(str||'');return String(str).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>');}
 function toast(msg,type='success'){const w=document.getElementById('toasts');const e=document.createElement('div');e.className=`toast ${type}`;e.textContent=msg;w.appendChild(e);setTimeout(()=>e.remove(),3000);}
 
@@ -756,7 +756,7 @@ function updateSearch(){
     const kH=ordenarKits(p.kits).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('');
     const lk=p.links&&Object.keys(p.links).filter(k=>p.links[k]).length?'<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">'+Object.entries(p.links).filter(([,v])=>v).map(([pl,url])=>{const po=PLATS.find(x=>x.id===pl);return`<a href="${url}" target="_blank" class="link-chip" onclick="event.stopPropagation()">🔗 ${po?.label||pl}</a>`;}).join('')+'</div>':'';
     const tipoRow=tipoDoProduto(p);
-    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,txK(cli.taxas,k,pl),k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli,getCurvaProduto(p,pl,k.qty),tipoRow,pl);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;const prej=r2.lucro<0?'⚠️ ':'';return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">${prej}R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
+    const rows=(p.plataformas||[]).flatMap(pl=>{const po=PLATS.find(x=>x.id===pl);return(p.kits||[]).map(k=>{const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,cli.taxas,k.peso_kg||0,k.qty);const co2=cor(r2,k.qty,cli,getCurvaProduto(p,pl,k.qty),tipoRow,pl);const isML=pl==='ml_classico'||pl==='ml_premium';if(!r2)return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td>K${k.qty}</td><td colspan="8" style="color:var(--text3)">Sem dados</td></tr>`;const prej=r2.lucro<0?'⚠️ ':'';return`<tr><td><span class="chip ${po?.cls}">${po?.label||pl}</span></td><td class="mono">K${k.qty}</td><td class="mono" style="color:var(--text3)">${k.peso_kg>0?k.peso_kg+'kg':'—'}</td><td class="mono">R$${r2.preco.toFixed(2)}</td><td class="mono">R$${r2.custo.toFixed(2)}</td><td class="mono" style="color:var(--text3)">R$${r2.tax.toFixed(2)}</td><td>${isML&&r2.freteML>0?`<span style="font-size:10px;background:var(--accent-bg);color:var(--accent-text);padding:2px 5px;border-radius:4px">R$${r2.freteML.toFixed(2)}</span>`:'<span style="color:var(--text3)">—</span>'}</td><td><span class="lv lv-${co2}">${prej}R$${r2.lucro.toFixed(2)}</span></td><td class="mono" style="color:var(--text3)">R$${(r2.lucro/k.qty).toFixed(2)}</td><td><span class="lv lv-${co2}">${r2.margem.toFixed(1)}%</span></td></tr>`;});}).join('');
     return`<div class="prod-card"><div class="prod-card-head" onclick="togOpen('s_${p.id}')">
       <div style="display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0">
         ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
@@ -863,7 +863,7 @@ function renderKitQuickPriceHTML(p,c,pl,k){
   const custo=k.custos?.[pl];
   const curva=getCurvaProduto(p,pl,k.qty);
   const tipoP=tipoDoProduto(p);
-  const ideal=calcPrecoIdeal(custo,pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty,c,curva,tipoP);
+  const ideal=calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty,c,curva,tipoP);
   return`<div style="min-width:160px;flex:1;max-width:220px;border:2px dashed var(--accent-text);border-radius:var(--r-lg);padding:12px;background:var(--accent-bg)">
     <div style="font-size:13px;font-weight:700;margin-bottom:8px">KIT ${k.qty}</div>
     <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
@@ -920,80 +920,9 @@ async function salvarPrecoRapido(pid,cid,plat,kitQty,val){
     toast('⚠️ ERRO ao salvar: '+(err.message||'falha desconhecida'),'error');
   }
 }
-/* ===== Taxas por kit: desativar ou mudar o valor de uma taxa da loja só em um kit/plataforma =====
-   Fica salvo no próprio kit: k.taxas_kit[plataforma]["perc:Nome"|"fixas:Nome"] = {off:true} ou {v:número} */
-function txK(taxas,k,pl){
-  const o=k&&k.taxas_kit&&k.taxas_kit[pl];
-  if(!o||!taxas||!taxas[pl]||!Object.keys(o).length) return taxas;
-  const t=taxas[pl];
-  const ap=(rows,tipo)=>(rows||[]).filter(r=>!(o[tipo+':'+r.n]&&o[tipo+':'+r.n].off)).map(r=>{const x=o[tipo+':'+r.n];return x&&x.v!=null&&x.v!==''?{...r,v:Number(x.v),auto:false}:r;});
-  return {...taxas,[pl]:{...t,perc:ap(t.perc,'perc'),fixas:ap(t.fixas,'fixas')}};
-}
-function taxaKitInfo(k,pl,tipo,n){const x=k?.taxas_kit?.[pl]?.[tipo+':'+n];return x||null;}
-function contaAjustesKit(k,pl){const o=k?.taxas_kit?.[pl]||{};let off=0,ed=0;for(const x of Object.values(o)){if(x.off)off++;else if(x.v!=null&&x.v!=='')ed++;}return{off,ed};}
-function openTaxasKit(pid,cid,pl,qty){
-  const cli=ST.clients.find(c=>String(c.id)===String(cid));const p=cli?.produtos?.find(x=>String(x.id)===String(pid));
-  const k=p?.kits?.find(x=>x.qty===qty);if(!k) return;
-  ST.modal={type:'taxasKit',pid,cid,pl,qty,draft:JSON.parse(JSON.stringify(k.taxas_kit?.[pl]||{}))};render();
-}
-function updTaxaKitDraft(chave,campo,valor){
-  const d=ST.modal?.draft;if(!d) return;
-  if(!d[chave]) d[chave]={};
-  if(campo==='on'){ if(valor){delete d[chave].off;} else {d[chave]={off:true};} }
-  else { const v=String(valor).replace(',','.').trim(); if(v===''){delete d[chave].v;} else {d[chave].v=parseFloat(v)||0;delete d[chave].off;} }
-  if(!d[chave].off&&d[chave].v==null) delete d[chave];
-  render();
-}
-function limparTaxasKit(){if(ST.modal){ST.modal.draft={};render();}}
-async function salvarTaxasKit(){
-  const m=ST.modal;const cli=ST.clients.find(c=>String(c.id)===String(m.cid));const p=cli?.produtos?.find(x=>String(x.id)===String(m.pid));
-  const k=p?.kits?.find(x=>x.qty===m.qty);if(!k) return;
-  if(!k.taxas_kit) k.taxas_kit={};
-  if(Object.keys(m.draft).length) k.taxas_kit[m.pl]=m.draft; else delete k.taxas_kit[m.pl];
-  const btn=document.getElementById('tk-save');if(btn){btn.disabled=true;btn.textContent='Salvando...';}
-  try{await saveProduct(p,cli.id);}catch(err){toast('⚠️ ERRO ao salvar: '+(err.message||'falha'),'error');if(btn){btn.disabled=false;btn.textContent='Salvar';}return;}
-  ST.modal=null;toast('✅ Taxas deste kit salvas');render();
-}
-function renderModalTaxasKit(m){
-  const cli=ST.clients.find(c=>String(c.id)===String(m.cid));const p=cli?.produtos?.find(x=>String(x.id)===String(m.pid));
-  const t=cli?.taxas?.[m.pl];const po=PLATS.find(x=>x.id===m.pl);
-  if(!t||!p) return '';
-  const linha=(r,tipo)=>{
-    const chave=tipo+':'+r.n;const d=m.draft[chave]||{};const ativa=!d.off;
-    const nL=(r.n||'').toLowerCase();const mK3=/\bk3\b/.test(nL)||/k3\/5/.test(nL)||/\b3\/5\b/.test(nL),mK5=/\bk5\b/.test(nL)||/k3\/5/.test(nL)||/\b3\/5\b/.test(nL),mK10=/\bk10\b/.test(nL);
-    const alvoK=m.qty<=3?'k3':m.qty<=5?'k5':'k10';
-    const kitNome=(nL.includes('embal')||nL.includes('frete'))&&(mK3||mK5||mK10)&&!((alvoK==='k3'&&mK3)||(alvoK==='k5'&&mK5)||(alvoK==='k10'&&mK10));
-    const naoAplica=(r.kits&&r.kits.length&&!r.kits.includes(m.qty))||kitNome;
-    const isAuto=r.auto!==false&&((tipo==='perc'&&isComissaoAuto(r.n))||(tipo==='fixas'&&isTaxaFixaAuto(r.n)))&&!!tiersPlat(m.pl);
-    const padrao=isAuto?'auto (faixa)':(tipo==='perc'?String(r.v).replace('.',',')+'%':'R$'+Number(r.v).toFixed(2).replace('.',','));
-    const mudou=d.off||d.v!=null;
-    return`<tr style="${!ativa?'opacity:.5':''}${mudou?';background:#fef9c3':''}">
-      <td style="padding:5px 6px"><input type="checkbox" ${ativa?'checked':''} onchange="updTaxaKitDraft('${chave.replace(/'/g,"\\'")}','on',this.checked)" title="Desmarque para não cobrar essa taxa neste kit"/></td>
-      <td style="padding:5px 6px;font-size:12px">${r.n}${naoAplica?' <span style="font-size:10px;color:var(--text3)">(não se aplica a este kit)</span>':''}</td>
-      <td style="padding:5px 6px;font-size:12px;color:var(--text3);font-family:var(--mono);text-align:right">${padrao}</td>
-      <td style="padding:5px 6px;text-align:right"><input class="taxa-input" style="width:80px" type="number" step="${tipo==='perc'?'0.1':'0.01'}" ${!ativa?'disabled':''} value="${d.v!=null?d.v:''}" placeholder="padrão" onchange="updTaxaKitDraft('${chave.replace(/'/g,"\\'")}','v',this.value)"/> <span style="font-size:10px;color:var(--text3)">${tipo==='perc'?'%':'R$'}</span></td>
-    </tr>`;
-  };
-  const head=`<tr><th style="width:28px"></th><th style="text-align:left;font-size:10px;color:var(--text3);padding:4px 6px">TAXA</th><th style="text-align:right;font-size:10px;color:var(--text3);padding:4px 6px">PADRÃO DA LOJA</th><th style="text-align:right;font-size:10px;color:var(--text3);padding:4px 6px">NESTE KIT</th></tr>`;
-  return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" style="max-width:560px" onclick="event.stopPropagation()">
-    <div class="modal-header"><div class="modal-title">⚙️ Taxas deste kit</div><button class="btn-icon" onclick="closeModal()">✕</button></div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:10px"><b>${p.sku?p.sku+' · ':''}${p.nome}</b> · Kit ${m.qty} · <span class="chip ${po?.cls||''}">${po?.label||m.pl}</span><br>
-      <span style="color:var(--text3)">Vale só para este kit nesta plataforma. As taxas da loja (aba Taxas) não mudam. Desmarque para não cobrar; digite um valor para trocar o padrão; deixe vazio para usar o padrão.</span></div>
-    <div style="max-height:55vh;overflow-y:auto">
-      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:6px 0 2px">Percentuais (%)</div>
-      <table style="width:100%;border-collapse:collapse">${head}${(t.perc||[]).map(r=>linha(r,'perc')).join('')}</table>
-      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 2px">Fixas (R$)</div>
-      <table style="width:100%;border-collapse:collapse">${head}${(t.fixas||[]).map(r=>linha(r,'fixas')).join('')}</table>
-    </div>
-    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:14px;flex-wrap:wrap">
-      <button class="btn btn-outline" onclick="limparTaxasKit()">↺ Voltar tudo ao padrão</button>
-      <div style="display:flex;gap:8px"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="tk-save" onclick="salvarTaxasKit()">Salvar</button></div>
-    </div>
-  </div></div>`;
-}
 function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const precoUsado=precoOverride!=null?precoOverride:k.precos?.[pl];
-  const r2=calcR(precoUsado,k.custos?.[pl],pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty);
+  const r2=calcR(precoUsado,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
   if(!r2) return`<div id="kitcard-${p.id}-${pl}-${k.qty}" style="min-width:160px;flex:1;max-width:220px;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:14px;color:var(--text3);font-size:11px;text-align:center">Sem dados válidos</div>`;
   const curva=getCurvaProduto(p,pl,k.qty);
   const tipoP=tipoDoProduto(p);
@@ -1007,7 +936,7 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c',N:'#1e40af'};
   const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2',N:'#dbeafe'};
   const labelCurva={A:'Curva A',B:'Curva B',C:'Curva C',N:'PN'};
-  const ideal=calcPrecoIdeal(r2.custo,pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty,c,curva,tipoP);
+  const ideal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c,curva,tipoP);
   let idealHTML='';
   if(ideal){
     const diff=r2.preco-ideal.preco;
@@ -1044,11 +973,8 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
         <span style="font-family:var(--mono);font-weight:600;color:var(--danger)">R$${r2.custo.toFixed(2)}</span>
       </div>
       <div style="height:3px"></div>
-      ${r2.percDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:${taxaKitInfo(k,pl,'perc',d.n)?'#92400e':'var(--text3)'}">${d.n} <span style="font-size:9px">(${d.v.toFixed(1)}%)</span>${taxaKitInfo(k,pl,'perc',d.n)?' <span title="Valor ajustado só neste kit" style="font-size:9px">✏️</span>':''}</span><span data-perctax style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
-      ${r2.fixaDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:${taxaKitInfo(k,pl,'fixas',d.n)?'#92400e':'var(--text3)'}">${d.n}${taxaKitInfo(k,pl,'fixas',d.n)?' <span title="Valor ajustado só neste kit" style="font-size:9px">✏️</span>':''}</span><span data-fixtax style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
-      ${(()=>{const a=contaAjustesKit(k,pl);return`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 2px">
-        <span style="font-size:10px;color:#92400e">${a.off?`${a.off} desativada${a.off>1?'s':''}`:''}${a.off&&a.ed?' · ':''}${a.ed?`${a.ed} ajustada${a.ed>1?'s':''}`:''}</span>
-        <button class="btn btn-outline" style="font-size:10px;padding:2px 8px" onclick="openTaxasKit('${p.id}','${c.id}','${pl}',${k.qty})" title="Desativar ou mudar taxas só neste kit">⚙️ Taxas deste kit</button></div>`;})()}
+      ${r2.percDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n} <span style="font-size:9px">(${d.v.toFixed(1)}%)</span></span><span data-perctax style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
+      ${r2.fixaDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n}</span><span data-fixtax style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
       <div style="border-top:2px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between">
         <span style="font-weight:700;color:var(--text)">Total de Taxas</span>
         <span data-f="total-taxas" style="font-family:var(--mono);font-weight:700;color:var(--danger)">R$${r2.tax.toFixed(2)}</span>
@@ -1097,6 +1023,7 @@ function renderCustos(c){
       <div class="sec-title">Custo por SKU</div>
       <div style="display:flex;gap:8px;align-items:center">
         <input class="filter-input" placeholder="Filtrar por SKU ou nome" value="${ST.custoFiltro||''}" oninput="ST.custoFiltro=this.value;renderTab()" style="width:220px"/>
+        <button class="btn btn-outline" onclick="gerarPdfCustos()" title="Gera um PDF com os custos (só os marcados, ou todos se nenhum estiver marcado)">📄 Gerar PDF</button>
         <button class="btn btn-primary" onclick="salvarCustosSelecionados()">💾 Salvar</button>
       </div>
     </div>
@@ -1126,6 +1053,60 @@ function renderCustos(c){
       }).join('')}</tbody>
     </table>`}
   </div>`;
+}
+function gerarPdfCustos(){
+  const c=gc();if(!c)return;
+  const filtro=(ST.custoFiltro||'').toLowerCase().trim();
+  const sortField=ST.custoSort?.field||'nome',mult=(ST.custoSort?.dir||'asc')==='asc'?1:-1;
+  let produtos=(c.produtos||[]).filter(p=>!filtro||p.sku?.toLowerCase().includes(filtro)||p.nome?.toLowerCase().includes(filtro))
+    .sort((a,b)=>sortField==='sku'?mult*String(a.sku||'').localeCompare(String(b.sku||''),'pt-BR',{numeric:true}):mult*(a.nome||'').localeCompare(b.nome||'','pt-BR'));
+  const marcados=[...document.querySelectorAll('.custo-check:checked')].map(cb=>String(cb.dataset.pid));
+  if(marcados.length) produtos=produtos.filter(p=>marcados.includes(String(p.id)));
+  if(!produtos.length){toast('Nenhum produto para gerar o PDF','error');return;}
+  const esc=x=>String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const brl=v=>'R$ '+(Number(v)||0).toFixed(2).replace('.',',');
+  const linhas=produtos.map(p=>{
+    const{valor}=inferCustoUnitario(p);
+    const kits=(p.kits||[]).filter(k=>k.qty).sort((a,b)=>a.qty-b.qty).map(k=>{
+      const vals=Object.values(k.custos||{}).filter(v=>v>0);
+      const v=vals.length?vals[0]:(valor?valor*k.qty:0);
+      return v?`K${k.qty}: ${brl(v)}`:`K${k.qty}: —`;
+    }).join(' · ')||'—';
+    return`<tr><td>${esc(p.sku||'—')}</td><td>${esc(p.nome||'—')}</td><td>${p.fabricacao?'Fabricação':'Revenda'}</td><td class="n">${valor?brl(valor):'—'}</td><td>${esc(kits)}</td></tr>`;
+  }).join('');
+  const hoje=new Date().toLocaleDateString('pt-BR');
+  const dados=produtos.map(p=>{
+    const{valor}=inferCustoUnitario(p);
+    const kits=(p.kits||[]).filter(k=>k.qty).sort((a,b)=>a.qty-b.qty).map(k=>{
+      const vals=Object.values(k.custos||{}).filter(v=>v>0);
+      const v=vals.length?vals[0]:(valor?valor*k.qty:0);
+      return v?`K${k.qty}: ${brl(v)}`:`K${k.qty}: -`;
+    }).join('  |  ')||'-';
+    return[p.sku||'-',p.nome||'-',p.fabricacao?'Fabricação':'Revenda',valor?brl(valor):'-',kits];
+  });
+  const carregar=src=>new Promise((res,rej)=>{const e=document.createElement('script');e.src=src;e.onload=res;e.onerror=()=>rej(new Error('falha ao carregar '+src));document.head.appendChild(e);});
+  (async()=>{
+    try{
+      if(!(window.jspdf&&window.jspdf.jsPDF)) await carregar('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+      if(!(window.jspdf.jsPDF.API&&window.jspdf.jsPDF.API.autoTable)) await carregar('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+      const doc=new window.jspdf.jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+      doc.setFontSize(16);doc.text('Custos por SKU - '+c.name,14,14);
+      doc.setFontSize(10);doc.setTextColor(110);doc.text('Gerado em '+hoje+' · '+dados.length+' produto(s)',14,20);
+      doc.autoTable({startY:25,head:[['SKU','Produto','Tipo','Custo 1 peça','Custo por kit']],body:dados,styles:{fontSize:9,cellPadding:2},headStyles:{fillColor:[60,60,60]},columnStyles:{0:{cellWidth:28},2:{cellWidth:24},3:{cellWidth:28,halign:'right'}}});
+      doc.save('custos-'+String(c.name).replace(/[^\w]+/g,'-').toLowerCase()+'.pdf');
+      toast('✅ PDF gerado');
+    }catch(err){
+      console.error('PDF:',err);
+      // Plano B: imprime numa área oculta (escolher "Salvar como PDF")
+      const trs=dados.map(r=>'<tr>'+r.map(x=>`<td>${esc(x)}</td>`).join('')+'</tr>').join('');
+      const f=document.createElement('iframe');f.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+      document.body.appendChild(f);
+      f.contentDocument.open();
+      f.contentDocument.write(`<html><head><meta charset="utf-8"><title>Custos</title><style>body{font-family:Arial;font-size:12px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ccc;padding:5px}th{background:#eee}</style></head><body><h2>Custos por SKU - ${esc(c.name)}</h2><div>${hoje}</div><br><table><tr><th>SKU</th><th>Produto</th><th>Tipo</th><th>Custo 1 peça</th><th>Custo por kit</th></tr>${trs}</table></body></html>`);
+      f.contentDocument.close();
+      setTimeout(()=>{f.contentWindow.focus();f.contentWindow.print();setTimeout(()=>f.remove(),2000);},400);
+    }
+  })();
 }
 async function updCustoUnitarioLista(pid,val){
   const c=gc();if(!c)return;
@@ -1235,7 +1216,7 @@ function renderProdutos(c){
           ${(()=>{
             const allRows=[];
             for(const pl of(p.plataformas||[]))for(const k of(p.kits||[])){
-              const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty);
+              const r2=calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
               if(r2) allRows.push({pl,k,r2});
             }
             const bestLucro=allRows.length?Math.max(...allRows.map(x=>x.r2.lucro)):-Infinity;
@@ -1256,8 +1237,8 @@ function renderProdutos(c){
               const po=PLATS.find(x=>x.id===pl);
               const kits=ordenarKits(p.kits);
               if(!kits.length) return '';
-              const kitsComDados=kits.filter(k=>calcR(k.precos?.[pl],k.custos?.[pl],pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty));
-              const kitsSemDados=kits.filter(k=>!calcR(k.precos?.[pl],k.custos?.[pl],pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty));
+              const kitsComDados=kits.filter(k=>calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty));
+              const kitsSemDados=kits.filter(k=>!calcR(k.precos?.[pl],k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty));
               // Kits que já têm custo, só falta o preço — dá pra completar ali mesmo, sem abrir o cadastro
               const kitsFaltaPreco=kitsSemDados.filter(k=>k.custos?.[pl]);
               const kitsFaltaTudo=kitsSemDados.filter(k=>!k.custos?.[pl]);
@@ -1272,7 +1253,7 @@ function renderProdutos(c){
                     if(kitsFaltaPreco.includes(k)){
                       const curvaSug=getCurvaProduto(p,pl,k.qty);
                       const tipoSug=tipoDoProduto(p);
-                      const ideal=calcPrecoIdeal(k.custos[pl],pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty,c,curvaSug,tipoSug);
+                      const ideal=calcPrecoIdeal(k.custos[pl],pl,c.taxas,k.peso_kg||0,k.qty,c,curvaSug,tipoSug);
                       return renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,ideal?ideal.preco:null);
                     }
                     return '';
@@ -1460,8 +1441,7 @@ function updateCalc(){
   if(!resEl)return;
   // Sugestão
   if(sugEl&&custo>0){
-    const kSelCalc=(c.produtos||[]).find(p=>String(p.id)===String(ST.calc.prodId))?.kits?.find(x=>x.qty===ST.calc.kit);
-    const t=txK(c.taxas,kSelCalc,platSel)[platSel];
+    const t=c.taxas[platSel];
     function alvo(ma){
       let p=custo*2;
       for(let i=0;i<80;i++){
@@ -1490,7 +1470,7 @@ function updateCalc(){
     </div>`;
   } else if(sugEl) sugEl.innerHTML='';
   if(!preco||!custo){resEl.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Preencha preço e custo para ver o resultado</div>`;return;}
-  const r=calcR(preco,custo,platSel,txK(c.taxas,(c.produtos||[]).find(p=>String(p.id)===String(ST.calc.prodId))?.kits?.find(x=>x.qty===ST.calc.kit),platSel),peso);
+  const r=calcR(preco,custo,platSel,c.taxas,peso);
   if(!r){resEl.innerHTML='<div style="color:var(--text3);padding:20px;text-align:center">Dados insuficientes</div>';return;}
   const cBg=r.lucro>=0?'var(--accent-bg)':'var(--danger-bg)';const cFg=r.lucro>=0?'var(--accent-text)':'var(--danger)';
   resEl.innerHTML=
@@ -1626,7 +1606,6 @@ function renderModal(){
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" id="save-btn" onclick="saveProduto()">${m.edit?'Salvar':'Cadastrar'}</button></div>
     </div></div>`;
   }
-  if(m.type==='taxasKit')return renderModalTaxasKit(m);
   if(m.type==='del')return`<div class="modal-backdrop" onclick="closeModal(event)"><div class="modal" style="max-width:400px" onclick="event.stopPropagation()"><div class="modal-header"><div class="modal-title">Excluir produto</div><button class="btn-icon" onclick="closeModal()">✕</button></div><p style="font-size:13px;color:var(--text2);margin-bottom:18px">Tem certeza que deseja excluir <b>${m.nome}</b>?</p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button><button class="btn" style="background:var(--danger);color:#fff;border-color:var(--danger)" onclick="execDelProd()">Excluir</button></div></div></div>`;
   return'';
 }
@@ -1652,7 +1631,7 @@ function renderKitBlock(k,i,plats,prod){
       <div style="color:var(--text3);font-weight:500" title="Calculado automaticamente com base na margem ideal configurada em Config">Preço Ideal</div>${platsOrdenadas.map(po=>{
         const c=gc();
         const custo=k.custos?.[po.id];
-        const ideal=(c&&custo)?calcPrecoIdeal(custo,po.id,txK(c.taxas,k,po.id),k.peso_kg||0,k.qty||1,c,getCurvaProduto(prod,po.id,k.qty),tipoProd):null;
+        const ideal=(c&&custo)?calcPrecoIdeal(custo,po.id,c.taxas,k.peso_kg||0,k.qty||1,c,getCurvaProduto(prod,po.id,k.qty),tipoProd):null;
         return`<div id="ideal-${i}-${po.id}" style="text-align:center;font-family:inherit;font-weight:400;color:var(--text);background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:5px;font-size:11px">${ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—'}</div>`;
       }).join('')}
       <div style="color:var(--text3);font-weight:500">Custo</div>${platsOrdenadas.map(po=>`<input type="number" class="form-input" style="font-size:11px;padding:5px" placeholder="0.00" step="0.01" data-kit="${i}" data-plat="${po.id}" data-tipo="custos" value="${k.custos?.[po.id]||''}" oninput="onKitInput(${i},'custos','${po.id}',this.value)" onblur="formatMoneyInput(this)"/>`).join('')}
@@ -1665,7 +1644,7 @@ function renderLucroPreviewHTML(k,plats,prod,tipoProduto){
   const rows=plats.map(pl=>{
     const preco=k.precos?.[pl];const custo=k.custos?.[pl];
     if(!preco||!custo) return null;
-    const r=calcR(preco,custo,pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty||1);
+    const r=calcR(preco,custo,pl,c.taxas,k.peso_kg||0,k.qty||1);
     if(!r) return null;
     const po=PLATS.find(x=>x.id===pl);
     const co=cor(r,k.qty||1,c,getCurvaProduto(prod,pl,k.qty),tipoProduto,pl);
@@ -1956,7 +1935,7 @@ async function aplicarPlataformaEmTodosProdutos(platId){
         k.custos[platId]=custoKit;
         algumCusto=true;
         // Preço já vem sugerido pela meta de margem configurada — evita ter que digitar do zero
-        const ideal=calcPrecoIdeal(custoKit,platId,txK(c.taxas,k,platId),k.peso_kg||0,k.qty,c,curva,tipoP);
+        const ideal=calcPrecoIdeal(custoKit,platId,c.taxas,k.peso_kg||0,k.qty,c,curva,tipoP);
         if(ideal) k.precos[platId]=ideal.preco;
       }
     });
@@ -2024,7 +2003,7 @@ function startInlineEditPreco(span,pid,cid,plat,kitQty,valorSugerido){
   const atualizarCardAoVivo=()=>{
     const novoValor=parseFloat(input.value);
     if(!cardEl||isNaN(novoValor)||novoValor<=0) return;
-    const r2=calcR(novoValor,k.custos?.[plat],plat,txK(cli.taxas,k,plat),k.peso_kg||0,k.qty);
+    const r2=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
     if(!r2) return;
     const co2=cor(r2,k.qty,cli,curvaP,tipoP,plat);
     const prej=r2.lucro<0;
@@ -2032,7 +2011,7 @@ function startInlineEditPreco(span,pid,cid,plat,kitQty,valorSugerido){
     const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
     const setColor=(id,color)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.style.color=color;};
     // Preço Ideal (comparação)
-    const ideal=calcPrecoIdeal(r2.custo,plat,txK(cli.taxas,k,plat),k.peso_kg||0,k.qty,cli,curvaP,tipoP);
+    const ideal=calcPrecoIdeal(r2.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli,curvaP,tipoP);
     if(ideal){
       const diff=r2.preco-ideal.preco;
       const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
@@ -2118,14 +2097,14 @@ function startInlineEditPrecoTeste(span,pid,cid,plat,kitQty){
   const atualizarAoVivo=()=>{
     const novoValor=parseFloat(input.value);
     if(!cardEl||isNaN(novoValor)||novoValor<=0)return;
-    const rt=calcR(novoValor,k.custos?.[plat],plat,txK(cli.taxas,k,plat),k.peso_kg||0,k.qty);
+    const rt=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
     if(!rt)return;
     const cot=cor(rt,k.qty,cli,curvaP,tipoP,plat);
     const prej=rt.lucro<0;
     const lucroColorT=cot==='g'?'var(--success)':'var(--danger)';
     const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
     const setColor=(id,color)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.style.color=color;};
-    const ideal=calcPrecoIdeal(rt.custo,plat,txK(cli.taxas,k,plat),k.peso_kg||0,k.qty,cli,curvaP,tipoP);
+    const ideal=calcPrecoIdeal(rt.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli,curvaP,tipoP);
     if(ideal){
       const diff=rt.preco-ideal.preco;
       const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
@@ -2211,7 +2190,7 @@ function updateKitPreviewInline(kitIdx){
     const idealEl=document.getElementById(`ideal-${kitIdx}-${pl}`);
     if(!idealEl) return;
     const custo=k.custos?.[pl];
-    const ideal=custo?calcPrecoIdeal(custo,pl,txK(c.taxas,k,pl),k.peso_kg||0,k.qty||1,c,getCurvaProduto(ST.modal.p,pl,k.qty),tipoProd):null;
+    const ideal=custo?calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty||1,c,getCurvaProduto(ST.modal.p,pl,k.qty),tipoProd):null;
     idealEl.innerHTML=ideal?`R$${ideal.preco.toFixed(2)} <span style="font-size:9px;color:var(--text3)">(${ideal.margemPerc.toFixed(0)}%)</span>`:'—';
   });
   const previewEl=document.getElementById('kit-preview-'+kitIdx);
@@ -2847,7 +2826,7 @@ function getDashRows(){
   const platLabel=(pl)=>pl==='ml_classico'||pl==='ml_premium'?'Mercado Livre':PLATS.find(p=>p.id===pl)?.label||pl;
   const mlTipo=(pl)=>pl==='ml_classico'?'Clássico':pl==='ml_premium'?'Premium':null;
   return all.map(x=>{
-    const ideal=calcPrecoIdeal(x.r.custo,x.pl,txK(c.taxas,x.k,x.pl),x.k.peso_kg||0,x.k.qty,c,getCurvaProduto(x.p,x.pl,x.k.qty),tipoDoProduto(x.p));
+    const ideal=calcPrecoIdeal(x.r.custo,x.pl,c.taxas,x.k.peso_kg||0,x.k.qty,c,getCurvaProduto(x.p,x.pl,x.k.qty),tipoDoProduto(x.p));
     const tipo=mlTipo(x.pl);
     return{
       'SKU':x.p.sku||'—',
