@@ -191,86 +191,6 @@ mark{background:#fef08a;border-radius:2px;padding:0 1px;color:inherit}
 .filter-clear{font-size:11px;color:var(--text3);cursor:pointer;background:none;border:none;font-family:var(--font);padding:4px 6px;border-radius:var(--r)}
 .filter-clear:hover{color:var(--danger);background:var(--danger-bg)}
 .table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-
-/* Estratégia de preço (Calculadora) */
-.calc-wrap.est{max-width:1240px;grid-template-columns:340px minmax(0,1fr)}
-@media(max-width:980px){.calc-wrap.est{grid-template-columns:1fr}}
-.calc-wrap.est .calc-row>span{display:flex;flex-direction:column}
-.est-sub{font-size:10px;color:var(--text3);font-weight:400}
-.est-wide{width:180px}
-.est-muted{font-size:11px;color:var(--text3)}
-.est-grp{font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin:8px 0 2px}
-.est-floors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:10px}
-.est-floor{border:1px solid var(--border);border-radius:var(--r-lg);padding:10px;background:var(--surface2)}
-.est-floor.main{border-color:var(--accent);background:var(--accent-bg)}
-.est-floor .k,.est-trio .k{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
-.est-floor .v{font-family:var(--mono);font-size:18px;font-weight:600;margin:2px 0}
-.est-floor.main .v{color:var(--accent-text)}
-.est-floor .d,.est-trio .d{font-size:10px;color:var(--text3)}
-.est-trio{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
-.est-trio>div{padding:10px 12px;border-right:1px solid var(--border)}
-.est-trio>div:last-child{border-right:none}
-.est-trio .v{font-family:var(--mono);font-size:20px;font-weight:600;margin:2px 0}
-.est-trio .tab .v{color:var(--orange)}
-.est-alert{border-radius:var(--r);padding:8px 10px;font-size:12px;margin-top:10px}
-.est-alert.bad{background:var(--danger-bg);color:var(--danger)}
-.est-alert.warn{background:var(--warn-bg);color:#92400e}
-.est-save{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
-.est-sim-top{display:flex;align-items:center;gap:10px}
-.est-sim-top input[type=range]{flex:1;accent-color:var(--orange)}
-.est-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.est-chip{font-size:11px;border-radius:20px;padding:3px 10px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-family:var(--font);color:var(--text)}
-.est-chip:hover{border-color:var(--accent)}
-.est-sim-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:14px;margin-top:10px}
-@media(max-width:760px){.est-sim-grid{grid-template-columns:1fr}}
-.est-det{width:100%;border-collapse:collapse;font-size:12px}
-.est-det td{padding:4px 0;border-bottom:1px dashed var(--border)}
-.est-det td.pc{text-align:right;color:var(--text3);font-family:var(--mono);font-size:11px;width:70px}
-.est-det td.num{text-align:right;font-family:var(--mono);font-weight:600;width:90px}
-.est-det td.neg{color:var(--danger)}
-.est-det tr.grp td{border-bottom:none;padding-top:10px;font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
-.est-det tr.sub td{font-weight:700;border-bottom:1px solid var(--border);padding-top:8px}
-.est-det tr.est-sobra td{color:var(--accent-text)}
-.est-result{border-radius:var(--r-lg);padding:12px;display:flex;flex-direction:column;gap:4px;font-size:12px}
-.est-result.ok{background:var(--success-bg);color:var(--success)}
-.est-result.warn{background:var(--warn-bg);color:#92400e}
-.est-result.bad{background:var(--danger-bg);color:var(--danger)}
-.est-result .ln{display:flex;justify-content:space-between;gap:8px}
-.est-result .mono{font-family:var(--mono)}
-.est-result s{opacity:.7}
-.est-result .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:8px}
-.est-result .big{font-family:var(--mono);font-size:24px;font-weight:700}
-.est-result .pill{align-self:flex-start;background:var(--surface);border-radius:20px;padding:3px 10px;font-weight:700;font-size:11px;margin-top:6px}
-.est-table{width:100%;border-collapse:collapse;font-size:12px}
-.est-table th{text-align:left;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap}
-.est-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
-.est-table .num{text-align:right;font-family:var(--mono);white-space:nowrap}
-.est-mini{font-size:11px;padding:3px 8px}
-.est-form{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}
-.taxa-cat-sel{max-width:118px;font-size:10px;padding:2px 4px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);margin-right:4px;font-family:var(--font)}
-.est-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:12px}
-@media(max-width:980px){.est-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
-.est-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:12px;cursor:pointer}
-.est-kpi.on{outline:2px solid var(--accent)}
-.est-kpi .v{font-family:var(--mono);font-size:22px;font-weight:600}
-.est-kpi .l{font-size:11px;color:var(--text3)}
-.est-filtros{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
-.est-chip.on{background:var(--text);color:#fff;border-color:var(--text)}
-.est-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
-.est-card{background:var(--surface);border:2px solid var(--border);border-radius:var(--r-lg);overflow:hidden;display:flex;flex-direction:column}
-.est-card-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:10px 12px;font-size:13px}
-.est-badge{font-size:11px;font-weight:700;background:var(--surface);border-radius:20px;padding:2px 8px;white-space:nowrap}
-.est-card-vals{display:grid;grid-template-columns:repeat(3,1fr);text-align:center;padding:10px 6px;border-bottom:1px solid var(--border)}
-.est-card-vals .l,.est-card-usos .l{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em}
-.est-card-vals .v{font-family:var(--mono);font-size:18px;font-weight:600}
-.est-card-info{display:flex;flex-wrap:wrap;gap:4px 12px;padding:8px 12px;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border)}
-.est-card-info b{font-family:var(--mono);color:var(--text)}
-.est-card-usos{padding:8px 12px;font-size:12px;flex:1}
-.est-uso{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:3px 0}
-.est-card-f{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-top:1px solid var(--border);font-size:11px;color:var(--text3)}
-.est-presumo{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.est-pchip{font-size:11px;border:1px solid var(--border);border-radius:20px;padding:2px 9px;color:var(--text2);white-space:nowrap}
-.est-pchip b{font-family:var(--mono);font-weight:600;color:var(--text)}
 </style>
 </head>
 <body>
@@ -776,7 +696,7 @@ function render(){
   <div class="main">
     <div class="topbar">
       <div class="topbar-left">${c?`<div class="sb-dot" style="background:${c.color};width:10px;height:10px;border-radius:50%"></div><div class="topbar-title">${c.name}</div><span class="badge badge-gray">${(c.produtos||[]).length} produtos</span>`:'<div class="topbar-title">Nenhum cliente</div>'}</div>
-      ${c?`<div class="tabs">${[['dashboard','Dashboard'],['produtos','Produtos'],['estrategias','🎯 Estratégias'],['custos','Custo'],['plataformas','Plataformas'],['alertas','Alertas'],['curva_abc','Curva ABC'],['taxas','Taxas'],['config','Config'],['calculadora','Calculadora']].map(([id,lb])=>`<button class="tab-btn ${ST.tab===id?'active':''}" onclick="setTab('${id}')">${lb}</button>`).join('')}</div>`:''}
+      ${c?`<div class="tabs">${[['dashboard','Dashboard'],['produtos','Produtos'],['custos','Custo'],['plataformas','Plataformas'],['alertas','Alertas'],['curva_abc','Curva ABC'],['taxas','Taxas'],['config','Config'],['calculadora','Calculadora']].map(([id,lb])=>`<button class="tab-btn ${ST.tab===id?'active':''}" onclick="setTab('${id}')">${lb}</button>`).join('')}</div>`:''}
     </div>
     <div class="content" id="content">${!c?'<div class="empty"><div style="font-size:32px;opacity:.3;margin-bottom:12px">📊</div><div style="font-size:13px;font-weight:500;color:var(--text2)">Nenhum cliente</div></div>':''}</div>
   </div>
@@ -798,7 +718,6 @@ function renderTab(){
   else if(t==='taxas')el.innerHTML=renderTaxas(c);
   else if(t==='config')el.innerHTML=renderConfig(c);
   else if(t==='calculadora')el.innerHTML=renderCalculadora(c);
-  else if(t==='estrategias')el.innerHTML=renderEstrategias(c);
 }
 
 function renderBusca(c){
@@ -1001,46 +920,9 @@ async function salvarPrecoRapido(pid,cid,plat,kitQty,val){
     toast('⚠️ ERRO ao salvar: '+(err.message||'falha desconhecida'),'error');
   }
 }
-// Com estratégia salva, o "Preço Ideal" do card vira o Alvo da estratégia (já com a reserva)
-function idealDoKit(custo,pl,c,k,curva,tipoP){
-  const est=k.estrategia?.[pl];
-  if(est&&isFinite(est.alvo)) return {preco:Number(est.alvo),estrategia:true,reserva:est.reserva};
-  return calcPrecoIdeal(custo,pl,c.taxas,k.peso_kg||0,k.qty,c,curva,tipoP);
-}
-function estAtualizarReservaAoVivo(cardEl,k,plat,preco,KC){
-  if(!cardEl||!KC?.resK) return;
-  const el=cardEl.querySelector('[data-f="res-sobra"]');if(el) el.textContent='R$'+KC.resK.sobra.toFixed(2);
-  const sep=KC.resK.usos.filter(u=>!u.junto);
-  cardEl.querySelectorAll('[data-resuso]').forEach((e,i)=>{if(sep[i]) e.textContent='R$'+sep[i].val.toFixed(2);});
-  const est=k.estrategia?.[plat];
-  if(est){const st=estSituacao(preco,est);const e=cardEl.querySelector('[data-f="est-st"]');if(e){e.textContent=st.txt;e.style.color=st.cor;}}
-}
-function kitCalc(p,c,pl,k,preco){
-  let r2=calcR(preco,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
-  // Estratégia salva: usos ativos da reserva entram como custo e a sobra da reserva aparece separada do lucro
-  let resK=null;
-  if(r2&&k.estrategia?.[pl]){
-    const estK=k.estrategia[pl];
-    const base=Math.max(0,r2.preco-cupomFixoShopee(pl,c.taxas[pl],k.qty));
-    const usos=estUsosAtivos(c,p,k.qty,pl).map(u=>({n:(u.ferramenta||'Uso')+' (da reserva)',ferr:u.ferramenta,tipo:u.tipo,v:u.tipo==='%'?Number(u.valor):null,val:r2c(u.tipo==='%'?base*Number(u.valor)/100:Number(u.valor))}));
-    // uso direcionado a uma ferramenta que já existe: soma na linha dela (ex.: Ads 3,5% + 3% da reserva)
-    const pd=r2.percDetail.map(d=>({...d})),fd=r2.fixaDetail.map(d=>({...d}));
-    usos.forEach(u=>{const d=pd.find(x=>x.n===u.ferr)||fd.find(x=>x.n===u.ferr);
-      if(d){d.val=r2c(d.val+u.val);d.n=`${d.n} <span style="color:var(--accent-text)">+ ${u.tipo==='%'?String(u.v).replace('.',',')+'%':'R$'+u.val.toFixed(2)} da reserva</span>`;if(u.tipo==='%'&&d.v!=null)d.v=d.v+u.v;u.junto=true;}});
-    r2={...r2,percDetail:pd,fixaDetail:fd};
-    const usado=r2c(usos.reduce((s,u)=>s+u.val,0));
-    const margR=r2c(r2.preco*(Number(estK.margem)||0)/100);
-    const totR=Math.min(Math.max(0,r2c(r2.lucro-margR)),r2c(base*(Number(estK.reserva)||0)/100));
-    const lucroDep=r2c(r2.lucro-usado);
-    const sobra=Math.max(0,Math.min(r2c(totR-usado),r2c(lucroDep-margR)));
-    resK={usos,usado,sobra,totR,pct:estK.reserva};
-    r2={...r2,tax:r2c(r2.tax+usado+sobra),lucro:r2c(lucroDep-sobra)};r2.margem=r2.preco>0?r2.lucro/r2.preco*100:0;
-  }
-  return r2?{r2,resK}:null;
-}
 function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const precoUsado=precoOverride!=null?precoOverride:k.precos?.[pl];
-  const KC=kitCalc(p,c,pl,k,precoUsado);let r2=KC?KC.r2:null;const resK=KC?KC.resK:null;
+  const r2=calcR(precoUsado,k.custos?.[pl],pl,c.taxas,k.peso_kg||0,k.qty);
   if(!r2) return`<div id="kitcard-${p.id}-${pl}-${k.qty}" style="min-width:160px;flex:1;max-width:220px;border:1px dashed var(--border2);border-radius:var(--r-lg);padding:14px;color:var(--text3);font-size:11px;text-align:center">Sem dados válidos</div>`;
   const curva=getCurvaProduto(p,pl,k.qty);
   const tipoP=tipoDoProduto(p);
@@ -1054,14 +936,14 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
   const corCurva={A:'#166534',B:'#713f12',C:'#b91c1c',N:'#1e40af'};
   const bgCurva={A:'#dcfce7',B:'#fef9c3',C:'#fee2e2',N:'#dbeafe'};
   const labelCurva={A:'Curva A',B:'Curva B',C:'Curva C',N:'PN'};
-  const ideal=idealDoKit(r2.custo,pl,c,k,curva,tipoP);
+  const ideal=calcPrecoIdeal(r2.custo,pl,c.taxas,k.peso_kg||0,k.qty,c,curva,tipoP);
   let idealHTML='';
   if(ideal){
     const diff=r2.preco-ideal.preco;
     const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
-    const margemLabel=ideal.estrategia?`com reserva ${String(ideal.reserva).replace('.',',')}%`:`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}%`;
+    const margemLabel=`${labelCurva[curva||'N']} · ${ideal.margemPerc.toFixed(1)}%`;
     idealHTML=`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
-      <span style="color:var(--text2)">${ideal.estrategia?'🎯 Alvo':'Preço Ideal'} <span style="font-size:9px;color:var(--text3)">(${margemLabel})</span></span>
+      <span style="color:var(--text2)">Preço Ideal <span style="font-size:9px;color:var(--text3)">(${margemLabel})</span></span>
       <span style="font-family:var(--mono);font-weight:600;color:var(--accent-text)">R$${ideal.preco.toFixed(2)} <span data-f="ideal-diff" style="font-size:9px;color:${diffColor}">(${diff>=0?'+':''}${diff.toFixed(2)})</span> <span title="Usar esse preço no Preço Teste" style="cursor:pointer" onclick="copiarIdealParaTeste('${p.id}','${c.id}','${pl}',${k.qty},${ideal.preco})">🎯</span></span>
     </div>`;
   }
@@ -1086,14 +968,6 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
         <span class="preco-inline-display" id="pdt-${p.id}-${pl}-${k.qty}" onclick="startInlineEditPrecoTeste(this,'${p.id}','${c.id}','${pl}',${k.qty})" style="font-family:var(--mono);font-weight:600;cursor:pointer;border-bottom:1px dashed var(--text3);padding:1px 3px;border-radius:3px;color:var(--accent-text)" title="Clique para editar">${k.precos_teste?.[pl]?`R$${Number(k.precos_teste[pl]).toFixed(2)}`:'—'}</span>
       </div>
       ${idealHTML}
-      ${(()=>{const est=k.estrategia?.[pl];if(!est)return'';const st=estSituacao(r2.preco,est);
-        return`<div style="margin:4px 0;border:1px solid ${st.cor};border-radius:6px;overflow:hidden;cursor:pointer" title="Ver na aba Estratégias" onclick="setTab('estrategias')">
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 6px;background:${st.bg}"><span style="font-weight:700;font-size:10px">🎯 ESTRATÉGIA</span><span data-f="est-st" style="font-weight:700;font-size:10px;color:${st.cor}">${st.txt}</span></div>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);text-align:center;padding:4px 2px">
-            <div><div style="font-size:9px;color:var(--text3)">PISO</div><div style="font-family:var(--mono);font-weight:700;font-size:11px">${est.piso.toFixed(2)}</div></div>
-            <div><div style="font-size:9px;color:var(--text3)">ALVO</div><div style="font-family:var(--mono);font-weight:700;font-size:11px;color:var(--accent-text)">${est.alvo.toFixed(2)}</div></div>
-            <div><div style="font-size:9px;color:var(--text3)">TABELA</div><div style="font-family:var(--mono);font-weight:700;font-size:11px;color:var(--orange)">${est.tabela.toFixed(2)}</div></div>
-          </div></div>`;})()}
       <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border)">
         <span style="color:var(--text2)">Custo de Compra</span>
         <span style="font-family:var(--mono);font-weight:600;color:var(--danger)">R$${r2.custo.toFixed(2)}</span>
@@ -1101,8 +975,6 @@ function renderKitCardHTML(p,c,pl,k,bestLucro,worstLucro,precoOverride){
       <div style="height:3px"></div>
       ${r2.percDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n} <span style="font-size:9px">(${d.v.toFixed(1)}%)</span></span><span data-perctax style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
       ${r2.fixaDetail.map(d=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--text3)">${d.n}</span><span data-fixtax style="font-family:var(--mono);color:var(--text3)">R$${d.val.toFixed(2)}</span></div>`).join('')}
-      ${resK?resK.usos.filter(u=>!u.junto).map(u=>`<div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--accent-text)">${escH(u.n)}${u.v!=null?` <span style="font-size:9px">(${u.v.toFixed(1)}%)</span>`:''}</span><span data-resuso style="font-family:var(--mono);color:var(--accent-text)">R$${u.val.toFixed(2)}</span></div>`).join('')
-        +`<div style="display:flex;justify-content:space-between;padding:2px 0" title="Reserva de marketing ${resK.pct}%: R$${resK.totR.toFixed(2)} − usado R$${resK.usado.toFixed(2)}"><span style="color:var(--accent-text);font-weight:600">Reserva de marketing <span style="font-size:9px">(${String(resK.pct).replace('.',',')}% · sobra)</span></span><span data-f="res-sobra" style="font-family:var(--mono);color:var(--accent-text);font-weight:600">R$${resK.sobra.toFixed(2)}</span></div>`:''}
       <div style="border-top:2px solid var(--border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between">
         <span style="font-weight:700;color:var(--text)">Total de Taxas</span>
         <span data-f="total-taxas" style="font-family:var(--mono);font-weight:700;color:var(--danger)">R$${r2.tax.toFixed(2)}</span>
@@ -1275,7 +1147,7 @@ function renderProdutos(c){
             ${p.foto_url?`<img src="${p.foto_url}" class="prod-foto"/>`:`<div class="prod-foto-ph">👗</div>`}
             <div style="flex:1;min-width:0">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="prod-card-name">${p.nome}</span><span style="font-size:11px;color:var(--text3)">SKU ${p.sku||'—'}</span></div>
-              <div class="prod-card-meta">${ordenarPlatsIds(p.plataformas).map(pl=>{const po=PLATS.find(x=>x.id===pl);return po?`<span class="chip ${po.cls}">${po.label}</span>`:''}).join('')}${ordenarKits(p.kits).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('')}${p.fabricacao?'🔨 Fabricação':'🛒 Revenda'}</div>${estResumoProduto(p)}
+              <div class="prod-card-meta">${ordenarPlatsIds(p.plataformas).map(pl=>{const po=PLATS.find(x=>x.id===pl);return po?`<span class="chip ${po.cls}">${po.label}</span>`:''}).join('')}${ordenarKits(p.kits).map(k=>`<span class="chip chip-kit">K${k.qty}</span>`).join('')}${p.fabricacao?'🔨 Fabricação':'🛒 Revenda'}</div>
             </div>
           </div>
           <div style="display:flex;gap:4px;flex-shrink:0">
@@ -1382,7 +1254,6 @@ function renderTaxaRow(pl,tipo,r,i,unidade){
       <input class="taxa-name-input" value="${r.n}" onchange="updTaxaNome('${pl.id}','${tipo}',${i},this.value)" placeholder="Nome"/>
       ${r.obs?`<span style="font-size:9px;color:var(--text3);margin-right:4px;cursor:pointer" onclick="toast('${r.obs.replace(/'/g,"\\'")}','info')">ℹ️</span>`:''}
       ${isAutoField?`<span style="font-size:9px;padding:1px 6px;border-radius:20px;cursor:pointer;margin-right:4px;font-weight:600;background:${isAuto?'#dbeafe':'#fef9c3'};color:${isAuto?'#1e40af':'#713f12'}" onclick="toggleTaxaAuto('${pl.id}','${tipo}',${i})" title="Clique para alternar">${isAuto?'🔒 Auto':'✏️ Manual'}</span>`:''}
-      <select class="taxa-cat-sel" title="Grupo da taxa — Marketing não entra no piso cru" onchange="updTaxaCat('${pl.id}','${tipo}',${i},this.value)">${Object.entries(CAT_LABEL).map(([k,lb])=>`<option value="${k}" ${catTaxa(r)===k?'selected':''}>${lb}</option>`).join('')}</select>
       <input class="taxa-input" type="number" value="${r.v}" step="${unidade==='%'?'0.1':'0.01'}" ${isAutoField&&isAuto?'disabled title="Desative o Auto para editar manualmente"':''} onchange="updTaxa('${pl.id}','${tipo}',${i},this.value)"/>
       <span style="font-size:10px;color:var(--text3)">${unidade}</span>
       <button class="btn-icon danger" onclick="rmTaxa('${pl.id}','${tipo}',${i})">✕</button>
@@ -1459,487 +1330,108 @@ function renderConfig(c){
   </div>`;
 }
 
-/* ======================================================================
-   ESTRATÉGIA DE PREÇO — Calculadora (piso, alvo, tabela e reserva de marketing)
-   Usa as taxas da loja (aba Taxas) e o mesmo cálculo do card do produto (calcR).
-   ====================================================================== */
-const CAT_LABEL={plat:'Plataforma',imp:'Impostos e custos',mkt:'Ferramentas de marketing'};
-function catTaxaInferida(n){
-  n=(n||'').toLowerCase();
-  if(/comiss|taxa fixa|taxa frete|frete|estoque full|tarifa/.test(n)) return 'plat';
-  if(/\bads\b|ads |afiliad|campanha|cupom|rel[aâ]mpago|leve|live|v[ií]deo|influ|promo/.test(n)) return 'mkt';
-  return 'imp';
-}
-function catTaxa(r){return (r&&r.cat)||catTaxaInferida(r?.n);}
-function updTaxaCat(pl,tipo,i,v){gc().taxas[pl][tipo][i].cat=v;renderTab();}
-const escH=s=>String(s??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-const r2c=x=>Math.round((x+Number.EPSILON)*100)/100;
-const brlE=v=>isFinite(v)?'R$ '+v.toFixed(2).replace('.',','):'–';
-const pctE=(v,d=2)=>isFinite(v)?(v*100).toFixed(d).replace('.',',')+'%':'–';
-
-// Taxas da loja para a plataforma; semMkt = tira as ferramentas de marketing (piso cru)
-function estTaxas(c,pl,semMkt){
-  const t=c.taxas?.[pl];if(!t) return null;
-  const f=r=>!(semMkt&&catTaxa(r)==='mkt');
-  return {...c.taxas,[pl]:{...t,perc:t.perc.filter(f),fixas:t.fixas.filter(f)}};
-}
-function estCupom(c,pl,semMkt,kit){const tx=estTaxas(c,pl,semMkt);return tx?cupomFixoShopee(pl,tx[pl],kit):0;}
-function estConta(c,pl,P,custo,peso,kit,semMkt){const tx=estTaxas(c,pl,semMkt);return tx?calcR(P,custo,pl,tx,peso,kit):null;}
-// Menor preço (no centavo) que paga custo + taxas e deixa a margem mínima + a reserva
-function estPrecoMin(c,pl,custo,peso,kit,semMkt,meta,reserva){
-  if(!custo||custo<=0) return NaN;
-  const cup=estCupom(c,pl,semMkt,kit);
-  const ok=P=>{const r=estConta(c,pl,P,custo,peso,kit,semMkt);return !!r&&r.lucro>=meta*P+reserva*Math.max(0,P-cup)-1e-9;};
-  let lo=0.01,hi=Math.max(1,custo);
-  while(!ok(hi)&&hi<1e6) hi*=2;
-  if(hi>=1e6) return NaN;
-  for(let i=0;i<60&&hi-lo>0.004;i++){const m=(lo+hi)/2;ok(m)?hi=m:lo=m;}
-  let P=Math.ceil(hi*100-1e-6)/100;
-  for(let i=0;i<300&&P>0.01&&ok(r2c(P-0.01));i++) P=r2c(P-0.01);
-  for(let i=0;i<300&&!ok(P);i++) P=r2c(P+0.01);
-  return P;
-}
-
-/* ---------- produto / kit selecionados ---------- */
-function estProd(c){return (c.produtos||[]).find(p=>String(p.id)===String(ST.calc.prodId))||null;}
-function estKit(p){return p?.kits?.find(k=>Number(k.qty)===Number(ST.calc.kit))||null;}
-function estPlatsDoProduto(p){
-  if(!p) return PLATS;
-  const ids=ordenarPlatsIds(p.plataformas||[]);
-  const l=ids.map(id=>PLATS.find(x=>x.id===id)).filter(Boolean);
-  return l.length?l:PLATS;
-}
-function estDefaults(){
-  const ca=ST.calc;
-  if(ca.reserva==null) ca.reserva='5';
-  if(ca.desconto==null) ca.desconto='30';
-  if(ca.margem==null) ca.margem='';
-  if(ca.extra==null) ca.extra='';
-  if(ca.tabelaManual==null) ca.tabelaManual='';
-  if(ca.sim==null) ca.sim=ca.desconto;
-}
-// Ao escolher SKU/kit/plataforma: puxa custo e peso do cadastro e a estratégia salva (se houver)
-function estCarregarKit(){
-  const c=gc();const ca=ST.calc;const p=estProd(c);const k=estKit(p);
-  if(!k) return;
-  const pl=ca.plat;
-  ca.custo=k.custos?.[pl]!=null?String(k.custos[pl]):'';
-  ca.peso=k.peso_kg?String(k.peso_kg):'';
-  const est=k.estrategia?.[pl];
-  if(est){
-    ca.reserva=String(est.reserva??5);ca.desconto=String(est.desconto??30);
-    ca.margem=est.margem_manual?String(est.margem):'';
-    ca.tabelaManual=est.tabela_manual?String(est.tabela):'';
-  }else{ca.tabelaManual='';ca.margem='';}
-  ca.sim=ca.desconto;ca.extra='';
-}
-function onCalcProd(id){
-  const c=gc();ST.calc.prodId=id||null;ST.calc.kit=null;
-  const p=estProd(c);
-  if(p){
-    const plats=estPlatsDoProduto(p);
-    if(!plats.find(x=>x.id===ST.calc.plat)) ST.calc.plat=plats[0].id;
-    const kits=ordenarKits(p.kits||[]);
-    if(kits.length) ST.calc.kit=kits[0].qty;
-    estCarregarKit();
-  }
-  renderTab();
-}
-function onCalcKit(qty){ST.calc.kit=parseInt(qty)||null;estCarregarKit();renderTab();}
-function onCalcPlat(pl){ST.calc.plat=pl;estCarregarKit();renderTab();}
-function estInput(campo,valor){
-  ST.calc[campo]=valor;
-  if(campo==='desconto'){ST.calc.sim=valor;const s=document.getElementById('est-sim-range');const n=document.getElementById('est-sim-num');if(s)s.value=valor;if(n)n.value=valor;}
-  updateCalc();
-}
-function estSim(v,origem){
-  ST.calc.sim=v;
-  if(origem!=='range'){const s=document.getElementById('est-sim-range');if(s)s.value=v;}
-  if(origem!=='num'){const n=document.getElementById('est-sim-num');if(n)n.value=v;}
-  updateCalc();
-}
-function estIrPara(qual){
-  const E=estCalcular();if(!E) return;
-  const v=qual==='dia'?parseFloat(ST.calc.desconto)||0:qual==='ferr'?Math.floor(E.dmax*1000)/10:Math.floor(E.dcru*1000)/10;
-  estSim(String(v));
-}
-function estAbrir(prodId,qty,pl){ST.calc.prodId=prodId;ST.calc.kit=qty;ST.calc.plat=pl;estCarregarKit();renderTab();document.getElementById('content')?.scrollTo({top:0,behavior:'smooth'});}
-
-/* ---------- reserva de marketing: lançamentos (tabela prec_reserva_uso) ---------- */
-async function estCarregarUsos(force){
-  const c=gc();if(!c) return;
-  if(!force&&ST.reserva?.clientId===c.id) return;
-  ST.reserva={clientId:c.id,rows:[],erro:null,carregando:true};
-  const{data,error}=await sb.from('prec_reserva_uso').select('*').eq('client_id',c.id).order('created_at',{ascending:false});
-  ST.reserva={clientId:c.id,rows:error?[]:(data||[]),erro:error?(error.message||'erro'):null,carregando:false};
-}
-function estUsosAtivos(c,p,kit,pl){
-  if(!p||!ST.reserva||ST.reserva.clientId!==c.id) return [];
-  return ST.reserva.rows.filter(u=>!u.encerrado_em&&String(u.product_id)===String(p.id)&&Number(u.kit_qty)===Number(kit)&&u.plataforma===pl);
-}
-async function estAddUso(){
-  const c=gc();const p=estProd(c);const k=estKit(p);const pl=ST.calc.plat;
-  if(!p||!k){toast('Escolha o SKU e o kit primeiro','error');return;}
-  let ferr=document.getElementById('est-uso-ferr')?.value?.trim();
-  if(ferr==='__outra') ferr=document.getElementById('est-uso-outra')?.value?.trim();
-  const tipo=document.getElementById('est-uso-tipo')?.value||'%';
-  const valor=parseFloat(String(document.getElementById('est-uso-valor')?.value||'').replace(',','.'));
-  const motivo=document.getElementById('est-uso-motivo')?.value?.trim()||null;
-  if(!ferr){toast('Informe a ferramenta (ex.: Ads extra, Live, Desconto extra)','error');return;}
-  if(!(valor>0)){toast('Informe o valor usado da reserva','error');return;}
-  const row={client_id:c.id,product_id:p.id,kit_qty:k.qty,plataforma:pl,ferramenta:ferr,tipo,valor,motivo};
-  const{data,error}=await sb.from('prec_reserva_uso').insert(row).select().single();
-  if(error){toast('⚠️ Não foi possível salvar o uso: '+error.message,'error');return;}
-  ST.reserva.rows.unshift(data);
-  toast('✅ Uso da reserva registrado');renderTab();
-}
-async function estEncerrarUso(id){
-  const agora=new Date().toISOString();
-  const{error}=await sb.from('prec_reserva_uso').update({encerrado_em:agora}).eq('id',id);
-  if(error){toast('⚠️ Não foi possível encerrar: '+error.message,'error');return;}
-  const u=ST.reserva.rows.find(x=>String(x.id)===String(id));if(u) u.encerrado_em=agora;
-  toast('Uso encerrado — o valor volta para a reserva');renderTab();
-}
-
-/* ---------- cálculo ---------- */
-function estCalcular(){
-  const c=gc();if(!c) return null;
-  estDefaults();
-  const ca=ST.calc;const pl=ca.plat||'shopee';
-  const p=estProd(c),k=estKit(p);
-  const custo=parseFloat(ca.custo)||0,peso=parseFloat(ca.peso)||0,kit=k?.qty||null;
-  const curva=p?getCurvaProduto(p,pl,kit):null;
-  const margemCurva=getMargemPorCurva(c,curva,p?tipoDoProduto(p):'fabricacao',pl);
-  const margemManual=ca.margem!==''&&ca.margem!=null&&isFinite(parseFloat(ca.margem));
-  const margem=(margemManual?parseFloat(ca.margem):margemCurva)/100;
-  const reserva=(parseFloat(ca.reserva)||0)/100,desc=Math.min(0.95,(parseFloat(ca.desconto)||0)/100);
-  const piso=estPrecoMin(c,pl,custo,peso,kit,true,margem,0);
-  const comFerr=estPrecoMin(c,pl,custo,peso,kit,false,margem,0);
-  const alvoCalc=estPrecoMin(c,pl,custo,peso,kit,false,margem,reserva);
-  let tabSug=NaN;
-  if(isFinite(alvoCalc)){tabSug=Math.ceil(alvoCalc/(1-desc)*100-1e-6)/100;for(let i=0;i<50&&r2c(tabSug*(1-desc))<alvoCalc-0.001;i++)tabSug=r2c(tabSug+0.01);}
-  const tabMan=parseFloat(ca.tabelaManual)||0;const tab=tabMan>0?tabMan:tabSug;
-  const alvo=r2c(tab*(1-desc));
-  return{c,p,k,pl,custo,peso,kit,curva,margemCurva,margemManual,margem,reserva,desc,piso,comFerr,alvoCalc,tabSug,tabMan,tab,alvo,
-    dmax:1-comFerr/tab,dcru:1-piso/tab,usos:estUsosAtivos(c,p,kit,pl)};
-}
-function estSimular(E){
-  const d=Math.min(0.95,(parseFloat(ST.calc.sim)||0)/100);
-  const P=r2c(E.tab*(1-d));
-  const r=estConta(E.c,E.pl,P,E.custo,E.peso,E.kit,false);
-  if(!r) return null;
-  const cup=estCupom(E.c,E.pl,false,E.kit),base=Math.max(0,P-cup);
-  const simExtra=parseFloat(String(ST.calc.extra||'').replace(',','.'))||0;
-  const extras=[...E.usos.map(u=>({n:u.ferramenta||'Uso da reserva',tipo:u.tipo||'%',v:Number(u.valor)||0,motivo:u.motivo})),
-    ...(simExtra?[{n:'Simulação: ferramenta agressiva',tipo:'%',v:simExtra}]:[])]
-    .map(x=>({...x,val:x.tipo==='%'?r2c(base*x.v/100):r2c(x.v)}));
-  const usado=r2c(extras.reduce((s,x)=>s+x.val,0));
-  const margR=r2c(P*E.margem);
-  const totR=Math.min(Math.max(0,r2c(r.lucro-margR)),r2c(base*E.reserva));
-  const lucroDep=r2c(r.lucro-usado);
-  const sobra=Math.max(0,Math.min(r2c(totR-usado),r2c(lucroDep-margR)));
-  const lucro=r2c(lucroDep-sobra);
-  const tx=estTaxas(E.c,E.pl,false)[E.pl];
-  const catOf=n=>{const row=[...tx.perc,...tx.fixas].find(x=>x.n===n);return row?catTaxa(row):'plat';};
-  const L=[...r.percDetail.map(x=>({n:x.n,cat:catOf(x.n),rate:x.v/100,val:x.val,base:baseDescontaCupom(x.n)?base:P})),
-           ...r.fixaDetail.map(x=>({n:x.n,cat:catOf(x.n),rate:null,val:x.val}))];
-  extras.forEach(x=>{
-    const alvo=L.find(l=>!l.res&&l.n===x.n);
-    if(alvo){alvo.val=r2c(alvo.val+x.val);alvo.extra=(alvo.extra||[]).concat(x.tipo==='%'?String(x.v).replace('.',',')+'%':brlE(x.val));if(x.tipo==='%'&&alvo.rate!=null)alvo.rate+=x.v/100;alvo.temReserva=true;}
-    else L.push({n:x.n+' (da reserva)',cat:'mkt',rate:x.tipo==='%'?x.v/100:null,val:x.val,base,res:true});
-  });
-  if(sobra>0) L.push({n:'Reserva de marketing (sobra)',cat:'mkt',rate:null,val:sobra,sobra:true});
-  const taxas=r2c(L.reduce((s,x)=>s+x.val,0)),total=r2c(taxas+E.custo);
-  return{d,P,base,cup,L,taxas,total,lucro,lp:P?lucro/P:NaN,margR,totR,usado,sobra,passou:lucroDep<margR-0.01};
-}
-
-/* ---------- tela ---------- */
 function renderCalculadora(c){
-  estDefaults();
-  const ca=ST.calc;
-  if(!ST.reserva||ST.reserva.clientId!==c.id){if(!ST.reserva?.carregando){estCarregarUsos().then(()=>{if(ST.tab==='calculadora')renderTab();});}}
-  const prods=[...(c.produtos||[])].sort((a,b)=>String(a.sku||a.nome).localeCompare(String(b.sku||b.nome),'pt-BR',{numeric:true}));
-  const p=estProd(c);const k=estKit(p);
-  const plats=estPlatsDoProduto(p);
-  if(!plats.find(x=>x.id===ca.plat)) ca.plat=plats[0].id;
-  const pl=ca.plat;
-  const isML=pl==='ml_classico'||pl==='ml_premium';
-  const est=k?.estrategia?.[pl];
-  setTimeout(updateCalc,0);
-  const usos=p&&k?estUsosAtivos(c,p,k.qty,pl):[];
-  const reservaHTML=ST.reserva?.erro
-    ?`<div class="est-alert warn">A tabela de lançamentos da reserva ainda não existe no banco. Rode o SQL <b>prec_reserva_uso</b> no Supabase (enviado junto com este arquivo) e recarregue a página.<br><span style="font-size:10px;opacity:.8">${escH(ST.reserva.erro)}</span></div>`
-    :!p||!k?`<div class="est-muted">Escolha um SKU e o kit para ver e lançar os usos da reserva.</div>`
-    :`${usos.length?`<table class="est-table"><thead><tr><th>Ferramenta</th><th>Valor</th><th>Desde</th><th>Motivo</th><th></th></tr></thead><tbody>
-        ${usos.map(u=>`<tr><td>${escH(u.ferramenta)}</td><td class="num">${u.tipo==='%'?String(u.valor).replace('.',',')+'%':brlE(Number(u.valor))}</td><td>${new Date(u.created_at).toLocaleDateString('pt-BR')}</td><td>${escH(u.motivo||'')}</td><td><button class="btn btn-outline est-mini" onclick="estEncerrarUso('${u.id}')">Encerrar</button></td></tr>`).join('')}
-      </tbody></table>`:`<div class="est-muted">Nenhum uso ativo da reserva neste kit nesta plataforma.</div>`}
-      <div class="est-form">
-        <select id="est-uso-ferr" class="calc-select" style="width:auto;flex:2" onchange="document.getElementById('est-uso-outra').style.display=this.value==='__outra'?'':'none'">
-          ${[...(c.taxas[pl]?.perc||[]),...(c.taxas[pl]?.fixas||[])].filter(r=>catTaxa(r)==='mkt').map(r=>`<option value="${escH(r.n)}">Aumentar ${escH(r.n)}</option>`).join('')}
-          <option value="__outra">Outra ferramenta…</option>
-        </select>
-        <input id="est-uso-outra" class="calc-input" style="width:auto;flex:2;text-align:left;display:none" placeholder="Nome da ferramenta"/>
-        <select id="est-uso-tipo" class="calc-select" style="width:64px"><option value="%">%</option><option value="R$">R$</option></select>
-        <input id="est-uso-valor" class="calc-input" type="number" step="0.01" style="width:84px" placeholder="Valor"/>
-        <input id="est-uso-motivo" class="calc-input" style="width:auto;flex:2;text-align:left" placeholder="Motivo (opcional)"/>
-        <button class="btn btn-primary" onclick="estAddUso()">+ Registrar uso</button>
-      </div>
-      <div class="est-muted" style="margin-top:6px">Escolha a ferramenta que vai receber a reserva: o valor soma na linha dela (ex.: Ads 3,5% + 3%). O uso fica ativo até alguém clicar em Encerrar.</div>`;
-  return`<div class="calc-wrap est">
+  const ca=ST.calc;const platSel=ca.plat||'shopee';
+  const prods=c.produtos||[];const prodSel=prods.find(p=>String(p.id)===String(ca.prodId));
+  const kits=prodSel?prodSel.kits:[];
+  return`<div class="calc-wrap">
     <div>
       <div class="calc-card" style="margin-bottom:12px">
         <div class="calc-title">📥 Entradas</div>
-        <div class="calc-row"><span>SKU</span>
-          <select class="calc-select est-wide" onchange="onCalcProd(this.value)">
-            <option value="">— Avulso —</option>
-            ${prods.map(x=>`<option value="${x.id}" ${String(ca.prodId)===String(x.id)?'selected':''}>${escH(x.sku?x.sku+' · '+x.nome:x.nome)}</option>`).join('')}
-          </select></div>
-        ${p?`<div class="calc-row"><span>Kit</span>
-          <select class="calc-select" onchange="onCalcKit(this.value)">
-            ${ordenarKits(p.kits||[]).map(x=>`<option value="${x.qty}" ${Number(ca.kit)===Number(x.qty)?'selected':''}>${x.qty} ${x.qty>1?'peças':'peça'}</option>`).join('')}
-          </select></div>`:''}
         <div class="calc-row"><span>Plataforma</span>
-          <select class="calc-select" onchange="onCalcPlat(this.value)">
-            ${plats.map(x=>`<option value="${x.id}" ${pl===x.id?'selected':''}>${x.label}</option>`).join('')}
-          </select></div>
-        <div class="calc-row"><span>Custo de compra (R$)${p?'<small class="est-sub">do cadastro do produto</small>':''}</span><input class="calc-input" type="number" step="0.01" value="${ca.custo||''}" oninput="estInput('custo',this.value)"/></div>
-        ${isML?`<div class="calc-row"><span>Peso do kit (kg)</span><input class="calc-input" type="number" step="0.1" value="${ca.peso||''}" oninput="estInput('peso',this.value)"/></div>`:''}
-        <div class="calc-row"><span>Margem mínima (%)<small class="est-sub" id="est-marg-sub"></small></span><input class="calc-input" type="number" step="0.1" id="est-marg" value="${ca.margem||''}" oninput="estInput('margem',this.value)"/></div>
-        <div class="calc-row"><span>Reserva de marketing (%)<small class="est-sub" id="est-res-sub"></small></span><input class="calc-input" type="number" step="0.5" value="${ca.reserva}" oninput="estInput('reserva',this.value)"/></div>
-        <div class="calc-row"><span>Desconto do dia a dia (%)<small class="est-sub">exibido no anúncio</small></span><input class="calc-input" type="number" step="1" value="${ca.desconto}" oninput="estInput('desconto',this.value)"/></div>
-        <div class="calc-row"><span>Tabela já usada (R$)<small class="est-sub">opcional — senão usa a sugerida</small></span><input class="calc-input" type="number" step="0.01" placeholder="sugerida" value="${ca.tabelaManual||''}" oninput="estInput('tabelaManual',this.value)"/></div>
+          <select class="calc-select" onchange="ST.calc.plat=this.value;ST.calc.preco='';ST.calc.custo='';ST.calc.peso='';renderTab()">
+            ${PLATS.map(pl=>`<option value="${pl.id}" ${platSel===pl.id?'selected':''}>${pl.label}</option>`).join('')}
+          </select>
+        </div>
+        <div class="calc-row"><span>Produto (opcional)</span>
+          <select class="calc-select" onchange="onCalcProd(this.value)">
+            <option value="">— Avulso —</option>
+            ${prods.map(p=>`<option value="${p.id}" ${String(ca.prodId)===String(p.id)?'selected':''}>${p.nome}</option>`).join('')}
+          </select>
+        </div>
+        ${prodSel?`<div class="calc-row"><span>Kit</span>
+          <select class="calc-select" onchange="onCalcKit(this.value)">
+            <option value="">Selecione...</option>
+            ${kits.map(k=>`<option value="${k.qty}" ${ca.kit===k.qty?'selected':''}>${k.qty} peças</option>`).join('')}
+          </select>
+        </div>`:''}
+        <div class="calc-row"><span>Preço de Venda (R$)</span><input class="calc-input" type="number" id="calc-preco" placeholder="0,00" value="${ca.preco}" oninput="updateCalc()"/></div>
+        <div class="calc-row"><span>Custo de Compra (R$)</span><input class="calc-input" type="number" id="calc-custo" placeholder="0,00" value="${ca.custo}" oninput="updateCalc()"/></div>
+        ${(platSel==='ml_classico'||platSel==='ml_premium')?`<div class="calc-row"><span>Peso do Kit (kg)</span><input class="calc-input" type="number" id="calc-peso" placeholder="0,0" step="0.1" value="${ca.peso}" oninput="updateCalc()"/></div>`:''}
+        <div class="calc-row"><span>Margem Desejada (%)</span><input class="calc-input" type="number" id="calc-margem" placeholder="15" value="${ca.margem}" oninput="updateCalc()"/></div>
         <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-          <button class="btn btn-outline" style="font-size:11px;width:100%" onclick="ST.calc={plat:ST.calc.plat,prodId:null,kit:null,custo:'',peso:''};renderTab()">🔄 Limpar / calcular avulso</button>
+          <button class="btn btn-outline" style="font-size:11px;width:100%" onclick="ST.calc={plat:ST.calc.plat,prodId:null,kit:null,preco:'',custo:'',margem:'',peso:''};renderTab()">🔄 Limpar / calcular avulso</button>
         </div>
       </div>
-      <div class="calc-card">
-        <div class="calc-title">🏷️ Taxas desta plataforma</div>
-        <div id="est-taxas"></div>
-        <div class="est-muted" style="margin-top:6px">Valores, nomes e grupos editáveis na aba <a href="#" onclick="setTab('taxas');return false">Taxas</a>. Piso cru = sem as taxas do grupo Marketing.</div>
-      </div>
+      <div id="calc-sug"></div>
     </div>
     <div>
-      <div class="calc-card" style="margin-bottom:12px">
-        <div class="calc-title">💡 Estratégia de preço${p?` · ${escH(p.sku||p.nome)} · Kit ${k?.qty||''} · ${PLATS.find(x=>x.id===pl)?.label||pl}`:''}</div>
-        <div id="est-top"></div>
-        ${p&&k?`<div class="est-save">
-          <button class="btn btn-primary" onclick="estSalvar()">💾 Salvar estratégia deste kit</button>
-          <span class="est-muted">${est?`Salvo em ${new Date(est.salvo_em).toLocaleString('pt-BR')}: piso ${brlE(est.piso)} · alvo ${brlE(est.alvo)} · tabela ${brlE(est.tabela)}`:'Ainda não salvo para esta plataforma.'}</span>
-        </div>`:`<div class="est-muted" style="margin-top:10px">Escolha o SKU e o kit para salvar a estratégia.</div>`}
-      </div>
-      <div class="calc-card" style="margin-bottom:12px">
-        <div class="calc-title">🎚️ Simulador de desconto</div>
-        <div class="est-sim-top">
-          <span style="font-size:12px">Desconto aplicado</span>
-          <input type="range" id="est-sim-range" min="0" max="80" step="0.5" value="${ca.sim}" oninput="estSim(this.value,'range')"/>
-          <input class="calc-input" style="width:80px" type="number" id="est-sim-num" step="0.5" value="${ca.sim}" oninput="estSim(this.value,'num')"/>
-        </div>
-        <div class="est-chips">
-          <button class="est-chip" onclick="estIrPara('dia')">Dia a dia (alvo)</button>
-          <button class="est-chip" onclick="estIrPara('ferr')">Limite com ferramentas</button>
-          <button class="est-chip" onclick="estIrPara('cru')">Piso cru</button>
-        </div>
-        <div class="calc-row" style="border:none;margin-top:6px"><span>Simular ferramenta agressiva (%)<small class="est-sub" id="est-extra-sub">só simulação — para valer, registre o uso abaixo</small></span><input class="calc-input" type="number" step="0.5" value="${ca.extra||''}" placeholder="0" oninput="estInput('extra',this.value)"/></div>
-        <div class="est-sim-grid">
-          <div id="est-det"></div>
-          <div id="est-res"></div>
-        </div>
-      </div>
-      <div class="calc-card" style="margin-bottom:12px">
-        <div class="calc-title">📒 Uso da reserva${p&&k?` · ${escH(p.sku||p.nome)} · Kit ${k.qty} · ${PLATS.find(x=>x.id===pl)?.label||pl}`:''}</div>
-        ${reservaHTML}
-      </div>
       <div class="calc-card">
-        <div class="calc-title">📊 Estratégias salvas nesta loja</div>
-        ${renderEstLoja(c)}
+        <div class="calc-title">📋 Detalhamento de Taxas</div>
+        <div id="calc-res"><div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Preencha preço e custo para ver o resultado</div></div>
       </div>
     </div>
   </div>`;
-}
-
-function estResumoProduto(p){
-  const itens=[];
-  for(const k of ordenarKits(p.kits||[])) for(const pl of ordenarPlatsIds(Object.keys(k.estrategia||{}))){
-    const est=k.estrategia[pl];if(!est) continue;
-    const st=estSituacao(Number(k.precos?.[pl])||null,est);
-    itens.push(`<span class="est-pchip" style="border-color:${st.cor};background:${st.bg}" title="Piso ${brlE(est.piso)} · Alvo ${brlE(est.alvo)} · Tabela ${brlE(est.tabela)}">🎯 K${k.qty} ${PLATS.find(x=>x.id===pl)?.label||pl}: <b>Piso ${est.piso.toFixed(2)}</b> · <b>Alvo ${est.alvo.toFixed(2)}</b> · <b>Tab ${est.tabela.toFixed(2)}</b> <span style="color:${st.cor};font-weight:700">${st.txt}</span></span>`);
-  }
-  return itens.length?`<div class="est-presumo">${itens.join('')}</div>`:`<div class="est-presumo"><span class="est-pchip" style="border-style:dashed;color:var(--text3)">🎯 Sem estratégia salva</span></div>`;
-}
-function estSituacao(atual,est){
-  if(!atual) return {txt:'Sem preço atual',cor:'var(--text3)',bg:'var(--surface2)',k:'sem'};
-  if(atual<est.piso-0.005) return {txt:'Abaixo do piso',cor:'var(--danger)',bg:'var(--danger-bg)',k:'piso'};
-  if(atual<est.com_ferramentas-0.005) return {txt:'Comendo a margem',cor:'var(--danger)',bg:'var(--danger-bg)',k:'margem'};
-  if(atual<est.alvo-0.005) return {txt:'Usando a reserva',cor:'var(--warn)',bg:'var(--warn-bg)',k:'reserva'};
-  return {txt:'No alvo',cor:'var(--success)',bg:'var(--success-bg)',k:'alvo'};
-}
-function estLinhas(c){
-  const rows=[];
-  for(const p of (c.produtos||[])) for(const k of ordenarKits(p.kits||[])) for(const [pl,est] of Object.entries(k.estrategia||{})){
-    if(!est) continue;
-    const atual=Number(k.precos?.[pl])||null;
-    const usos=estUsosAtivos(c,p,k.qty,pl);
-    rows.push({p,k,pl,est,atual,usos,st:estSituacao(atual,est)});
-  }
-  return rows.sort((a,b)=>String(a.p.sku||a.p.nome).localeCompare(String(b.p.sku||b.p.nome),'pt-BR',{numeric:true})||a.k.qty-b.k.qty);
-}
-function estFiltro(campo,v){if(!ST.estF)ST.estF={plat:'',q:'',sit:''};ST.estF[campo]=v;renderTab();if(campo==='q'){const el=document.getElementById('est-busca');if(el){el.focus();el.setSelectionRange(v.length,v.length);}}}
-function renderEstrategias(c){
-  if(!ST.estF) ST.estF={plat:'',q:'',sit:''};
-  const F=ST.estF;
-  const todas=estLinhas(c);
-  const cont=k=>todas.filter(x=>x.st.k===k).length;
-  const rows=todas.filter(x=>(!F.plat||x.pl===F.plat)&&(!F.sit||x.st.k===F.sit)&&(!F.q||`${x.p.sku||''} ${x.p.nome||''}`.toLowerCase().includes(F.q.toLowerCase())));
-  const usosAtivos=todas.reduce((s,x)=>s+x.usos.length,0);
-  const kpi=(lbl,v,cor,sit)=>`<div class="est-kpi${F.sit===sit&&sit?' on':''}" ${sit!=null?`onclick="estFiltro('sit','${F.sit===sit?'':sit}')"`:''}><div class="v" style="color:${cor}">${v}</div><div class="l">${lbl}</div></div>`;
-  const platsUsadas=[...new Set(todas.map(x=>x.pl))];
-  const card=x=>`<div class="est-card" style="border-color:${x.st.cor}">
-      <div class="est-card-h" style="background:${x.st.bg}">
-        <div><b>${escH(x.p.sku||'')}</b> <span style="color:var(--text2)">${escH(x.p.nome||'')}</span><div style="font-size:11px;color:var(--text3)">Kit ${x.k.qty} · ${PLATS.find(y=>y.id===x.pl)?.label||x.pl}</div></div>
-        <span class="est-badge" style="color:${x.st.cor}">${x.st.txt}</span>
-      </div>
-      <div class="est-card-vals">
-        <div><div class="l">Piso</div><div class="v">${brlE(x.est.piso)}</div></div>
-        <div><div class="l">Alvo</div><div class="v" style="color:var(--accent-text)">${brlE(x.est.alvo)}</div></div>
-        <div><div class="l">Tabela</div><div class="v" style="color:var(--orange)">${brlE(x.est.tabela)}</div></div>
-      </div>
-      <div class="est-card-info">
-        <span>Preço atual <b>${x.atual?brlE(x.atual):'–'}</b></span>
-        <span>Desconto <b>${String(x.est.desconto??'').replace('.',',')}%</b></span>
-        <span>Reserva <b>${String(x.est.reserva??'').replace('.',',')}%</b></span>
-        <span>Margem <b>${String(x.est.margem??'').replace('.',',')}%</b></span>
-        <span>Com ferramentas <b>${brlE(x.est.com_ferramentas)}</b></span>
-      </div>
-      <div class="est-card-usos">${x.usos.length?`<div class="l">Usos ativos da reserva</div>`+x.usos.map(u=>`<div class="est-uso"><span>${escH(u.ferramenta)} · <b>${u.tipo==='%'?String(u.valor).replace('.',',')+'%':brlE(Number(u.valor))}</b>${u.motivo?` <span style="color:var(--text3)">— ${escH(u.motivo)}</span>`:''}</span><button class="btn btn-outline est-mini" onclick="estEncerrarUso('${u.id}')">Encerrar</button></div>`).join(''):'<span style="color:var(--text3)">Reserva sem uso ativo</span>'}</div>
-      <div class="est-card-f"><span>Salvo em ${new Date(x.est.salvo_em).toLocaleDateString('pt-BR')}</span><button class="btn btn-outline est-mini" onclick="setTab('calculadora').then(()=>estAbrir('${x.p.id}',${x.k.qty},'${x.pl}'))">Abrir na Calculadora</button></div>
-    </div>`;
-  return`<div style="max-width:1240px">
-    <div class="est-kpis">
-      ${kpi('estratégias salvas',todas.length,'var(--text)','')}
-      ${kpi('no alvo',cont('alvo'),'var(--success)','alvo')}
-      ${kpi('usando a reserva',cont('reserva'),'#b45309','reserva')}
-      ${kpi('comendo a margem',cont('margem'),'var(--danger)','margem')}
-      ${kpi('abaixo do piso',cont('piso'),'var(--danger)','piso')}
-      ${kpi('usos ativos da reserva',usosAtivos,'var(--accent-text)',null)}
-    </div>
-    <div class="est-filtros">
-      <input id="est-busca" class="calc-input" style="width:240px;text-align:left" placeholder="Buscar SKU ou nome" value="${escH(F.q)}" oninput="estFiltro('q',this.value)"/>
-      <span class="est-chip ${!F.plat?'on':''}" onclick="estFiltro('plat','')">Todas</span>
-      ${platsUsadas.map(id=>`<span class="est-chip ${F.plat===id?'on':''}" onclick="estFiltro('plat','${id}')">${PLATS.find(y=>y.id===id)?.label||id}</span>`).join('')}
-      ${F.sit?`<span class="est-chip on" onclick="estFiltro('sit','')">✕ limpar situação</span>`:''}
-    </div>
-    ${!todas.length?`<div class="calc-card" style="text-align:center;color:var(--text3);padding:30px">Nenhuma estratégia salva nesta loja ainda.<br>Abra a <a href="#" onclick="setTab('calculadora');return false">Calculadora</a>, escolha um SKU e clique em "Salvar estratégia deste kit".</div>`
-      :!rows.length?`<div class="calc-card" style="text-align:center;color:var(--text3);padding:30px">Nada encontrado com esses filtros.</div>`
-      :`<div class="est-cards">${rows.map(card).join('')}</div>`}
-  </div>`;
-}
-function renderEstLoja(c){
-  const rows=[];
-  for(const p of (c.produtos||[])){
-    for(const k of ordenarKits(p.kits||[])){
-      for(const [pl,est] of Object.entries(k.estrategia||{})){
-        if(!est) continue;
-        const atual=Number(k.precos?.[pl])||null;
-        const usos=estUsosAtivos(c,p,k.qty,pl);
-        const usoPct=usos.filter(u=>u.tipo==='%').reduce((s,u)=>s+(Number(u.valor)||0),0);
-        const usoRS=usos.filter(u=>u.tipo!=='%').reduce((s,u)=>s+(Number(u.valor)||0),0);
-        let st=['—','var(--text3)'];
-        if(atual){
-          if(atual<est.piso-0.005) st=['Abaixo do piso','var(--danger)'];
-          else if(atual<est.com_ferramentas-0.005) st=['Comendo a margem','var(--danger)'];
-          else if(atual<est.alvo-0.005) st=['Usando a reserva','var(--warn)'];
-          else st=['No alvo','var(--success)'];
-        }
-        rows.push({p,k,pl,est,atual,usoPct,usoRS,st});
-      }
-    }
-  }
-  if(!rows.length) return`<div class="est-muted">Nenhuma estratégia salva ainda. Escolha um SKU acima e clique em "Salvar estratégia deste kit".</div>`;
-  return`<div class="table-scroll"><table class="est-table">
-    <thead><tr><th>SKU</th><th>Kit</th><th>Plataforma</th><th class="num">Piso</th><th class="num">Alvo</th><th class="num">Tabela</th><th class="num">Preço atual</th><th class="num">Reserva</th><th class="num">Usado</th><th>Situação</th><th></th></tr></thead>
-    <tbody>${rows.map(x=>`<tr>
-      <td>${escH(x.p.sku||x.p.nome)}</td><td>${x.k.qty}</td><td>${PLATS.find(y=>y.id===x.pl)?.label||x.pl}</td>
-      <td class="num">${brlE(x.est.piso)}</td><td class="num">${brlE(x.est.alvo)}</td><td class="num">${brlE(x.est.tabela)}</td>
-      <td class="num">${x.atual?brlE(x.atual):'–'}</td><td class="num">${String(x.est.reserva??'').replace('.',',')}%</td>
-      <td class="num">${x.usoPct?String(r2c(x.usoPct)).replace('.',',')+'%':''}${x.usoPct&&x.usoRS?' + ':''}${x.usoRS?brlE(x.usoRS):''}${!x.usoPct&&!x.usoRS?'–':''}</td>
-      <td><span style="color:${x.st[1]};font-weight:600">${x.st[0]}</span></td>
-      <td><button class="btn btn-outline est-mini" onclick="estAbrir('${x.p.id}',${x.k.qty},'${x.pl}')">Abrir</button></td>
-    </tr>`).join('')}</tbody></table></div>`;
 }
 
 function updateCalc(){
-  const top=document.getElementById('est-top');if(!top) return;
-  const E=estCalcular();if(!E) return;
-  const curvaLbl={A:'Curva A',B:'Curva B',C:'Curva C',N:'PN'}[E.curva||'N'];
-  const ms=document.getElementById('est-marg-sub');
-  if(ms) ms.textContent=E.margemManual?'valor digitado':`padrão ${curvaLbl}: ${String(E.margemCurva).replace('.',',')}% — deixe vazio para usar`;
-  const mi=document.getElementById('est-marg');if(mi&&!E.margemManual) mi.placeholder=String(E.margemCurva);
-  if(!E.custo){
-    top.innerHTML='<div class="est-muted" style="padding:20px;text-align:center">Escolha um SKU ou digite o custo de compra para calcular.</div>';
-    ['est-det','est-res','est-taxas'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='';});
-    return;
-  }
-  const S=estSimular(E);
-  const rs=document.getElementById('est-res-sub');if(rs&&S) rs.textContent=`= ${brlE(r2c(S.base*E.reserva))} no preço simulado`;
-  // Pisos e preços para cadastrar
-  top.innerHTML=`<div class="est-floors">
-      <div class="est-floor"><div class="k">Piso cru</div><div class="v">${brlE(E.piso)}</div><div class="d">custo + taxas + margem, sem ferramentas de marketing · só estratégia</div></div>
-      <div class="est-floor"><div class="k">Com ferramentas</div><div class="v">${brlE(E.comFerr)}</div><div class="d">piso + ferramentas de marketing, sem reserva</div></div>
-      <div class="est-floor main"><div class="k">Alvo</div><div class="v">${brlE(E.alvoCalc)}</div><div class="d">+ reserva de marketing · preço do dia a dia</div></div>
-    </div>
-    <div class="est-trio">
-      <div><div class="k">Piso (cru)</div><div class="v">${brlE(E.piso)}</div><div class="d">só sem ferramentas</div></div>
-      <div><div class="k">Alvo (dia a dia)</div><div class="v">${brlE(E.alvo)}</div><div class="d">tabela − ${pctE(E.desc,1)}</div></div>
-      <div class="tab"><div class="k">Tabela (riscado)</div><div class="v">${brlE(E.tab)}</div><div class="d">com ferramentas até ${pctE(E.dmax,1)} · piso cru ${pctE(E.dcru,1)}${E.tabMan?' · valor digitado':''}</div></div>
-    </div>
-    ${E.alvo<E.comFerr-0.005?`<div class="est-alert bad">Com essa tabela, o dia a dia (${brlE(E.alvo)}) fica abaixo do preço com ferramentas. O desconto do dia a dia pode ser no máximo ${pctE(E.dmax,1)}.</div>`
-     :E.alvo<E.alvoCalc-0.005?`<div class="est-alert warn">Com essa tabela, o dia a dia (${brlE(E.alvo)}) já usa parte da reserva. Tabela sugerida: ${brlE(E.tabSug)}.</div>`:''}`;
-  // Taxas da plataforma (lado esquerdo), com o valor em R$ no preço simulado
-  const tx=document.getElementById('est-taxas');
-  if(tx&&S){
-    const grupos=['plat','imp','mkt'];
-    tx.innerHTML=grupos.map(g=>{const ls=S.L.filter(x=>x.cat===g&&!x.res&&!x.sobra);if(!ls.length)return'';
-      return`<div class="est-grp">${CAT_LABEL[g]}</div>`+ls.map(x=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${escH(x.n)}</span><span><span style="color:var(--text3);font-size:10px;margin-right:6px">${x.rate!=null?pctE(x.rate):''}</span><span class="calc-val">${brlE(x.val)}</span></span></div>`).join('');}).join('')
-      +`<div class="est-muted" style="margin-top:4px">Valores em R$ no preço simulado (${brlE(S.P)}).</div>`;
-  }
-  if(!S) return;
-  // Detalhamento agrupado
-  const det=document.getElementById('est-det');
-  const linha=x=>`<tr${x.sobra?' class="est-sobra"':''}><td>${escH(x.n)}${x.temReserva?` <span style="color:var(--accent-text);font-size:11px">+ ${x.extra.join(' + ')} da reserva</span>`:''}</td><td class="pc">${pctE(x.rate!=null?x.rate:(S.P?x.val/S.P:0))}</td><td class="num">${brlE(x.val)}</td></tr>`;
-  det.innerHTML=`<table class="est-det">${['plat','imp','mkt'].map(g=>{const ls=S.L.filter(x=>x.cat===g);if(!ls.length)return'';return`<tr class="grp"><td colspan="3">${CAT_LABEL[g]}</td></tr>`+ls.map(linha).join('');}).join('')}
-    <tr class="sub"><td>Total de taxas</td><td class="pc">${pctE(S.taxas/S.P)}</td><td class="num neg">${brlE(S.taxas)}</td></tr>
-    <tr><td>Preço de venda</td><td class="pc">${pctE(1)}</td><td class="num">${brlE(S.P)}</td></tr>
-    <tr><td>Custo de compra</td><td class="pc">${pctE(E.custo/S.P)}</td><td class="num">${brlE(E.custo)}</td></tr>
-    <tr class="sub"><td>Total geral (taxas + custo)</td><td class="pc">${pctE(S.total/S.P)}</td><td class="num neg">${brlE(S.total)}</td></tr></table>`;
-  // Resultado
-  let cls,txt;
-  if(S.lucro<-0.005){cls='bad';txt='Prejuízo';}
-  else if(S.passou){cls='warn';txt=S.usado>0?'Passou da reserva · comendo a margem':'Abaixo da margem mínima';}
-  else if(S.usado>0){cls='ok';txt=`Usando ${brlE(S.usado)} da reserva · sobra ${brlE(S.sobra)}`;}
-  else{cls='ok';txt=S.sobra>0?'Margem + reserva intactas':'Na margem mínima';}
-  document.getElementById('est-res').innerHTML=`<div class="est-result ${cls}">
-    <div class="ln"><span>Preço de tabela</span><s>${brlE(E.tab)}</s></div>
-    <div class="ln"><b>Cliente paga</b><b class="mono">${brlE(S.P)}</b></div>
-    <div class="lbl">Reserva de marketing</div>
-    <div class="ln"><span>Reserva neste preço</span><span class="mono">${brlE(S.totR)}</span></div>
-    <div class="ln"><span>Usado (lançamentos${parseFloat(ST.calc.extra)?' + simulação':''})</span><span class="mono">− ${brlE(S.usado)}</span></div>
-    <div class="ln"><b>Sobra na reserva</b><b class="mono">${brlE(S.sobra)}</b></div>
-    <div class="lbl">Lucro por peça</div>
-    <div class="big">${brlE(S.lucro)}</div>
-    <div class="ln"><span>${pctE(S.lp)} · margem mínima ${pctE(E.margem,1)}</span><span class="mono">${E.kit?brlE(S.lucro/E.kit)+'/peça':''}</span></div>
-    <span class="pill">${txt}</span>
-  </div>`;
-}
-
-async function estSalvar(){
-  const E=estCalcular();if(!E||!E.p||!E.k){toast('Escolha o SKU e o kit','error');return;}
-  if(!isFinite(E.tab)||!isFinite(E.piso)){toast('Não foi possível calcular — confira custo e taxas','error');return;}
-  if(!E.k.estrategia) E.k.estrategia={};
-  E.k.estrategia[E.pl]={piso:E.piso,com_ferramentas:E.comFerr,alvo:E.alvo,tabela:E.tab,tabela_manual:!!E.tabMan,
-    desconto:Math.round(E.desc*1000)/10,reserva:Math.round(E.reserva*10000)/100,margem:Math.round(E.margem*10000)/100,
-    margem_manual:E.margemManual,custo:E.custo,salvo_em:new Date().toISOString()};
-  try{await saveProduct(E.p,E.c.id);}catch(err){toast('⚠️ ERRO ao salvar: '+(err.message||'falha'),'error');return;}
-  toast(`✅ Estratégia do Kit ${E.k.qty} (${PLATS.find(x=>x.id===E.pl)?.label||E.pl}) salva — veja na aba 🎯 Estratégias`);renderTab();
+  const c=gc();if(!c)return;
+  const platSel=ST.calc.plat||'shopee';
+  const preco=parseFloat(document.getElementById('calc-preco')?.value)||0;
+  const custo=parseFloat(document.getElementById('calc-custo')?.value)||0;
+  const peso=parseFloat(document.getElementById('calc-peso')?.value)||parseFloat(ST.calc.peso)||0;
+  const margem=parseFloat(document.getElementById('calc-margem')?.value)||0;
+  const resEl=document.getElementById('calc-res');
+  const sugEl=document.getElementById('calc-sug');
+  if(!resEl)return;
+  // Sugestão
+  if(sugEl&&custo>0){
+    const t=c.taxas[platSel];
+    function alvo(ma){
+      let p=custo*2;
+      for(let i=0;i<80;i++){
+        const temTiers=!!tiersPlat(platSel);
+        const trP=temTiers?tierAutoPlat(platSel,p):null;
+        const comRow=temTiers?t.perc.find(r=>isComissaoAuto(r.n)):null;
+        const comAuto=comRow?comRow.auto!==false:true;
+        // Comissão automática da faixa + as demais taxas percentuais (antes ignorava as demais)
+        const tp=(trP&&comAuto)?(trP.comissao+t.perc.filter(r=>!isComissaoAuto(r.n)).reduce((s,r)=>s+(r.v||0),0))/100:t.perc.reduce((s,r)=>s+(r.v||0),0)/100;
+        const tfRow=temTiers?t.fixas.find(r=>isTaxaFixaAuto(r.n)):null;
+        const tfAuto=tfRow?tfRow.auto!==false:true;
+        const tf=(trP&&tfAuto)?trP.taxaFixa+t.fixas.filter(r=>!isTaxaFixaAuto(r.n)).reduce((s,r)=>s+(r.v||0),0):t.fixas.reduce((s,r)=>s+(r.v||0),0);
+        const comPctA=((trP&&comAuto)?trP.comissao:0)/100+t.perc.filter(r=>baseDescontaCupom(r.n)&&!((trP&&comAuto)&&isComissaoAuto(r.n))).reduce((s,r)=>s+(r.v||0),0)/100;
+        const tfX=tf-comPctA*cupomFixoShopee(platSel,t);
+        const fr=(platSel==='ml_classico'||platSel==='ml_premium')&&peso>0?calcFreteML(peso,p):0;
+        const d=1-tp-ma;if(d<=0)break;
+        const p2=(custo+tfX+fr)/d;if(!isFinite(p2)||p2<=0)break;
+        if(Math.abs(p2-p)<0.01)break;p=p2;
+      }
+      return Math.max(0,p);
+    }
+    const pMin=alvo(0);const pIdeal=margem>0?alvo(margem/100):null;
+    sugEl.innerHTML=`<div class="sugestao-box"><div style="font-size:12px;font-weight:700;color:var(--accent-text);margin-bottom:8px">💡 Sugestão de Preço</div>
+      <div class="sugestao-row"><span style="color:var(--accent-text)">Preço Mínimo (ponto de equilíbrio)</span><span style="font-family:var(--mono);font-weight:700;color:var(--accent-text)">R$ ${pMin.toFixed(2)}</span></div>
+      ${pIdeal?`<div class="sugestao-row"><span style="color:var(--accent-text)">Preço com ${margem}% de margem</span><span style="font-family:var(--mono);font-weight:700;color:var(--accent-text)">R$ ${pIdeal.toFixed(2)}</span></div>`:''}
+    </div>`;
+  } else if(sugEl) sugEl.innerHTML='';
+  if(!preco||!custo){resEl.innerHTML=`<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">Preencha preço e custo para ver o resultado</div>`;return;}
+  const r=calcR(preco,custo,platSel,c.taxas,peso);
+  if(!r){resEl.innerHTML='<div style="color:var(--text3);padding:20px;text-align:center">Dados insuficientes</div>';return;}
+  const cBg=r.lucro>=0?'var(--accent-bg)':'var(--danger-bg)';const cFg=r.lucro>=0?'var(--accent-text)':'var(--danger)';
+  resEl.innerHTML=
+    r.percDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${isComissaoAuto(d.n)&&d.auto!==false&&tierAutoPlat(platSel,preco)?`<span class="shopee-badge">${tierAutoPlat(platSel,preco).comissao}% auto</span>`:''}</span><div style="display:flex;gap:8px;align-items:center"><span style="color:var(--text3);font-size:10px">${d.v.toFixed(2)}%</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div></div>`).join('')+
+    r.fixaDetail.map(d=>`<div class="taxa-detail-row"><span style="color:var(--text2)">${d.n}${isTaxaFixaAuto(d.n)&&d.auto!==false&&tierAutoPlat(platSel,preco)?`<span class="shopee-badge">R$${tierAutoPlat(platSel,preco).taxaFixa} auto</span>`:''}</span><span class="calc-val">R$ ${d.val.toFixed(2)}</span></div>`).join('')+
+    `<div style="height:1px;background:var(--border);margin:8px 0"></div>
+    <div class="calc-row total"><span>Total de Taxas</span><span class="calc-val" style="color:var(--danger)">R$ ${r.tax.toFixed(2)}</span></div>
+    <div style="height:1px;background:var(--border);margin:8px 0"></div>
+    <div class="calc-row"><span>Preço de Venda</span><span class="calc-val">R$ ${r.preco.toFixed(2)}</span></div>
+    <div class="calc-row"><span>Custo de Compra</span><span class="calc-val" style="color:var(--danger)">R$ ${r.custo.toFixed(2)}</span></div>
+    <div class="calc-row total"><span>Total Geral (Taxas + Custo)</span><span class="calc-val" style="color:var(--danger)">R$ ${(r.tax+r.custo).toFixed(2)}</span></div>
+    <div style="height:1px;background:var(--border);margin:8px 0"></div>
+    <div style="background:${cBg};border-radius:var(--r);padding:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:14px;font-weight:700;color:${cFg}">LUCRO EM R$</span><span style="font-size:18px;font-weight:700;font-family:var(--mono);color:${cFg}">R$ ${r.lucro.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span style="font-size:14px;font-weight:700;color:${cFg}">LUCRO EM %</span><span style="font-size:18px;font-weight:700;font-family:var(--mono);color:${cFg}">${r.margem.toFixed(2)}%</span></div>
+    </div>`;
 }
 
 function renderModal(){
@@ -2121,17 +1613,9 @@ async function setTab(t){
   ST.tab=t;
   if(t==='produtos'){
     await carregarCurvaParaProdutos();
-    await estCarregarUsos(true);
   }
   if(t==='curva_abc'){
     await consultarCurvaABC();
-  }
-  if(t==='calculadora'){
-    await carregarCurvaParaProdutos();
-    await estCarregarUsos(true);
-  }
-  if(t==='estrategias'){
-    await estCarregarUsos(true);
   }
   render();
 }
@@ -2464,14 +1948,15 @@ function startInlineEditPreco(span,pid,cid,plat,kitQty,valorSugerido){
   const atualizarCardAoVivo=()=>{
     const novoValor=parseFloat(input.value);
     if(!cardEl||isNaN(novoValor)||novoValor<=0) return;
-    const KC=kitCalc(p,cli,plat,k,novoValor);if(!KC) return;const r2=KC.r2;estAtualizarReservaAoVivo(cardEl,k,plat,novoValor,KC);
+    const r2=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
+    if(!r2) return;
     const co2=cor(r2,k.qty,cli,curvaP,tipoP,plat);
     const prej=r2.lucro<0;
     const lucroColor=co2==='g'?'var(--success)':'var(--danger)';
     const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
     const setColor=(id,color)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.style.color=color;};
     // Preço Ideal (comparação)
-    const ideal=idealDoKit(r2.custo,plat,cli,k,curvaP,tipoP);
+    const ideal=calcPrecoIdeal(r2.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli,curvaP,tipoP);
     if(ideal){
       const diff=r2.preco-ideal.preco;
       const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
@@ -2557,13 +2042,14 @@ function startInlineEditPrecoTeste(span,pid,cid,plat,kitQty){
   const atualizarAoVivo=()=>{
     const novoValor=parseFloat(input.value);
     if(!cardEl||isNaN(novoValor)||novoValor<=0)return;
-    const KC=kitCalc(p,cli,plat,k,novoValor);if(!KC)return;const rt=KC.r2;estAtualizarReservaAoVivo(cardEl,k,plat,novoValor,KC);
+    const rt=calcR(novoValor,k.custos?.[plat],plat,cli.taxas,k.peso_kg||0,k.qty);
+    if(!rt)return;
     const cot=cor(rt,k.qty,cli,curvaP,tipoP,plat);
     const prej=rt.lucro<0;
     const lucroColorT=cot==='g'?'var(--success)':'var(--danger)';
     const setText=(id,txt)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.textContent=txt;};
     const setColor=(id,color)=>{const el=cardEl.querySelector(`[data-f="${id}"]`);if(el)el.style.color=color;};
-    const ideal=idealDoKit(rt.custo,plat,cli,k,curvaP,tipoP);
+    const ideal=calcPrecoIdeal(rt.custo,plat,cli.taxas,k.peso_kg||0,k.qty,cli,curvaP,tipoP);
     if(ideal){
       const diff=rt.preco-ideal.preco;
       const diffColor=Math.abs(diff)<0.01?'var(--text3)':diff<0?'var(--danger)':'var(--success)';
@@ -2661,6 +2147,19 @@ function updateKitPreview(){
   // Mantido para compatibilidade — atualiza todos os previews
   if(!ST.modal?.p) return;
   ST.modal.p.kits.forEach((_,i)=>updateKitPreviewInline(i));
+}
+function onCalcProd(id){
+  ST.calc.prodId=id;ST.calc.kit=null;ST.calc.preco='';ST.calc.custo='';ST.calc.peso='';
+  const cli=gc();const p=cli.produtos.find(x=>String(x.id)===id);
+  if(p&&p.kits.length===1){ST.calc.kit=p.kits[0].qty;onCalcKit(p.kits[0].qty);return;}
+  renderTab();
+}
+function onCalcKit(qty){
+  qty=parseInt(qty)||null;ST.calc.kit=qty;
+  const cli=gc();const p=cli.produtos.find(x=>String(x.id)===String(ST.calc.prodId));
+  const k=p?.kits?.find(x=>x.qty===qty);
+  if(k){const pl=ST.calc.plat;if(k.precos?.[pl])ST.calc.preco=String(k.precos[pl]);if(k.custos?.[pl])ST.calc.custo=String(k.custos[pl]);if(k.peso_kg)ST.calc.peso=String(k.peso_kg);}
+  renderTab();
 }
 
 // Estado da Curva ABC
